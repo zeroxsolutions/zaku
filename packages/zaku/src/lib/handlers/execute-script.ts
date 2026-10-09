@@ -8,6 +8,7 @@ import type { Finding } from '../domain/findings.js';
 import { cutReply } from '../domain/reply-cut.js';
 import { refusedCalls } from '../domain/script-refusal.js';
 import { snapshotFindings } from '../domain/snapshot-rules.js';
+import type { IDesignConfigRepository } from '../repositories/design-config-repository.js';
 
 export type ExecuteResult =
   | {
@@ -32,11 +33,15 @@ const UNKNOWN = { outcome: 'unknown', message: 'read before retrying' } as const
 export class ExecuteScriptHandler implements ICommandHandler<ExecuteScript, ExecuteResult> {
   readonly command = ExecuteScript;
 
-  constructor(@inject(TOKENS.FIGMA_BRIDGE) private readonly bridge: FigmaBridge) {}
+  constructor(
+    @inject(TOKENS.FIGMA_BRIDGE) private readonly bridge: FigmaBridge,
+    @inject(TOKENS.DESIGN_CONFIG_REPOSITORY) private readonly configs: Pick<IDesignConfigRepository, 'readOptional'>,
+  ) {}
 
   async handle(command: ExecuteScript): Promise<ExecuteResult> {
     const refused = refusedCalls(command.script);
     if (refused.length > 0) throw new ScriptRefused(refused);
+    const config = await this.configs.readOptional(command.designRoot);
     const session = this.bridge.session(command.file);
     return this.bridge.exclusive(session, async (): Promise<ExecuteResult> => {
       const ran = await this.bridge.run(session, command.script);
@@ -52,7 +57,7 @@ export class ExecuteScriptHandler implements ICommandHandler<ExecuteScript, Exec
           message: 'the script may have changed nodes that already existed; read before retrying',
           ...empty,
         };
-      const findings = snapshotFindings(ran.snapshot);
+      const findings = snapshotFindings(ran.snapshot, config?.copy);
       const decision = command.mode === 'strict' && findings.length > 0 ? 'rollback' : 'commit';
       const settled = await this.bridge.decide(session, ran.runId, decision);
       if (settled.kind === 'dropped') return UNKNOWN;

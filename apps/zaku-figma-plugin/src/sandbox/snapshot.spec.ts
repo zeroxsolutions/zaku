@@ -101,4 +101,45 @@ describe('snapshotNode', () => {
       { nodeId: '1:3;9:1', fields: ['fills'], picture: true },
     ]);
   });
+
+  it("carries a text's characters, and none for a text an instance holds", async () => {
+    const page = { id: '0:1', name: 'Page 1', type: 'PAGE', parent: null };
+    const screen = { id: '1:1', name: 'Place / Desktop', type: 'FRAME', parent: page };
+    const button = { id: '1:3', name: 'Button', type: 'INSTANCE', parent: screen };
+    const text = {
+      id: '1:2',
+      name: 'Summary',
+      type: 'TEXT',
+      parent: screen,
+      fills: [],
+      strokes: [],
+      characters: 'Hoi An',
+    };
+    const label = { ...text, id: 'I1:3;2:1', name: 'Label', parent: button, characters: 'Save' };
+    expect((await snapshotNode(text as never, true)).characters).toBe('Hoi An');
+    expect(await snapshotNode(label as never, false)).not.toHaveProperty('characters');
+  });
+
+  it('carries the text of a characters override, and the texts the component shows as its own', async () => {
+    const label = { id: '1:3;9:1', type: 'TEXT', characters: 'Book now' };
+    const hint = { id: '1:3;9:2', type: 'TEXT', characters: 'Next \u2192' };
+    const instance = {
+      id: '1:3',
+      name: 'Button',
+      type: 'INSTANCE',
+      parent: null,
+      fills: [],
+      strokes: [],
+      overrides: [{ id: '1:3;9:1', overriddenFields: ['characters'] }],
+      layoutSizingHorizontal: 'HUG',
+      layoutSizingVertical: 'HUG',
+      findOne: (match: (n: unknown) => boolean): unknown => [label, hint].find((n) => match(n)) ?? null,
+      findAll: (match: (n: unknown) => boolean): unknown[] => [label, hint].filter((n) => match(n)),
+    };
+    expect((await snapshotNode(instance as never, false)).instance).toEqual({
+      overrides: [{ nodeId: '1:3;9:1', fields: ['characters'], characters: 'Book now' }],
+      carried: ['Next \u2192'],
+      sizing: { horizontal: 'HUG', vertical: 'HUG' },
+    });
+  });
 });

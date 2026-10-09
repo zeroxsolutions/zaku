@@ -13349,11 +13349,13 @@ var ExecuteScript = class extends DomainCommand {
   file;
   script;
   mode;
+  designRoot;
   constructor(input2) {
     super();
     this.file = input2.file;
     this.script = input2.script;
     this.mode = input2.mode;
+    this.designRoot = input2.designRoot;
   }
 };
 
@@ -33082,6 +33084,7 @@ var copySchema = external_exports
       .default([]),
   })
   .strict();
+var DEFAULT_COPY = { locales: ['en'], currencies: [] };
 var zakuConfigSchema = external_exports
   .object({
     product: external_exports.string().min(1),
@@ -33098,7 +33101,7 @@ var zakuConfigSchema = external_exports
       .optional(),
     budget: budgetSchema.default({ mcpPerDay: 200, mcpPerRun: 30, reserve: 0.2 }),
     recipe: recipeSchema.optional(),
-    copy: copySchema.default({ locales: ['en'], currencies: [] }),
+    copy: copySchema.default(DEFAULT_COPY),
   })
   .strict()
   .superRefine((config2, ctx) => {
@@ -36512,7 +36515,11 @@ function refusedCalls(script) {
 }
 
 // packages/zaku/dist/lib/domain/snapshot-rules.js
-function snapshotFindings(nodes) {
+function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
+  const policy = copyPolicy(
+    copy2,
+    nodes.flatMap((node2) => node2.instance?.carried ?? []),
+  );
   const findings = [];
   for (const node2 of nodes) {
     const label2 = `${node2.name} (${node2.type.toLowerCase()})`;
@@ -36533,8 +36540,16 @@ function snapshotFindings(nodes) {
       if (space.value > 0 && !space.bound)
         finding('binding', space.field, `${label2}: ${space.field} ${space.value} is not a spacing variable`);
     }
+    if (node2.characters !== void 0) {
+      for (const issue2 of copyIssues(node2.characters, policy))
+        finding('copy', issue2.field, `${label2}: ${issue2.message}`);
+    }
     if (node2.instance) {
       for (const override of node2.instance.overrides) {
+        if (override.characters !== void 0) {
+          for (const issue2 of copyIssues(override.characters, policy))
+            finding('copy', issue2.field, `${node2.name}: ${issue2.message}`, override.nodeId);
+        }
         for (const field of override.fields) {
           if (ALLOWED_OVERRIDES.has(field)) continue;
           if (field === 'fills' && override.picture) continue;
@@ -36555,13 +36570,16 @@ function snapshotFindings(nodes) {
 var UNKNOWN = { outcome: 'unknown', message: 'read before retrying' };
 var ExecuteScriptHandler = class ExecuteScriptHandler2 {
   bridge;
+  configs;
   command = ExecuteScript;
-  constructor(bridge) {
+  constructor(bridge, configs) {
     this.bridge = bridge;
+    this.configs = configs;
   }
   async handle(command) {
     const refused = refusedCalls(command.script);
     if (refused.length > 0) throw new ScriptRefused(refused);
+    const config2 = await this.configs.readOptional(command.designRoot);
     const session = this.bridge.session(command.file);
     return this.bridge.exclusive(session, async () => {
       const ran = await this.bridge.run(session, command.script);
@@ -36577,7 +36595,7 @@ var ExecuteScriptHandler = class ExecuteScriptHandler2 {
           message: 'the script may have changed nodes that already existed; read before retrying',
           ...empty,
         };
-      const findings = snapshotFindings(ran.snapshot);
+      const findings = snapshotFindings(ran.snapshot, config2?.copy);
       const decision = command.mode === 'strict' && findings.length > 0 ? 'rollback' : 'commit';
       const settled = await this.bridge.decide(session, ran.runId, decision);
       if (settled.kind === 'dropped') return UNKNOWN;
@@ -36600,6 +36618,7 @@ ExecuteScriptHandler = __decorate2(
   [
     (0, import_tsyringe7.injectable)({ token: TOKENS.COMMAND_HANDLER }),
     __param2(0, (0, import_tsyringe7.inject)(TOKENS.FIGMA_BRIDGE)),
+    __param2(1, (0, import_tsyringe7.inject)(TOKENS.DESIGN_CONFIG_REPOSITORY)),
   ],
   ExecuteScriptHandler,
 );
