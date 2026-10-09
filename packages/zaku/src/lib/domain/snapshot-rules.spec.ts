@@ -87,4 +87,34 @@ describe('snapshotFindings', () => {
     };
     expect(snapshotFindings([node({ type: 'INSTANCE', name: 'Avatar', instance })])).toEqual([]);
   });
+
+  it('holds a text outside an instance and a characters override to the copy rules', () => {
+    const text = node({
+      id: '1:2',
+      type: 'TEXT',
+      name: 'Summary',
+      textStyleId: 's',
+      characters: 'A port \u2014 five sites',
+    });
+    const instance = {
+      overrides: [{ nodeId: '1:3;2:1', fields: ['characters'], characters: 'Unlock the map \u2192' }],
+      carried: ['Next \u2192'],
+      sizing: { horizontal: 'HUG', vertical: 'HUG' },
+    };
+    expect(snapshotFindings([text, node({ id: '1:3', type: 'INSTANCE', name: 'Button', instance })])).toEqual([
+      {
+        check: 'copy',
+        nodeId: '1:2',
+        field: 'characters',
+        message: 'Summary (text): U+2014 em dash: write "-", or two sentences',
+      },
+      { check: 'copy', nodeId: '1:3;2:1', field: 'tone', message: 'Button: "Unlock": write "get" or "open"' },
+    ]);
+  });
+
+  it('allows the letters and currency symbols of the locales and currencies zaku.yaml names', () => {
+    const text = node({ type: 'TEXT', name: 'Price', textStyleId: 's', characters: 'V\u00e9 120.000 \u20ab' });
+    expect(snapshotFindings([text], { locales: ['en', 'vi'], currencies: ['VND'] })).toEqual([]);
+    expect(snapshotFindings([text])).toEqual([expect.objectContaining({ check: 'copy', field: 'characters' })]);
+  });
 });

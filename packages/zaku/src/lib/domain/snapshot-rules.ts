@@ -1,10 +1,19 @@
 import type { NodeSnapshot } from '../schema/bridge.js';
+import { DEFAULT_COPY, type CopyConfig } from '../schema/zaku-config.js';
 import { ALLOWED_OVERRIDES } from './checks/overrides.js';
+import { copyIssues, copyPolicy } from './copy-rules.js';
 import type { Finding } from './findings.js';
 import { DEFAULT_LAYER_NAME } from './layer-names.js';
 
-/** The rules an `execute` is held to, over what the script touched. */
-export function snapshotFindings(nodes: readonly NodeSnapshot[]): Finding[] {
+/**
+ * The rules an `execute` is held to, over what the script touched. `copy` is zaku.yaml's copy section; the
+ * library copy the touched instances carry is allowed beside it, as zaku check allows it.
+ */
+export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfig = DEFAULT_COPY): Finding[] {
+  const policy = copyPolicy(
+    copy,
+    nodes.flatMap((node) => node.instance?.carried ?? []),
+  );
   const findings: Finding[] = [];
   for (const node of nodes) {
     const label = `${node.name} (${node.type.toLowerCase()})`;
@@ -25,8 +34,16 @@ export function snapshotFindings(nodes: readonly NodeSnapshot[]): Finding[] {
       if (space.value > 0 && !space.bound)
         finding('binding', space.field, `${label}: ${space.field} ${space.value} is not a spacing variable`);
     }
+    if (node.characters !== undefined) {
+      for (const issue of copyIssues(node.characters, policy))
+        finding('copy', issue.field, `${label}: ${issue.message}`);
+    }
     if (node.instance) {
       for (const override of node.instance.overrides) {
+        if (override.characters !== undefined) {
+          for (const issue of copyIssues(override.characters, policy))
+            finding('copy', issue.field, `${node.name}: ${issue.message}`, override.nodeId);
+        }
         for (const field of override.fields) {
           if (ALLOWED_OVERRIDES.has(field)) continue;
           // As zaku check: a picture is placed as an image fill, so that fill is content.

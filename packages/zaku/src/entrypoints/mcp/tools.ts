@@ -104,7 +104,8 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
         'Run a Figma plugin script in an open file; the change is checked against zaku rules and rolled back on a finding in strict mode',
       inputSchema: { file, script: z.string(), mode: z.enum(['strict', 'report']).default('strict') },
     },
-    ({ file: name, script, mode }) => answer(() => seams.bus.send(new ExecuteScript({ file: name, script, mode }))),
+    ({ file: name, script, mode }) =>
+      answer(() => seams.bus.send(new ExecuteScript({ file: name, script, mode, designRoot: seams.designRoot }))),
   );
 
   server.registerTool(

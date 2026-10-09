@@ -154,6 +154,9 @@ export const copySchema = z
   })
   .strict();
 
+/** The copy section a zaku.yaml without one reads as. */
+export const DEFAULT_COPY: z.output<typeof copySchema> = { locales: ['en'], currencies: [] };
+
 export const zakuConfigSchema = z
   .object({
     product: z.string().min(1),
@@ -165,7 +168,7 @@ export const zakuConfigSchema = z
     systemBars: z.record(z.enum(PLATFORM_FAMILIES), z.array(z.array(z.string().min(1)).min(1))).optional(),
     budget: budgetSchema.default({ mcpPerDay: 200, mcpPerRun: 30, reserve: 0.2 }),
     recipe: recipeSchema.optional(),
-    copy: copySchema.default({ locales: ['en'], currencies: [] }),
+    copy: copySchema.default(DEFAULT_COPY),
   })
   .strict()
   .superRefine((config, ctx) => {

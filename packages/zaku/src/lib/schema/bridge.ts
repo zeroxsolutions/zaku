@@ -24,12 +24,24 @@ export const nodeSnapshotSchema = z
     strokes: z.array(paintSchema),
     /** TEXT only: the style id, `mixed` across ranges, or null when unstyled. */
     textStyleId: z.string().nullable(),
+    /** A TEXT outside every instance: what it shows. A text an instance holds is read from its override. */
+    characters: z.string().optional(),
     instance: z
       .object({
         /** `picture` marks a layer that holds an image, whose fills override places content rather than restyling. */
         overrides: z.array(
-          z.object({ nodeId: z.string(), fields: z.array(z.string()), picture: z.boolean().optional() }).strict(),
+          z
+            .object({
+              nodeId: z.string(),
+              fields: z.array(z.string()),
+              picture: z.boolean().optional(),
+              /** On a `characters` override: what the layer now shows. */
+              characters: z.string().optional(),
+            })
+            .strict(),
         ),
+        /** What the component's text layers left as they are show: the library's own copy. */
+        carried: z.array(z.string()).optional(),
         sizing: z.object({ horizontal: z.string(), vertical: z.string() }).strict(),
       })
       .strict()

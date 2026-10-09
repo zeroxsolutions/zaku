@@ -28,6 +28,23 @@ function frameOf(node: Ancestor): string | null {
   return top.parent?.type === 'PAGE' ? top.name : null;
 }
 
+/** Whether an instance holds the node, whose text is then the instance's to report. */
+function insideInstance(node: Ancestor): boolean {
+  for (let up = node.parent; up; up = up.parent) if (up.type === 'INSTANCE') return true;
+  return false;
+}
+
+/** The characters of every text layer in an instance that no override changed: the component's own copy. */
+function carriedTexts(instance: SceneNode, overridden: ReadonlySet<string>): string[] {
+  const findAll = (instance as unknown as Record<string, unknown>)['findAll'] as
+    | ((match: (n: { id: string; type: string }) => boolean) => { id: string; characters?: unknown }[])
+    | undefined;
+  if (!findAll) return [];
+  return findAll
+    .call(instance, (n) => n.type === 'TEXT' && !overridden.has(n.id))
+    .map((n) => (typeof n.characters === 'string' ? n.characters : ''));
+}
+
 function holdsPicture(layer: unknown): boolean {
   const fills = (layer as { fills?: unknown } | null)?.fills;
   return Array.isArray(fills) && fills.some((paint: { type?: string }) => paint.type === 'IMAGE');
@@ -44,6 +61,9 @@ export async function snapshotNode(
     boundVariables?: Record<string, unknown>;
   };
   const style = any['textStyleId'];
+  const overrides = (any['overrides'] as { id: string; overriddenFields: string[] }[] | undefined) ?? [];
+  const texted = new Set(overrides.filter((o) => o.overriddenFields.includes('characters')).map((o) => o.id));
+  const carried = node.type === 'INSTANCE' ? carriedTexts(node, texted) : [];
   const auto = typeof any['layoutMode'] === 'string' && any['layoutMode'] !== 'NONE';
   return {
     id: node.id,
@@ -56,16 +76,21 @@ export async function snapshotNode(
     strokes: paints(any['strokes']),
     textStyleId:
       node.type !== 'TEXT' ? null : style === mixed ? 'mixed' : typeof style === 'string' && style ? style : null,
+    ...(node.type === 'TEXT' && !insideInstance(node as unknown as Ancestor)
+      ? { characters: String(any['characters'] ?? '') }
+      : {}),
     instance:
       node.type === 'INSTANCE'
         ? {
-            overrides: ((any['overrides'] as { id: string; overriddenFields: string[] }[] | undefined) ?? []).map(
-              (o) => ({
-                nodeId: o.id,
-                fields: o.overriddenFields,
-                ...(o.overriddenFields.includes('fills') && holdsPicture(layerOf(node, o.id)) ? { picture: true } : {}),
-              }),
-            ),
+            overrides: overrides.map((o) => ({
+              nodeId: o.id,
+              fields: o.overriddenFields,
+              ...(o.overriddenFields.includes('fills') && holdsPicture(layerOf(node, o.id)) ? { picture: true } : {}),
+              ...(texted.has(o.id)
+                ? { characters: String((layerOf(node, o.id) as { characters?: unknown } | null)?.characters ?? '') }
+                : {}),
+            })),
+            ...(carried.length > 0 ? { carried } : {}),
             sizing: {
               horizontal: String(any['layoutSizingHorizontal'] ?? 'FIXED'),
               vertical: String(any['layoutSizingVertical'] ?? 'FIXED'),
