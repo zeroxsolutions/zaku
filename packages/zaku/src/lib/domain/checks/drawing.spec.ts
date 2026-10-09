@@ -80,6 +80,40 @@ describe('systemBars', () => {
       ],
     });
   });
+
+  it("takes a kit's own names for one family's bars, and keeps the default names for every other family", () => {
+    const config = testConfig({
+      targets: [
+        { id: 'ios-phone', family: 'ios', name: 'iPhone' },
+        { id: 'android-phone', family: 'android', name: 'Android phone' },
+      ],
+      systemBars: { ios: [['iOS Status Bar'], ['iOS Home Indicator']] },
+    });
+    const ios = testFrame({
+      nodeId: '2:1',
+      name: 'Trips / Default / iPhone',
+      target: 'ios-phone',
+      instances: [testInstance({ component: 'iOS Status Bar' }), testInstance({ component: 'iOS Home Indicator' })],
+    });
+    const android = testFrame({
+      nodeId: '3:1',
+      name: 'Trips / Default / Android phone',
+      target: 'android-phone',
+      instances: [testInstance({ component: 'Status Bar' })],
+    });
+    expect(systemBars(testInput({ config, outlines: [testOutline({ frames: [ios, android] })] }))).toEqual({
+      findings: [
+        {
+          check: 'system-bars',
+          feature: 'trips',
+          screen: 'trips',
+          frame: 'Trips / Default / Android phone',
+          nodeId: '3:1',
+          message: 'no Navigation Bar or Gesture Handle instance on a android frame',
+        },
+      ],
+    });
+  });
 });
 
 describe('placement', () => {

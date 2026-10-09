@@ -66,7 +66,7 @@ describe('zakuConfigSchema', () => {
     expect(zakuConfigSchema.safeParse({ ...minimal, theme: 'dark' }).success).toBe(false);
   });
 
-  it('refuses a family that is not web, ios or android', () => {
+  it('refuses a family whose guideline it carries no rules for', () => {
     const result = zakuConfigSchema.safeParse({
       ...minimal,
       targets: [{ id: 'tv', family: 'tvos', name: 'TV' }],

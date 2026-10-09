@@ -116,6 +116,18 @@
               },
               "android": {
                 "type": "string"
+              },
+              "macos": {
+                "type": "string"
+              },
+              "windows": {
+                "type": "string"
+              },
+              "gnome": {
+                "type": "string"
+              },
+              "kde": {
+                "type": "string"
               }
             },
             "additionalProperties": false

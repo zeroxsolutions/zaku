@@ -1,4 +1,4 @@
-import { zakuConfigSchema } from '../schema/zaku-config.js';
+import { PLATFORM_FAMILIES, zakuConfigSchema } from '../schema/zaku-config.js';
 import { featureMapSchema, frameName, parseFrameName, qualify, resolveTargets } from './feature-map.js';
 
 const config = zakuConfigSchema.parse({
@@ -47,6 +47,16 @@ describe('featureMapSchema', () => {
       screens: { a: { title: 'A', states: ['Default'], entry: [{ via: 'a tap' }] } },
     });
     expect(result.success).toBe(false);
+  });
+
+  it('takes a way back under every family a target can name', () => {
+    const back = Object.fromEntries(PLATFORM_FAMILIES.map((family) => [family, `the ${family} way back to Feed`]));
+    const result = featureMapSchema.safeParse({
+      feature: 'community',
+      screens: { post: { title: 'Post', states: ['Default'], entry: [{ from: 'feed' }], back } },
+    });
+    expect(result.error?.issues).toBeUndefined();
+    expect(result.data?.screens['post']?.back).toEqual(back);
   });
 
   it('defaults targets to all, and back, entry, exits and components to empty', () => {
