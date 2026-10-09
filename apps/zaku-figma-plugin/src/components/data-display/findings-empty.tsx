@@ -6,11 +6,11 @@ type FindingsEmptyReason = 'disconnected' | 'unchecked' | 'clean';
 
 type FindingsEmptyProps = {
   reason: FindingsEmptyReason;
-  /** The port the panel dials zaku-mcp on. */
-  port: number;
+  /** The ports the panel looks for zaku-mcp on, as a person reads them, such as `7337-7346`. */
+  ports: string;
 } & React.ComponentProps<typeof Empty>;
 
-function FindingsEmpty({ reason, port, ...props }: FindingsEmptyProps): React.JSX.Element {
+function FindingsEmpty({ reason, ports, ...props }: FindingsEmptyProps): React.JSX.Element {
   const {
     icon: Icon,
     title,
@@ -19,7 +19,7 @@ function FindingsEmpty({ reason, port, ...props }: FindingsEmptyProps): React.JS
     disconnected: {
       icon: UnplugIcon,
       title: 'Waiting for zaku-mcp',
-      description: `Start your agent with the zaku MCP server. The panel connects to localhost:${port} on its own.`,
+      description: `Start your agent with the zaku MCP server. The panel looks for it on ports ${ports}.`,
     },
     unchecked: {
       icon: ScanSearchIcon,

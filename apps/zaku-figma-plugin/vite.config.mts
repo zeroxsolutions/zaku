@@ -58,6 +58,7 @@ export default defineConfig(() => ({
             '@base-ui/react/button',
             '@base-ui/react/input',
             'class-variance-authority',
+            'input-otp',
             'cn',
             'vitest-browser-react',
           ],

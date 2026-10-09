@@ -1,5 +1,6 @@
 export {
-  BRIDGE_PORT,
+  BRIDGE_PORT_RANGE,
+  BRIDGE_PORTS,
   PLUGIN_VERSION,
   REFUSAL_REASONS,
   checkScopeSchema,

@@ -1,6 +1,17 @@
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { PairingForm } from './pairing-form';
+
+/** Puts `text` on the clipboard the way a person copies it from the agent's reply. */
+async function copy(text: string): Promise<void> {
+  const source = document.createElement('textarea');
+  source.value = text;
+  source.setAttribute('aria-label', 'Copied from the agent');
+  document.body.append(source);
+  await userEvent.tripleClick(page.getByRole('textbox', { name: 'Copied from the agent' }));
+  await userEvent.copy();
+  source.remove();
+}
 
 describe('PairingForm', () => {
   it('says the panel is not paired, and asks for the code', async () => {
@@ -8,27 +19,35 @@ describe('PairingForm', () => {
     await expect
       .element(page.getByText('Not paired. Ask your agent to pair with zaku, then type the code here.'))
       .toBeVisible();
-    await expect.element(page.getByLabelText('Pairing code')).toBeVisible();
+    await expect.element(page.getByRole('textbox', { name: 'Pairing code' })).toBeVisible();
     await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
   });
 
-  it.each([
-    ['1234 5678', '12345678'],
-    ['1234-5678', '12345678'],
-    [' 12345678 ', '12345678'],
-  ])('sends %j as the digits %s', async (typed, sent) => {
+  it('sends the eight digits once the last one is typed, and nothing before', async () => {
     const codes: string[] = [];
     await render(<PairingForm refusal={null} onPair={(code) => codes.push(code)} />);
-    await page.getByLabelText('Pairing code').fill(typed);
-    await page.getByRole('button', { name: 'Pair' }).click();
-    expect(codes).toEqual([sent]);
+    await page.getByRole('textbox', { name: 'Pairing code' }).click();
+    await userEvent.keyboard('1234567');
+    expect(codes).toEqual([]);
+    await userEvent.keyboard('8');
+    await expect.poll(() => codes).toEqual(['12345678']);
+    await expect.element(page.getByRole('textbox', { name: 'Pairing code' })).toHaveValue('12345678');
   });
 
-  it('sends nothing for an empty field', async () => {
+  it('takes digits only', async () => {
+    await render(<PairingForm refusal={null} onPair={() => undefined} />);
+    await page.getByRole('textbox', { name: 'Pairing code' }).click();
+    await userEvent.keyboard('12 a-34');
+    await expect.element(page.getByRole('textbox', { name: 'Pairing code' })).toHaveValue('1234');
+  });
+
+  it.each(['1234 5678', '1234-5678'])('sends %j pasted as the digits 12345678', async (pasted) => {
     const codes: string[] = [];
     await render(<PairingForm refusal={null} onPair={(code) => codes.push(code)} />);
-    await page.getByRole('button', { name: 'Pair' }).click();
-    expect(codes).toEqual([]);
+    await copy(pasted);
+    await page.getByRole('textbox', { name: 'Pairing code' }).click();
+    await userEvent.paste();
+    await expect.poll(() => codes).toEqual(['12345678']);
   });
 
   it.each([
@@ -39,6 +58,14 @@ describe('PairingForm', () => {
   ] as const)('says why the server refused: %s', async (refusal, text) => {
     await render(<PairingForm refusal={refusal} onPair={() => undefined} />);
     await expect.element(page.getByRole('alert')).toHaveTextContent(text);
-    await expect.element(page.getByLabelText('Pairing code')).toHaveAttribute('aria-invalid', 'true');
+    await expect.element(page.getByRole('textbox', { name: 'Pairing code' })).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('clears the code the server refused, so the next one starts empty', async () => {
+    const { rerender } = await render(<PairingForm refusal={null} onPair={() => undefined} />);
+    await page.getByRole('textbox', { name: 'Pairing code' }).click();
+    await userEvent.keyboard('00000000');
+    await rerender(<PairingForm refusal="wrong-code" onPair={() => undefined} />);
+    await expect.element(page.getByRole('textbox', { name: 'Pairing code' })).toHaveValue('');
   });
 });

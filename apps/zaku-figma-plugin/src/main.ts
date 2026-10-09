@@ -9,6 +9,8 @@ const post = (message: PluginMessage | FileHello): void => figma.ui.postMessage(
 
 /** The clientStorage key of the token zaku-mcp issued when the user paired this plugin. */
 const TOKEN_KEY = 'zaku-token';
+/** The clientStorage key of the port the panel last connected on, which it dials first when it opens. */
+const PORT_KEY = 'zaku-port';
 
 const resolveVariable = async (id: string): Promise<string | null> =>
   (await figma.variables.getVariableByIdAsync(id))?.name ?? null;
@@ -83,11 +85,20 @@ const MIN_PANEL_SIZE = 240;
 
 async function receive(raw: unknown): Promise<void> {
   const type = raw && typeof raw === 'object' ? (raw as { type?: unknown }).type : undefined;
-  if (type === 'connected') return sayHello();
+  if (type === 'connected') {
+    const { port } = raw as { port?: unknown };
+    if (typeof port === 'number') await figma.clientStorage.setAsync(PORT_KEY, port);
+    return sayHello();
+  }
   // The panel cannot reach clientStorage, and its own localStorage is blocked in Figma's sandboxed iframe.
   if (type === 'read-token') {
     const token: unknown = await figma.clientStorage.getAsync(TOKEN_KEY);
-    figma.ui.postMessage({ type: 'stored-token', token: typeof token === 'string' ? token : null });
+    const port: unknown = await figma.clientStorage.getAsync(PORT_KEY);
+    figma.ui.postMessage({
+      type: 'stored-token',
+      token: typeof token === 'string' ? token : null,
+      port: typeof port === 'number' ? port : null,
+    });
     return;
   }
   if (type === 'forget-token') return figma.clientStorage.deleteAsync(TOKEN_KEY);

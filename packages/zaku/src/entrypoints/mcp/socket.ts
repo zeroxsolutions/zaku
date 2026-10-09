@@ -8,6 +8,9 @@ export type Listening = { port: number; close(): Promise<void> } | { error: stri
 /** How long a connection may stay open without presenting a valid credential. */
 export const ADMIT_MS = 5_000;
 
+/** What `listenBridge` answers for a port another process holds; `listenFirstFree` names the ports instead. */
+const IN_USE = 'in use';
+
 /** Figma's plugin iframe sends `Origin: null`; a local client sends none. A web page sends its own, and is refused. */
 function admitted(origin: string | undefined): boolean {
   return origin === undefined || origin === 'null';
@@ -75,7 +78,32 @@ function admit(socket: WebSocket, bridge: FigmaBridge, pairings: Pairings, admit
   socket.on('close', () => clearTimeout(deadline));
 }
 
-export function listenBridge(
+/**
+ * Listens on the first of `ports` no other process holds. The error names the one port when there is one,
+ * and the range when every port of several is taken.
+ */
+export async function listenFirstFree(
+  bridge: FigmaBridge,
+  pairings: Pairings,
+  ports: readonly number[],
+  admitMs: number = ADMIT_MS,
+): Promise<Listening> {
+  for (const port of ports) {
+    const listening = await listenBridge(bridge, pairings, port, admitMs);
+    if (!('error' in listening) || listening.error !== IN_USE) return listening;
+  }
+  const [first] = ports;
+  const last = ports[ports.length - 1];
+  return {
+    error:
+      ports.length === 1
+        ? `port ${first} is in use (another zaku-mcp?)`
+        : `no free port in ${first}-${last} (another zaku-mcp on each?)`,
+  };
+}
+
+/** Listens on one port; the error is `IN_USE` when another process holds it. */
+function listenBridge(
   bridge: FigmaBridge,
   pairings: Pairings,
   port: number,
@@ -88,7 +116,7 @@ export function listenBridge(
       verifyClient: (info: { origin: string | undefined }): boolean => admitted(info.origin || undefined),
     });
     server.once('error', (error: NodeJS.ErrnoException) =>
-      resolve({ error: error.code === 'EADDRINUSE' ? `port ${port} is in use (another zaku-mcp?)` : error.message }),
+      resolve({ error: error.code === 'EADDRINUSE' ? IN_USE : error.message }),
     );
     server.once('listening', () => {
       server.on('connection', (socket) => admit(socket, bridge, pairings, admitMs));

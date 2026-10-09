@@ -1,3 +1,4 @@
+export { BridgePortOutOfRange } from './bridge-port-out-of-range.js';
 export { CssRequired } from './css-required.js';
 export { DesignFileInvalid } from './design-file-invalid.js';
 export { FigmaTokenMissing } from './figma-token-missing.js';

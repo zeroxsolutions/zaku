@@ -7,8 +7,9 @@ const STATUS_BAR_LABELS = {
   connected: 'Connected',
   reconnecting: 'Reconnecting',
   disconnected: 'Not connected',
+  idle: 'Not connected',
   unpaired: 'Not paired',
-} as const satisfies Record<PanelStatus, string>;
+} as const satisfies Record<PanelStatus['state'], string>;
 
 const STATUS_BAR_VERBS: Record<Running['command'], string> = {
   execute: 'Running',
@@ -29,7 +30,7 @@ function StatusBar({ status, file, running, now, className, children, ...props }
   return (
     <header
       data-slot="status-bar"
-      data-status={status}
+      data-status={status.state}
       className={cn('group/status-bar flex items-center gap-2.5 border-b px-3 py-2.5', className)}
       {...props}
     >
@@ -43,7 +44,9 @@ function StatusBar({ status, file, running, now, className, children, ...props }
             aria-hidden="true"
             className="bg-destructive group-data-[status=connected]/status-bar:bg-success group-data-[status=reconnecting]/status-bar:bg-warning size-1.5 shrink-0 rounded-full"
           />
-          {STATUS_BAR_LABELS[status]}
+          {status.state === 'connected'
+            ? `${STATUS_BAR_LABELS.connected} on port ${status.port}`
+            : STATUS_BAR_LABELS[status.state]}
         </span>
       </div>
       {running !== null && (

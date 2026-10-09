@@ -6,7 +6,7 @@ import {
   type RefusalReason,
   type ServerMessage,
 } from '@zeroxsolutions/zaku/schema';
-import { storedToken, type RelayStatus } from './relay.js';
+import { storedToken, type Connection } from './relay.js';
 
 export type Finding = Extract<ServerMessage, { type: 'findings' }>['findings'][number];
 
@@ -22,11 +22,11 @@ export type Pairing =
   | { phase: 'unpaired'; refusal: RefusalReason | null }
   | { phase: 'paired' };
 
-/** What the status bar names: not paired outranks whatever the socket is doing. */
-export type PanelStatus = RelayStatus | 'unpaired';
+/** What the status bar names: not paired outranks whatever the socket is doing, short of nothing answering. */
+export type PanelStatus = Connection | { state: 'unpaired' };
 
 export interface PanelState {
-  status: RelayStatus;
+  connection: Connection;
   pairing: Pairing;
   file: string | null;
   running: Running | null;
@@ -35,9 +35,9 @@ export interface PanelState {
   error: string | null;
 }
 
-/** What the panel sees: the relay's status, and the traffic it carries each way. */
+/** What the panel sees: the relay's connection, and the traffic it carries each way. */
 export type PanelEvent =
-  | { kind: 'status'; status: RelayStatus }
+  | { kind: 'connection'; connection: Connection }
   | { kind: 'to-sandbox'; message: unknown; now: number }
   | { kind: 'from-sandbox'; message: unknown }
   /** The user sent a pairing code. */
@@ -45,7 +45,7 @@ export type PanelEvent =
   | { kind: 'unpair' };
 
 export const INITIAL_PANEL_STATE: PanelState = {
-  status: 'disconnected',
+  connection: { state: 'idle' },
   pairing: { phase: 'checking' },
   file: null,
   running: null,
@@ -87,8 +87,12 @@ export function panelReducer(state: PanelState, event: PanelEvent): PanelState {
   if (event.kind === 'pair') return { ...state, pairing: { phase: 'unpaired', refusal: null } };
   if (event.kind === 'unpair')
     return { ...state, pairing: { phase: 'unpaired', refusal: null }, file: null, findings: null, running: null };
-  if (event.kind === 'status')
-    return { ...state, status: event.status, running: event.status === 'connected' ? state.running : null };
+  if (event.kind === 'connection')
+    return {
+      ...state,
+      connection: event.connection,
+      running: event.connection.state === 'connected' ? state.running : null,
+    };
   if (event.kind === 'to-sandbox') {
     const parsed = serverMessageSchema.safeParse(event.message);
     return parsed.success ? toSandbox(state, parsed.data, event.now) : state;
@@ -105,6 +109,9 @@ export function panelReducer(state: PanelState, event: PanelEvent): PanelState {
   return parsed.success ? fromSandbox(state, parsed.data) : state;
 }
 
+/** A code that reaches no server leaves the panel unpaired, and the Port field it needs comes with not connected. */
 export function panelStatus(state: PanelState): PanelStatus {
-  return state.pairing.phase === 'unpaired' ? 'unpaired' : state.status;
+  return state.pairing.phase === 'unpaired' && state.connection.state !== 'disconnected'
+    ? { state: 'unpaired' }
+    : state.connection;
 }

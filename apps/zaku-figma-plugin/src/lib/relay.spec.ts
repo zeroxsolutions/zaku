@@ -1,6 +1,7 @@
-import { startRelay, type Relay, type SocketLike } from './relay.js';
+import { startRelay, type Connection, type Relay, type SocketLike } from './relay.js';
 
 class FakeSocket implements SocketLike {
+  constructor(readonly url: string) {}
   onopen: (() => void) | null = null;
   onclose: (() => void) | null = null;
   onmessage: ((event: { data: string }) => void) | null = null;
@@ -41,19 +42,22 @@ function relayed(): {
   due: (() => void)[];
   delays: number[];
   statuses: string[];
+  connections: Connection[];
+  urls: () => string[];
 } {
   const sockets: FakeSocket[] = [];
   const toSandbox: unknown[] = [];
   const due: (() => void)[] = [];
   const delays: number[] = [];
+  const connections: Connection[] = [];
   const statuses: string[] = [];
   let fromSandbox: (m: unknown) => void = () => undefined;
   const relay = startRelay({
-    url: 'ws://localhost:7337',
+    ports: [7337, 7338, 7339],
     post: (m) => toSandbox.push(m),
     listen: (cb) => (fromSandbox = cb),
-    open: () => {
-      const socket = new FakeSocket();
+    open: (url) => {
+      const socket = new FakeSocket(url);
       sockets.push(socket);
       return socket;
     },
@@ -61,9 +65,22 @@ function relayed(): {
       due.push(fn);
       delays.push(ms);
     },
-    onStatus: (status) => statuses.push(status),
+    onConnection: (connection) => {
+      connections.push(connection);
+      statuses.push(connection.state);
+    },
   });
-  return { relay, sockets, toSandbox, fromSandbox: (m) => fromSandbox(m), due, delays, statuses };
+  return {
+    relay,
+    sockets,
+    toSandbox,
+    fromSandbox: (m) => fromSandbox(m),
+    due,
+    delays,
+    statuses,
+    connections,
+    urls: () => sockets.map((socket) => socket.url),
+  };
 }
 
 const sent = (socket: FakeSocket | undefined): unknown[] => (socket?.sent ?? []).map((data) => JSON.parse(data));
@@ -71,16 +88,16 @@ const sent = (socket: FakeSocket | undefined): unknown[] => (socket?.sent ?? [])
 describe('the relay', () => {
   it('dials nothing while the plugin holds no credential', () => {
     const { sockets, fromSandbox, statuses } = relayed();
-    fromSandbox({ type: 'stored-token', token: null });
+    fromSandbox({ type: 'stored-token', token: null, port: null });
     expect(sockets).toEqual([]);
-    expect(statuses).toEqual(['disconnected']);
+    expect(statuses).toEqual(['idle']);
   });
 
   it('dials with the stored token, and puts it on the sandbox hello', () => {
     const { sockets, toSandbox, fromSandbox } = relayed();
-    fromSandbox({ type: 'stored-token', token: 't1' });
+    fromSandbox({ type: 'stored-token', token: 't1', port: null });
     sockets[0]?.open();
-    expect(toSandbox).toEqual([{ type: 'connected' }]);
+    expect(toSandbox).toEqual([{ type: 'connected', port: 7337 }]);
     fromSandbox(sandboxHello);
     expect(sent(sockets[0])).toEqual([{ ...sandboxHello, credential: { token: 't1' } }]);
   });
@@ -111,7 +128,7 @@ describe('the relay', () => {
 
   it('tells the server to unpair, closes the socket, and stops dialing', () => {
     const { relay, sockets, fromSandbox, due } = relayed();
-    fromSandbox({ type: 'stored-token', token: 't1' });
+    fromSandbox({ type: 'stored-token', token: 't1', port: null });
     sockets[0]?.open();
     relay.unpair();
     expect(sent(sockets[0])).toEqual([{ type: 'unpair' }]);
@@ -132,7 +149,7 @@ describe('the relay', () => {
     const { relay, sockets, toSandbox, fromSandbox } = relayed();
     relay.pair('12345678');
     sockets[0]?.open();
-    expect(toSandbox).toEqual([{ type: 'connected' }]);
+    expect(toSandbox).toEqual([{ type: 'connected', port: 7337 }]);
     sockets[0]?.onmessage?.({ data: '{"type":"select","nodeId":"1:1"}' });
     expect(toSandbox.at(-1)).toEqual({ type: 'select', nodeId: '1:1' });
     fromSandbox({ type: 'state', currentPage: '0:1', selection: [] });
@@ -142,6 +159,7 @@ describe('the relay', () => {
   it('redials with a growing delay after a drop', () => {
     const { relay, sockets, due, delays } = relayed();
     relay.pair('12345678');
+    sockets[0]?.open();
     sockets[0]?.drop();
     due.shift()?.();
     sockets[1]?.drop();
@@ -166,7 +184,7 @@ describe('the relay', () => {
       due.shift()?.();
       sockets.at(-1)?.drop();
     }
-    expect(statuses.slice(0, 3)).toEqual(['disconnected', 'connected', 'reconnecting']);
+    expect(statuses.slice(0, 3)).toEqual(['idle', 'connected', 'reconnecting']);
     expect(statuses.at(-1)).toBe('disconnected');
   });
 
@@ -179,13 +197,63 @@ describe('the relay', () => {
     expect(sockets[0]?.sent).toEqual(['{"type":"check","scope":{"page":true}}']);
   });
 
-  it('stays disconnected while zaku-mcp has never answered', () => {
+  it('says disconnected, and never reconnecting, while zaku-mcp has never answered', () => {
     const { relay, sockets, due, statuses } = relayed();
     relay.pair('12345678');
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 6; i++) {
       sockets.at(-1)?.drop();
       due.shift()?.();
     }
-    expect(new Set(statuses)).toEqual(new Set(['disconnected']));
+    expect(new Set(statuses)).toEqual(new Set(['idle', 'disconnected']));
+  });
+
+  it('dials the port it last connected on, then scans the rest of the range once', () => {
+    const { fromSandbox, sockets, due, connections, urls } = relayed();
+    fromSandbox({ type: 'stored-token', token: 't1', port: 7338 });
+    for (let i = 0; i < 3; i++) sockets.at(-1)?.drop();
+    expect(urls()).toEqual(['ws://localhost:7338', 'ws://localhost:7337', 'ws://localhost:7339']);
+    expect(connections.at(-1)).toEqual({ state: 'disconnected', port: 7338 });
+    due.shift()?.();
+    sockets.at(-1)?.drop();
+    due.shift()?.();
+    expect(urls().slice(3)).toEqual(['ws://localhost:7338', 'ws://localhost:7338']);
+  });
+
+  it('connects on a port the scan found, says which, and dials it after a drop', () => {
+    const { relay, sockets, due, toSandbox, connections, urls } = relayed();
+    relay.pair('12345678');
+    sockets[0]?.drop();
+    sockets[1]?.open();
+    expect(connections.at(-1)).toEqual({ state: 'connected', port: 7338 });
+    expect(toSandbox).toEqual([{ type: 'connected', port: 7338 }]);
+    sockets[1]?.drop();
+    due.shift()?.();
+    expect(urls().at(-1)).toBe('ws://localhost:7338');
+  });
+
+  it('ignores a stored port outside the range', () => {
+    const { fromSandbox, urls } = relayed();
+    fromSandbox({ type: 'stored-token', token: 't1', port: 9000 });
+    expect(urls()[0]).toBe('ws://localhost:7337');
+  });
+
+  it('dials the port the user asks for at once, and redials that port from then on', () => {
+    const { relay, sockets, due, connections, urls } = relayed();
+    relay.pair('12345678');
+    for (let i = 0; i < 3; i++) sockets.at(-1)?.drop();
+    relay.connect(7339);
+    expect(urls().at(-1)).toBe('ws://localhost:7339');
+    sockets.at(-1)?.drop();
+    expect(connections.at(-1)).toEqual({ state: 'disconnected', port: 7339 });
+    due.at(-1)?.();
+    expect(urls().at(-1)).toBe('ws://localhost:7339');
+    sockets.at(-1)?.open();
+    expect(connections.at(-1)).toEqual({ state: 'connected', port: 7339 });
+  });
+
+  it('dials nothing when asked for a port while it holds no credential', () => {
+    const { relay, sockets } = relayed();
+    relay.connect(7339);
+    expect(sockets).toEqual([]);
   });
 });

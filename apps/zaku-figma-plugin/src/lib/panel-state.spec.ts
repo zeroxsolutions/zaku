@@ -1,7 +1,7 @@
 import { INITIAL_PANEL_STATE, panelReducer, panelStatus, type PanelEvent, type PanelState } from './panel-state.js';
 
 const run = (...events: PanelEvent[]): PanelState => events.reduce(panelReducer, INITIAL_PANEL_STATE);
-const connected: PanelEvent = { kind: 'status', status: 'connected' };
+const connected: PanelEvent = { kind: 'connection', connection: { state: 'connected', port: 7340 } };
 const execute: PanelEvent = {
   kind: 'to-sandbox',
   now: 5,
@@ -9,9 +9,9 @@ const execute: PanelEvent = {
 };
 
 describe('panelReducer', () => {
-  it('starts disconnected, with no file, nothing running, nothing checked, and no word on pairing yet', () => {
+  it('starts idle, with no file, nothing running, nothing checked, and no word on pairing yet', () => {
     expect(INITIAL_PANEL_STATE).toEqual({
-      status: 'disconnected',
+      connection: { state: 'idle' },
       pairing: { phase: 'checking' },
       file: null,
       running: null,
@@ -21,10 +21,10 @@ describe('panelReducer', () => {
   });
 
   it('reads paired or not from the token the sandbox kept', () => {
-    expect(run({ kind: 'from-sandbox', message: { type: 'stored-token', token: 't' } }).pairing).toEqual({
+    expect(run({ kind: 'from-sandbox', message: { type: 'stored-token', token: 't', port: null } }).pairing).toEqual({
       phase: 'paired',
     });
-    expect(run({ kind: 'from-sandbox', message: { type: 'stored-token', token: null } }).pairing).toEqual({
+    expect(run({ kind: 'from-sandbox', message: { type: 'stored-token', token: null, port: null } }).pairing).toEqual({
       phase: 'unpaired',
       refusal: null,
     });
@@ -37,7 +37,7 @@ describe('panelReducer', () => {
 
   it('turns unpaired with the reason when the server refuses', () => {
     const state = run(
-      { kind: 'from-sandbox', message: { type: 'stored-token', token: 't' } },
+      { kind: 'from-sandbox', message: { type: 'stored-token', token: 't', port: null } },
       { kind: 'to-sandbox', now: 1, message: { type: 'refused', reason: 'unknown-token' } },
     );
     expect(state.pairing).toEqual({ phase: 'unpaired', refusal: 'unknown-token' });
@@ -53,7 +53,7 @@ describe('panelReducer', () => {
 
   it('forgets the file and its findings on unpair', () => {
     const state = run(
-      { kind: 'from-sandbox', message: { type: 'stored-token', token: 't' } },
+      { kind: 'from-sandbox', message: { type: 'stored-token', token: 't', port: null } },
       { kind: 'to-sandbox', now: 1, message: { type: 'findings', findings: [] } },
       { kind: 'unpair' },
     );
@@ -109,9 +109,9 @@ describe('panelReducer', () => {
     const state = run(
       connected,
       { kind: 'to-sandbox', now: 1, message: { type: 'snapshot', requestId: 'q', scope: { page: true } } },
-      { kind: 'status', status: 'reconnecting' },
+      { kind: 'connection', connection: { state: 'reconnecting', port: 7340 } },
     );
-    expect(state).toMatchObject({ status: 'reconnecting', running: null });
+    expect(state).toMatchObject({ connection: { state: 'reconnecting' }, running: null });
   });
 
   it('names the file the sandbox says hello from', () => {
@@ -182,11 +182,23 @@ describe('panelReducer', () => {
     expect(state.error).toBeNull();
   });
 
-  it('shows not paired over the socket state, and the socket state otherwise', () => {
-    const unpaired = run(connected, { kind: 'from-sandbox', message: { type: 'stored-token', token: null } });
-    expect(panelStatus(unpaired)).toBe('unpaired');
-    const paired = run(connected, { kind: 'from-sandbox', message: { type: 'stored-token', token: 't' } });
-    expect(panelStatus(paired)).toBe('connected');
-    expect(panelStatus(run())).toBe('disconnected');
+  it('shows not paired over the socket state, and the socket state with its port otherwise', () => {
+    const unpaired = run(connected, {
+      kind: 'from-sandbox',
+      message: { type: 'stored-token', token: null, port: null },
+    });
+    expect(panelStatus(unpaired)).toEqual({ state: 'unpaired' });
+    const paired = run(connected, { kind: 'from-sandbox', message: { type: 'stored-token', token: 't', port: null } });
+    expect(panelStatus(paired)).toEqual({ state: 'connected', port: 7340 });
+    expect(panelStatus(run())).toEqual({ state: 'idle' });
+  });
+
+  it('shows not connected over not paired once nothing answers the code it dials with', () => {
+    const state = run(
+      { kind: 'from-sandbox', message: { type: 'stored-token', token: null, port: null } },
+      { kind: 'pair' },
+      { kind: 'connection', connection: { state: 'disconnected', port: 7337 } },
+    );
+    expect(panelStatus(state)).toEqual({ state: 'disconnected', port: 7337 });
   });
 });
