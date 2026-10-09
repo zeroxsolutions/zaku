@@ -1,5 +1,5 @@
 import { randomInt } from 'node:crypto';
-import type { RefusalReason } from '../schema/bridge.js';
+import { PAIRING_CODE_LENGTH, type RefusalReason } from '../schema/bridge.js';
 
 export const CODE_LIFETIME_MS = 5 * 60_000;
 /** Wrong attempts, counted across every connection, that void the live code. */
@@ -14,9 +14,9 @@ export type CodeStatus =
 
 type Live = { state: 'live'; code: string; expiresAt: number; attemptsLeft: number };
 
-/** Eight digits from a cryptographic source; a guess at one is 1 in 10^8. */
+/** `PAIRING_CODE_LENGTH` digits from a cryptographic source; a guess at eight is 1 in 10^8. */
 export function drawCode(): string {
-  return String(randomInt(0, 100_000_000)).padStart(8, '0');
+  return String(randomInt(0, 10 ** PAIRING_CODE_LENGTH)).padStart(PAIRING_CODE_LENGTH, '0');
 }
 
 /** The code as the agent shows it, `1234 5678`. */

@@ -9,6 +9,8 @@ export const BRIDGE_PORTS = [7337, 7338, 7339, 7340, 7341, 7342, 7343, 7344, 734
 /** The ports as a person reads them, `7337-7346`. */
 export const BRIDGE_PORT_RANGE = `${BRIDGE_PORTS[0]}-${BRIDGE_PORTS[BRIDGE_PORTS.length - 1]}`;
 export const PLUGIN_VERSION = '0.1.0';
+/** The digits in a pairing code; the agent shows them as two groups of four. */
+export const PAIRING_CODE_LENGTH = 8;
 
 const SPACING_FIELDS = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing'] as const;
 

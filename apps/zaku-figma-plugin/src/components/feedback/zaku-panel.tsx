@@ -1,4 +1,4 @@
-import { BRIDGE_PORT_RANGE, BRIDGE_PORTS } from '@zeroxsolutions/zaku/schema';
+import { BRIDGE_PORT_RANGE } from '@zeroxsolutions/zaku/schema';
 import { useState } from 'react';
 import { FindingsEmpty } from '@/components/data-display/findings-empty';
 import { FindingsList } from '@/components/data-display/findings-list';
@@ -51,11 +51,11 @@ function ZakuPanel({
       )}
       <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {state.connection.state === 'disconnected' ? (
-          <PortForm key={state.connection.port} port={state.connection.port} ports={BRIDGE_PORTS} onConnect={connect} />
+          <PortForm key={state.connection.port} port={state.connection.port} onConnect={connect} />
         ) : state.pairing.phase === 'unpaired' && pickingPort ? (
           <PortForm
             port={null}
-            ports={BRIDGE_PORTS}
+
             onConnect={(port) => {
               connect(port);
               setPickingPort(false);

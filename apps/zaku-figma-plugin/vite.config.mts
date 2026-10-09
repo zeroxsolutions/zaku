@@ -59,6 +59,8 @@ export default defineConfig(() => ({
             '@base-ui/react/input',
             'class-variance-authority',
             'input-otp',
+            '@tanstack/react-form',
+            'zod',
             'cn',
             'vitest-browser-react',
           ],
