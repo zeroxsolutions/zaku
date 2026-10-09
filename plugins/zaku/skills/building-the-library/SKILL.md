@@ -33,6 +33,57 @@ one tool's habit into another's file breaks that tool's grouping.
 - A product file reports a component that does not match its code
 - A product chooses a token value the library has no mode for
 
+## Before the first drawing
+
+The library file is saved in the team, and `zaku.yaml` names it by its key (`figma.library`). `zaku
+library save` reads the published library by that key, and the comparison with the code reads what it
+saves, so a library drawn into a file with no key is one nothing can check against its code. When
+`zaku.yaml` has no library key, or holds anything that is not the file's own key (a placeholder, a
+note to replace it later), draw nothing: the reply says the file has to be saved in the team and asks
+for its address. The tool's reference says where the key is read. Code-side work that needs no
+drawing (exporting the tokens, writing the recipe page) goes on.
+
+## The Iron Law
+
+```
+EVERY LIBRARY CHANGE RUNS IN STRICT MODE. A FINDING IS FIXED IN THE DRAWING, OR IT STOPS THAT CHANGE AND THE REPLY NAMES IT.
+```
+
+zaku's `execute` checks every node a script touched and, in strict mode, rolls the change back on a
+finding. It is the only reader that looks at every item, so a change it did not pass is a change
+nobody checked. Report mode keeps the whole change with every finding in it, not only the one you
+judged wrong, and nothing later records that it was kept. Strict mode returns the same findings, so a
+probe gains nothing from report mode and leaves nothing behind without it.
+
+A finding that misreads the drawing (it names a node that is not what the rule says) is a defect in
+the checker. Show it: the finding, the node id, and what that node really is. Then that change
+waits for the checker's fix, the reply names it, and the work goes on only with what does not depend
+on it.
+
+Nothing goes into the library to make a rule stop reporting: no variable, text style or component
+the code does not have. The library is published to every product file that uses it, so a variable
+hidden from the pickers still ships, and the finding it silenced is still true.
+
+## Common Rationalizations
+
+| Excuse                                                                                                                               | Reality                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Check misreads the new text styles as unstyled text nodes (a false positive), so I'm creating them in report mode."                 | The misreading was real, and report mode kept the whole batch with it, `DS/` styles the documentation never asks for among them. Name the node and what it is, and let that change wait. |
+| "Check flags raw padding, gaps and unstyled text, so the documentation gets its own hidden spacing variables and `DS/` text styles." | Documentation keeps the measures the reference writes as numbers, and the checks leave its spacing and type alone where the reference places it. A hidden variable is still published.   |
+| "I'll run a probe in report mode to see what the check flags."                                                                       | Strict mode returns the same findings and rolls the probe back.                                                                                                                          |
+| "The library file has no key yet; I'll write a placeholder and replace it once it is saved."                                         | Nothing compares the drawing with the code until the key is there, so every value drawn before it goes unchecked. Ask for the key first.                                                 |
+| "I was told not to ask questions, so I decide."                                                                                      | The file's key is not a decision; it is a fact only the person who saved the file has. Say what is missing.                                                                              |
+| "I'll draw the components now and their views later."                                                                                | A run stops partway, and what it leaves is bare sets nobody can read. Draw each entry whole, in the order below.                                                                         |
+
+## Red Flags - STOP
+
+- `mode: "report"` in a script that draws the library
+- A variable, text style or component whose reason is a finding, or that the code does not have
+- The words "false positive" with no node id and no statement of what the node is
+- A placeholder, or anything but the file's key, in `zaku.yaml`'s `figma.library`
+- A component or set created on the page the person happens to have open, or left at a page's top level
+- A second entry started while the last one has no views
+
 ## What the library holds, in order
 
 1. **A cover**, 1200 x 675, in two halves. On the left, a column: the brand (the design system's own
@@ -115,7 +166,9 @@ Every documentation view is built from these, so every entry reads the same and 
 reaches all of them. Their sizes, type and spacing are the documentation's own, the same in every
 library, and never the design system's: a library whose body text is 14 still documents itself at the
 measures the tool's reference gives, or two libraries side by side read as two different products.
-Only their colours and their family come from the library:
+Those measures are written as the reference's numbers, never bound to a variable made for them, and
+zaku's checks do not hold documentation to the spacing and text-style rules where it sits on the
+pages the reference names. Only their colours and their family come from the library:
 
 | Role            | Takes                                                                 | Draws                                                                                                                                       |
 | --------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -218,6 +271,45 @@ the code does. A line the code does not support is a claim nobody can check.
   product choices it was built on, which property is which prop, and which state mirrors which class.
   Its `props:` and `parts:` lines are the ones `writing-a-design-component` spells, and `zaku check`
   matches the recipe page's props and parts through them.
+
+## Drawing an entry
+
+An entry is drawn whole, in this order, and the next entry starts only when this one's check is
+clean. A run stopped partway then leaves finished entries behind, never bare sets. The parts the
+documentation components need (antd: Tag and Card) are entries too, drawn first, each in this order.
+Before the first step, read the tool's reference: it names the page, the frames and their measures.
+
+1. **The entry's page**, one per entry, named as the reference names it.
+2. **The component view and the guidance view**, side by side, each a page header over its body. The
+   component view's body holds the Component section and its demo card. Each view's frame is painted
+   with the page surface token, so whatever sits inside is read against the surface the code draws it
+   on, in whichever mode the designer switches the page to.
+3. **The component set, made inside that demo card.** A set left on the bare canvas has no
+   documentation, and a translucent variant (a Disabled one) reads against the editor's own
+   background, near invisible. A script names the parent of everything it makes, because a node made
+   with no parent lands on the page the person has open.
+4. **The variants laid out apart**: one run for one axis, a grid for more, with the gaps the reference
+   measures, no variant over another, and the set hugging them so none reaches past its edge, where
+   the set cuts it off. A family's sets stack in the one demo card. Dark is not a second set or a copy
+   of one: the page's mode switch shows it.
+5. **The grid's labels**, beside the set, as the component view says.
+6. **The guidance view's sections**, in the order of its table.
+7. **The entry's check**: zaku's `check` over the entry's page returns no finding.
+
+zaku's checks report a set placed on an entry page outside its view (`placement`), and a variant over
+another or past its set's edge (`overlap`).
+
+## The reply
+
+Every reply on library work carries these lines, each REQUIRED, `none` where there is nothing:
+
+```
+Library file: <the key zaku.yaml names>
+Entries: <entry> - page <page>, views <component view> and <guidance view>, sets <set names>   (one line per entry)
+Check: <what zaku's check over every page returned: the count, then each finding>
+Misread findings: <finding, node id, what the node really is, the change that waits>
+Left out: <each part not drawn, and why>
+```
 
 ## Every item of every variant
 

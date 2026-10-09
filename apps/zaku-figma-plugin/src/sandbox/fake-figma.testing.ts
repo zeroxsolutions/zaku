@@ -24,10 +24,32 @@ export class FakeNode {
   }
 }
 
+/** A style: it has an id and a type, `TEXT` for a text style, and no parent, since it is not on a page. */
+export class FakeStyle {
+  removed = false;
+  name = 'Style';
+  constructor(
+    readonly id: string,
+    readonly type: string,
+    private readonly world: FakeFigma,
+  ) {}
+  remove(): void {
+    this.removed = true;
+    this.world.styles.delete(this.id);
+  }
+}
+
 export class FakeFigma {
   constructor() {
     // Figma's API object refuses assignment to its methods; the fake does too, so a runner that patches them fails here.
-    for (const name of ['createRectangle', 'createFrame', 'commitUndo', 'getNodeByIdAsync'] as const) {
+    for (const name of [
+      'createRectangle',
+      'createFrame',
+      'createComponent',
+      'createTextStyle',
+      'commitUndo',
+      'getNodeByIdAsync',
+    ] as const) {
       Object.defineProperty(this, name, {
         value: FakeFigma.prototype[name].bind(this),
         writable: false,
@@ -37,6 +59,7 @@ export class FakeFigma {
   }
 
   nodes = new Map<string, FakeNode>();
+  styles = new Map<string, FakeStyle>();
   undoCommits = 0;
   private next = 10;
   private listeners: Listener[] = [];
@@ -64,6 +87,23 @@ export class FakeFigma {
   }
   createFrame(): FakeNode {
     return this.make('FRAME');
+  }
+  createComponent(): FakeNode {
+    return this.make('COMPONENT');
+  }
+  createTextStyle(): FakeStyle {
+    const style = new FakeStyle(`S:${this.next++},`, 'TEXT', this);
+    this.styles.set(style.id, style);
+    return style;
+  }
+  /** Combines components into a set on a page other than the one listened to, so no CREATE is heard. */
+  combineElsewhere(components: FakeNode[]): FakeNode {
+    const set = this.make('COMPONENT_SET');
+    for (const component of components) {
+      component.parent = set;
+      set.children.push(component);
+    }
+    return set;
   }
   commitUndo(): void {
     this.undoCommits++;

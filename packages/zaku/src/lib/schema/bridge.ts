@@ -54,6 +54,30 @@ export const nodeSnapshotSchema = z
       .strict()
       .nullable(),
     spacing: z.array(z.object({ field: z.enum(SPACING_FIELDS), value: z.number(), bound: z.boolean() }).strict()),
+    /** The page that holds the node; null off a page. Absent from a plugin older than the field. */
+    page: z.object({ id: z.string(), name: z.string() }).strict().nullable().optional(),
+    /** Whether the node is a component or a component set, or sits inside one. */
+    componentSource: z.boolean().optional(),
+    /** COMPONENT_SET only: its size and each variant's box, relative to the set. */
+    set: z
+      .object({
+        width: z.number(),
+        height: z.number(),
+        variants: z.array(
+          z
+            .object({
+              id: z.string(),
+              name: z.string(),
+              x: z.number(),
+              y: z.number(),
+              width: z.number(),
+              height: z.number(),
+            })
+            .strict(),
+        ),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 

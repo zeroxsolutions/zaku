@@ -28,6 +28,34 @@ function frameOf(node: Ancestor): string | null {
   return top.parent?.type === 'PAGE' ? top.name : null;
 }
 
+/** The page that holds the node; null off a page. */
+function pageOf(node: Ancestor): { id: string; name: string } | null {
+  for (let up: Ancestor | null | undefined = node; up; up = up.parent) {
+    if (up.type === 'PAGE') return { id: up.id, name: up.name };
+  }
+  return null;
+}
+
+/** Whether the node is a component or a component set, or sits inside one. */
+function inComponentSource(node: Ancestor): boolean {
+  for (let up: Ancestor | null | undefined = node; up; up = up.parent) {
+    if (up.type === 'COMPONENT' || up.type === 'COMPONENT_SET') return true;
+  }
+  return false;
+}
+
+type Box = { id: string; name: string; x: number; y: number; width: number; height: number };
+
+/** A component set's size and its variants' boxes, which the set clips. */
+function setLayout(node: Record<string, unknown>): NonNullable<NodeSnapshot['set']> {
+  const children = (node['children'] as Box[] | undefined) ?? [];
+  return {
+    width: Number(node['width'] ?? 0),
+    height: Number(node['height'] ?? 0),
+    variants: children.map(({ id, name, x, y, width, height }) => ({ id, name, x, y, width, height })),
+  };
+}
+
 /** Whether an instance holds the node, whose text is then the instance's to report. */
 function insideInstance(node: Ancestor): boolean {
   for (let up = node.parent; up; up = up.parent) if (up.type === 'INSTANCE') return true;
@@ -100,5 +128,8 @@ export async function snapshotNode(
     spacing: auto
       ? SPACING.map((field) => ({ field, value: Number(any[field] ?? 0), bound: Boolean(any.boundVariables?.[field]) }))
       : [],
+    page: pageOf(node as unknown as Ancestor),
+    componentSource: inComponentSource(node as unknown as Ancestor),
+    ...(node.type === 'COMPONENT_SET' ? { set: setLayout(any) } : {}),
   };
 }

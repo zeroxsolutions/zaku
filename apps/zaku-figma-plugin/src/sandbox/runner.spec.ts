@@ -189,4 +189,26 @@ describe('the sandbox runner', () => {
     await runner.receive(run(`(await figma.getNodeByIdAsync('${old.id}')).rename('Top'); throw new Error('boom');`));
     expect(posted).toEqual([{ type: 'threw', runId: 'r1', error: 'Error: boom', untouchable: [old.id] }]);
   });
+  it('checks the nodes a script creates and not the text styles it creates, which are not on a page', async () => {
+    const { posted, runner, figma } = setup();
+    await runner.receive(run('figma.createTextStyle(); figma.createFrame();'));
+    expect(posted[0]).toMatchObject({ type: 'ran', snapshot: [{ type: 'FRAME' }] });
+    await runner.receive({ type: 'decide', runId: 'r1', decision: 'rollback' });
+    expect(figma.styles.size).toBe(0);
+  });
+
+  it('checks the set that holds a created variant, though its creation was heard on no page', async () => {
+    const { posted, runner } = setup();
+    await runner.receive(
+      run(
+        'const a = figma.createComponent(); const b = figma.createComponent(); return figma.combineElsewhere([a, b]).id;',
+      ),
+    );
+    const ran = posted[0] as Extract<PluginMessage, { type: 'ran' }>;
+    expect(ran.snapshot.map((node) => [node.type, node.created])).toEqual([
+      ['COMPONENT', true],
+      ['COMPONENT', true],
+      ['COMPONENT_SET', false],
+    ]);
+  });
 });

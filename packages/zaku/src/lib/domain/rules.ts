@@ -11,7 +11,17 @@ export const RULE_GUIDES: Partial<Record<CheckId, RuleGuide>> = {
   binding: {
     id: 'binding',
     why: 'A raw colour, padding, gap or unstyled text does not move when the library or the theme changes, so the frame drifts from the code.',
-    fix: 'Bind the paint with figma.variables.setBoundVariableForPaint, the padding or gap with node.setBoundVariable, and give a text a library text style.',
+    fix: "Bind the paint with figma.variables.setBoundVariableForPaint, the padding or gap with node.setBoundVariable, and give a text a library text style. The library's documentation (the Thumbnail and Component for Docs pages, and an entry page outside its components) keeps the measures and type its reference writes as numbers; only its paints are bound.",
+  },
+  overlap: {
+    id: 'overlap',
+    why: 'An item drawn over another, or past the edge of the frame or set that clips it, cannot be seen or picked, and its label prints over its neighbour.',
+    fix: 'Lay the items out apart: a component set as one run or a grid of its variants, with gaps, the set hugging them.',
+  },
+  placement: {
+    id: 'placement',
+    why: 'An item outside the container the skill names is one nobody finds there: a screen frame outside its Sections, a library component on its page outside its component view, with no documentation and no page surface behind it.',
+    fix: "Move it in: a screen frame into its screen and state Sections, a component set into the demo card of its entry's component view.",
   },
   overrides: {
     id: 'overrides',
