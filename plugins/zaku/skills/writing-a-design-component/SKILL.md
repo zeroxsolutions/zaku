@@ -96,7 +96,10 @@ connected, and a copy is a second component that drifts. A product component nev
 design system's library; the library holds the code's design system and nothing a product added.
 
 A component is documented as the library documents its own: a component view and a guidance view, built
-from the library's documentation components (`building-the-library`).
+from the library's documentation components (`building-the-library`). The views take the documentation's
+measures as the numbers the library's reference writes, never a variable made for them: zaku's checks
+hold only the component inside the views to the spacing and text-style rules, where the views sit in
+the places the tool's reference names, and a screen anywhere else is held to them in full.
 
 ## Common Mistakes
 

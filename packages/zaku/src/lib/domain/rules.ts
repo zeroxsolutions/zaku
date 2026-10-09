@@ -11,7 +11,7 @@ export const RULE_GUIDES: Partial<Record<CheckId, RuleGuide>> = {
   binding: {
     id: 'binding',
     why: 'A raw colour, padding, gap or unstyled text does not move when the library or the theme changes, so the frame drifts from the code.',
-    fix: "Bind the paint with figma.variables.setBoundVariableForPaint, the padding or gap with node.setBoundVariable, and give a text a library text style. The library's documentation (the Thumbnail and Component for Docs pages, and an entry page outside its components) keeps the measures and type its reference writes as numbers; only its paints are bound.",
+    fix: "Bind the paint with figma.variables.setBoundVariableForPaint, the padding or gap with node.setBoundVariable to the library's spacing/<step> token for the class's step, and give a text a library text style. Documentation (the library's Thumbnail and Component for Docs pages and an entry page outside its components; a product file's <kind> / <Component> page and a feature's _components Section, outside the components) keeps the measures and type its reference writes as numbers; only its paints are bound.",
   },
   overlap: {
     id: 'overlap',

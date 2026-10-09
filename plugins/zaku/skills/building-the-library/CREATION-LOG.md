@@ -31,6 +31,9 @@ below.
   have access to this"), `figma.createFrame` ("parented under `figma.currentPage`"),
   `counterAxisSizingMode`.
 
+- Tailwind CSS docs, "padding" (`padding: calc(var(--spacing) * <number>)`) and "Theme variables"
+  (`--spacing: 0.25rem` in the default theme), for the `spacing/<step>` tokens.
+
 ## What was refused
 
 - Pending the RED runs, for the rules drafted before them.
@@ -40,6 +43,10 @@ below.
 - A frame pinned to each mode, one per mode, for Dark. The reference already says no library frame sets
   a mode, because a pinned frame ignores the designer's switch. The Tags that read as Dark were Light
   Disabled variants on the editor's canvas; a view frame painted with the page surface answers it.
+- Letting zaku's spacing rule accept a raw value that lies on the design system's scale when the library
+  declares no spacing tokens. Tailwind's `calc(var(--spacing) * <number>)` takes fractional steps
+  (`px-2.5`), so at a 4 px unit nearly every whole pixel is on the scale and the rule would pass anything.
+  The library holds a token per step instead, and the rule stays as it is.
 - A check on the shape of the key in `zaku.yaml`. Figma does not publish the key's format, and a
   wrong but well-formed key would pass it; step 0 is a rule in the body.
 
@@ -63,12 +70,17 @@ below.
 - The reference's line that a wrapping set resized after it was set to hug stays at the resized
   height: the recorded set did; Figma's reference for `resize` does not say it.
 
+- Figma refusing `.` in a variable's name rests on Figma's community forum; the Help Center was not
+  found saying it.
+
 ## Tests
 
 - `test-fixing-a-library-button.md`: RED not run, GREEN not run.
 - `test-building-a-library-from-code.md`: RED not run, GREEN not run.
 - `test-a-first-library-pass-under-findings.md`: RED is the recorded session; description runs without
   Figma, three per arm (control, the skill before, the skill after); GREEN on Figma not run.
+- `test-binding-a-shadcn-buttons-spacing.md`: RED 3 runs, the names and steps differed in each; GREEN 3
+  runs, all `spacing/<step>` with `_` for `.`; no run on Figma.
 
 ## Iterations
 
@@ -92,3 +104,6 @@ below.
    longer read as an unstyled text node (the session's "false positive" was one); documentation on the
    reference's pages is not held to the spacing and text-style rules; a set placed on an entry page
    outside its view is `placement`, and a variant over another or past its set's edge is `overlap`.
+7. The `spacing/<step>` token, one per step the code's classes use, and its spellings in the Figma,
+   shadcn and DTCG references: zaku's checks refuse a raw padding, and the token table had no spacing
+   row, so each description run invented a different shape for it.

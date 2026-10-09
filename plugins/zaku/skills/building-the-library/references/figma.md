@@ -119,7 +119,12 @@ weights below. A view's frame fills with the page surface; `Body` and every sect
   `Light` and `Dark`; a value pointing into an axis is `{ type: 'VARIABLE_ALIAS', id }`.
 - Variable names are grouped by slash (`color/primary`, `light/primary`), as the skill writes them.
 - Axis variables get `scopes = []`. A semantic foreground gets `TEXT_FILL` and `STROKE_COLOR` with the
-  shape fills; a surface adds `FRAME_FILL`; a radius gets `CORNER_RADIUS`.
+  shape fills; a surface adds `FRAME_FILL`; a radius gets `CORNER_RADIUS`; a `spacing/` token gets
+  `GAP`, the scope Figma's auto layout gap and padding fields offer.
+- Figma refuses `.`, `{`, `}` and `$` in a variable's name, so a step's `.` is written `_`:
+  `spacing/2_5`.
+- A `spacing/<step>` token is a `FLOAT` in `semantic` with the same value in `Light` and `Dark`, bound with
+  `node.setBoundVariable('paddingLeft', variable)` and the same for each padding side and `itemSpacing`.
 - A text style binds its family with `textStyle.setBoundVariable('fontFamily', fontVariable)`.
 
 ## Light and Dark in a view

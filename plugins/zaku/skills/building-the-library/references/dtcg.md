@@ -51,6 +51,7 @@ colour space is refused by name, and a radius in rem is read at 16 px.
 | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | a token under the `colors` group, `color.brand.on`                                 | `color/brand/on`: the path after the group, `.` read as `/`                                        |
 | a token under the `radii` group                                                    | `radius/<step>`, in px                                                                             |
+| a `dimension` token under a `spacing` group                                        | `spacing/<step>`, in px, the path after the group as its step                                      |
 | a component token whose alias differs between Light and Dark (`button.outline.bg`) | `mode/<name>`, `button-outline-bg`, its description the two aliases                                |
 | an alias, `{palette.green}`                                                        | a variable alias to the variable that token is, never its resolved value                           |
 | a `typography` composite token                                                     | a text style `typography/<name>`, its parts bound to the family, size and weight tokens it aliases |
