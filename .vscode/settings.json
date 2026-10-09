@@ -1,0 +1,49 @@
+{
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "always",
+    "source.removeUnusedImports": "explicit"
+  },
+  "json.schemaDownload.enable": true,
+  "json.schemaDownload.trustedDomains": {
+    "https://schemastore.azurewebsites.net/": true,
+    "https://raw.githubusercontent.com/microsoft/vscode/": true,
+    "https://raw.githubusercontent.com/devcontainers/spec/": true,
+    "https://www.schemastore.org/": true,
+    "https://json.schemastore.org/": true,
+    "https://json-schema.org/": true,
+    "https://developer.microsoft.com/json-schemas/": true,
+    "https://ui.shadcn.com/schema.json": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/out-tsc/**": true,
+    "**/.nx/**": true,
+    "**/.next/**": true,
+    "**/.open-next/**": true,
+    "**/.wrangler/**": true,
+    "**/.terraform/**": true,
+    "**/.git/objects/**": true,
+    "**/coverage/**": true,
+    "**/test-output/**": true,
+    "**/playwright-report/**": true,
+    "**/.playwright-mcp/**": true,
+    "**/tmp/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/out-tsc": true,
+    "**/.nx": true,
+    "**/.next": true,
+    "**/.open-next": true,
+    "**/.wrangler": true,
+    "**/.terraform": true,
+    "**/coverage": true,
+    "**/test-output": true,
+    "**/playwright-report": true,
+    "**/.playwright-mcp": true
+  }
+}

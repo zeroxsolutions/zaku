@@ -1,0 +1,40 @@
+# Local .terraform directories
+.terraform/
+
+# .tfstate files - contain secret values and resource ids; use the remote backend
+*.tfstate
+*.tfstate.*
+.terraform.tfstate.lock.info
+
+# Saved plan files - contain sensitive values (connection URIs, keys) in plaintext
+*.tfplan
+
+# Real variable files - contain API tokens / keys. Commit only *.example.
+*.tfvars
+*.tfvars.json
+
+# Backend config - carries the R2 access_key / secret_key / endpoints, so it stays
+# out of git. Committed template: backend.config.example.
+*backend.config
+
+# Override files (local-only resource overrides)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI config
+.terraformrc
+terraform.rc
+
+# Crash / log files
+crash.log
+crash.*.log
+*.log
+logs/
+
+# Editor / OS noise
+*~
+*.swp
+.DS_Store
+Thumbs.db

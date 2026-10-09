@@ -1,0 +1,38 @@
+# SCAFFOLD TEMPLATE - replace every <@owner> and delete these instruction comments.
+#
+# This file may currently do nothing. Code-owner review requests work in public
+# repositories on any plan, but in a private repository they require a paid plan
+# (Pro for a personal account, Team or higher for an organisation). On a free-tier
+# private repository this file is documentation only: it records which paths carry
+# extra review weight, and it starts working by itself the moment the plan is
+# upgraded. Do not read its presence as enforcement - verify against the
+# repository's branch protection settings.
+#
+# The final matching line decides ownership, so the default owner goes first and
+# the more specific paths follow.
+
+# Default owner for everything not matched below.
+*                       <@owner>
+
+# --- Paths that carry extra review weight ---------------------------------
+# These are the shared contracts. A change here propagates beyond the project
+# that made it, so they are called out even where the tool cannot enforce it.
+
+# Infrastructure. Curated modules shared across products; a destroy here can
+# lose data irreversibly.
+/iac/                   <@owner>
+
+# The collaboration surface itself, including this file and dependency
+# automation.
+/.github/               <@owner>
+
+# Shared dependency versions. One catalog entry moves every project at once.
+/pnpm-workspace.yaml    <@owner>
+
+# Workspace-wide toolchain and task-runner configuration.
+/nx.json                <@owner>
+/package.json           <@owner>
+/tsconfig.base.json     <@owner>
+
+# The repository's concrete choices and workspace inventory.
+/AGENTS.md              <@owner>

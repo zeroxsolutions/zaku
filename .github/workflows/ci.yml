@@ -1,0 +1,54 @@
+# The pull-request gate. Three jobs:
+#
+#   gate - the shared `nx-gate` workflow, same targets as the pre-push hook
+#          but scoped by `affected` (the hook sweeps; the gate re-verifies what
+#          the change reaches - keep the asymmetry).
+#   e2e  - gate-only. The hook's set stays inside the gate's and never the
+#          reverse, so a target that starts a runtime lands here instead.
+#   format - the whole tree through the formatter, which no nx target runs.
+#
+# Nothing checks `iac/`: it is outside the nx graph, so no job reaches it,
+# and the pre-commit hook formats with oxfmt, which does not read `.tf`.
+#
+# Nothing here names a project, path, or branch, so the file copies unchanged.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+# A superseded gate is worthless: it reports on a commit nobody will ship. Cancelling
+# in-flight is safe for a gate and not for `cd.yml` - a gate writes nothing outside its runner,
+# where a half-finished deploy leaves real state behind.
+#
+# `github.ref` separates a pull request (`refs/pull/N/merge`) from a branch push, so a PR
+# and the master push it later becomes never cancel each other.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    uses: zeroxsolutions/github-actions/.github/workflows/nx-gate.yml@v1
+    with:
+      targets: lint typecheck build test
+
+  # The pre-commit hook formats only what it is given, and git runs no hook at all in a worktree
+  # whose install never created `.husky/_`, so unformatted files reach master and every later
+  # merge reformats them into an unrelated pull request. A sweep, because the files that drift
+  # are docs no project owns and `affected` would never reach.
+  format:
+    runs-on: self-hosted
+    timeout-minutes: 10
+    steps:
+      - uses: zeroxsolutions/github-actions/nx-setup@v1
+      - run: pnpm nx format:check --all
+
+  # Separate from `gate` so its cost is visible and its failure is legible on its
+  # own. `affected` runs it only for changes that can reach it, from the base the
+  # shared workflow resolves out of the event payload.
+  e2e:
+    uses: zeroxsolutions/github-actions/.github/workflows/nx-gate.yml@v1
+    with:
+      targets: e2e

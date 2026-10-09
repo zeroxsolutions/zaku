@@ -1,0 +1,68 @@
+# Dependency automation. Two ecosystems, one per thing this workspace pins that
+# a bot can actually reach: workflow action refs and the JavaScript workspace.
+# The Terraform root is deliberately absent - see the note at the bottom.
+#
+# `commit-message.prefix` is mandatory on every ecosystem, not cosmetic. The
+# default subject ("Bump x from y to z") is not a Conventional Commit, so it
+# breaks the commit convention and is invisible to the release changelog, which
+# is generated from conventional commits.
+#
+# The JavaScript entry updates a version pinned in the workspace `catalog:` in
+# place - pnpm workspace catalogs are supported - so a shared version stays
+# pinned in exactly one file and no per-package pin is introduced. Known upstream
+# defect: a committed lockfile can drop a catalog package
+# (dependabot-core#14339, #11953), so review the first bot pull requests for
+# lockfile integrity rather than merging on green.
+#
+# `open-pull-requests-limit` is set per ecosystem so one ecosystem cannot consume
+# the shared default of five and silently starve the others. Major updates are
+# deliberately left ungrouped: each arrives as its own reviewable pull request.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: ci(deps)
+    groups:
+      actions:
+        patterns:
+          - '*'
+    ignore:
+      # The reusable workflows come from the private github-actions repository,
+      # which dependabot cannot reach: it fails the whole run with
+      # `git_dependencies_not_reachable`, taking the public action bumps down
+      # with it. Ignoring them is also the right answer on the merits - they are
+      # pinned to a moving major tag (`@v1`), so the only bump the bot could ever
+      # propose is a major, which is a promotion to review rather than a pull
+      # request to merge. Same reasoning as the terraform `?ref=` note below.
+      - dependency-name: zeroxsolutions/*
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore(deps)
+      prefix-development: chore(deps-dev)
+    groups:
+      production:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+      development:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+
+  # No terraform ecosystem here, deliberately. A product root declares no
+  # `required_providers` of its own - every constraint lives in a module - and the
+  # modules come from the private tf-modules repository, which dependabot cannot
+  # reach: it fails the run with `git_dependencies_not_reachable` every time.
+  # Provider bumps belong to tf-modules' own dependabot; a product adopts them by
+  # moving its `?ref=` tag, which is a reviewed decision rather than a bot's.

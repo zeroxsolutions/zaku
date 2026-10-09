@@ -1,0 +1,19 @@
+model_auto_compact_token_limit = 500000
+model_auto_compact_token_limit_scope = "total"
+
+[features]
+hooks = true
+
+[marketplaces.zeroxsolutions]
+source_type = "git"
+source = "https://github.com/zeroxsolutions/agent-plugins.git"
+
+[marketplaces.superpowers-dev]
+source_type = "git"
+source = "https://github.com/obra/superpowers.git"
+
+[plugins."gundam@zeroxsolutions"]
+enabled = true
+
+[plugins."superpowers@superpowers-dev"]
+enabled = true

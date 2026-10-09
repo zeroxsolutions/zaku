@@ -1,0 +1,5 @@
+# Run from pre-commit instead, this froze the machine whenever several worktrees committed at once.
+# A run-many over every project here re-ran the whole workspace on each push after a merge from
+# origin. `affected` diffs from the merge-base with `defaultBase` in nx.json, and adds the
+# uncommitted and untracked files.
+pnpm nx affected -t lint typecheck build test

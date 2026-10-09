@@ -1,0 +1,32 @@
+# SCAFFOLD TEMPLATE - fill every <...> and delete these instruction comments.
+#
+# blank_issues_enabled: this knob is left visible on purpose rather than decided
+# for you, because its effect depends on who your collaborators are.
+#   Setting it to `false` hides the blank-issue option from collaborators at
+#   Read or Triage level. Anyone with Write, Maintain, or Admin still sees it,
+#   labelled "Maintainers only". So on an internal repository where everyone has
+#   write access it changes nothing, and on a public repository taking outside
+#   contributions it is the difference between structured reports and free text.
+#   `true` is GitHub's own default and the safer starting point.
+blank_issues_enabled: true
+
+# contact_links need a full https:// url, so they cannot be shipped filled in.
+# Replace <org>/<repo> with this repository, drop any row that does not apply,
+# and add product-specific rows (a support inbox, a status page) below.
+contact_links:
+  - name: Architecture doctrine
+    url: https://github.com/zeroxsolutions/agent-plugins/tree/master/plugins/gundam/skills
+    about: >
+      Read the skill that governs an area before proposing a change to how it is
+      structured. This url is absolute and already filled in - the doctrine lives in
+      the plugin, not in this repository.
+
+  - name: Contributing and local setup
+    url: https://github.com/<org>/<repo>/blob/<default-branch>/AGENTS.md
+    about: This repository's concrete choices and its workspace inventory.
+
+# Never add a security row: GitHub adds the security policy to this chooser
+# automatically once SECURITY.md exists, so a contact link for it appears twice.
+#
+# Questions have no home unless Discussions are enabled. Either enable them and
+# add a row here, or point a row at wherever this product answers them.

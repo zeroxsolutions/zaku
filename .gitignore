@@ -1,0 +1,82 @@
+# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+
+# compiled output
+dist
+tmp
+out-tsc
+
+# dependencies
+node_modules
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# misc
+/.sass-cache
+/connect.lock
+/coverage
+/libpeerconnection.log
+npm-debug.log
+yarn-error.log
+testem.log
+/typings
+
+# System Files
+.DS_Store
+Thumbs.db
+
+.nx/cache
+.nx/workspace-data
+.nx/migrate-runs
+.claude/worktrees
+.claude/settings.local.json
+.worktrees/
+
+# subagent-driven-development scratch, one directory per plan: its ledger, task
+# briefs, implementer reports and review packages. Git history is the record that
+# outlives a run, so none of it is committed.
+.superpowers/
+
+# Next.js
+.next
+
+# OpenNext (Cloudflare adapter build output)
+.open-next/
+
+# Wrangler local state / cache
+.wrangler/
+
+out
+test-output
+vitest.config.*.timestamp*
+
+# Local env - direct DB connection strings for migrations (secrets). Commit only *.example.
+.env
+.env.*
+!.env.example
+
+# Local wrangler dev secrets (.dev.vars mirrors prod secrets for `wrangler dev`) - never commit.
+.dev.vars*
+!.dev.vars.example
+
+# Playwright MCP (browser automation) runtime output - console logs + screenshots
+.playwright-mcp/
+
+# @vitest/browser-playwright's own output - a failed assertion's screenshot, and its attachment store
+__screenshots__/
+.vitest-attachments/
+
+gate.log

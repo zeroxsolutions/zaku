@@ -1,0 +1,69 @@
+# The bug intake form. `labels:` names only what GitHub creates in every repository:
+# a label listed here that the repository lacks is not added to the issue, so naming
+# anything else would make the file product-specific.
+name: Bug report
+description: Something behaves differently from what the specs or rules require.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a change to existing behaviour, or new work, use the change request
+        template instead - this one is for something that is already wrong.
+
+        The title states the problem, not the fix, in under 60 characters. See
+        CONTRIBUTING.md.
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where did you see it?
+      options:
+        - local development
+        - development environment
+        - production environment
+        - CI
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: >
+        What should happen, and what says so - a rule slug, the contract, or the
+        documentation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happens instead
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: >
+        The shortest path to seeing it. Include the exact command if there is
+        one - task-runner target, request, or queue message.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs or error output
+      description: >
+        Redact credentials, tokens, and full request bodies before pasting.
+        Rendered as a code block, no backticks needed.
+      render: shell
+    validations:
+      required: false

@@ -1,0 +1,22 @@
+{
+  "name": "@zeroxsolutions/source",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "private": true,
+  "engines": {
+    "pnpm": "10.33.0"
+  },
+  "devDependencies": {
+    "@nx/js": "23.3.0",
+    "@swc/helpers": "~0.5.18",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "nx": "23.3.0",
+    "oxfmt": "^0.72.0",
+    "tslib": "^2.3.0",
+    "typescript": "~5.9.2"
+  }
+}

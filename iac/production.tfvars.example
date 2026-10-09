@@ -1,0 +1,7 @@
+project_name = "<project_name>"
+
+cloudflare_account_id = "<account_id>"
+cloudflare_api_token  = "<api_token>"
+
+cloudflare_r2_buckets = []
+cloudflare_queues     = []
