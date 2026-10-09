@@ -18,6 +18,19 @@ criterion the control arm already passed is cut and listed below.
   supported way") and the `upload_assets` tool schema. Verified on the product file: a JPEG POSTed to
   the `submitUrl` returned `{"success":true,"imageHash":...,"placedOnNodeId":...}` and landed as an
   IMAGE fill.
+- Desktop windows, each read on 2026-10-09: App Store Connect, "Screenshot specifications" (undated;
+  Mac screenshots "with a 16:10 aspect ratio": 1280x800, 1440x900, 2560x1600, 2880x1800 px) with Apple
+  HIG "Typography" (December 16, 2025: "144 ppi for @2x designs"); Microsoft Learn, "Screenshots,
+  images, and trailers" (last updated 2025-06-06: desktop "1366 x 768 pixels or larger") and "Screen
+  sizes and breakpoints" (2026-07-13: large is 1008 epx and up, window sizes 1024x640, 1366x768,
+  1920x1080); GNOME Human Interface Guidelines, "Scaling & Adaptiveness" (undated; "The smallest
+  recommended display size for GNOME on desktop is currently 1024x600px, and this size should be
+  supported by all apps"); KDE Human Interface Guidelines, "Layout and navigation" (fixed sizes
+  "including default and minimum window sizes" are multiples of `gridUnit`, 18 px; no window size).
+- Desktop system bars: the guidelines' own terms for the bar the window controls sit in, Apple HIG
+  "Windows" ("window controls"), Microsoft Learn "Title bar design", GNOME HIG "Header Bars" (the site
+  "for window management features"), KDE HIG "Layout and navigation" ("titlebar"). The kits' own
+  component names were not read; `systemBars` takes them.
 - Hit regions: Apple Human Interface Guidelines, Buttons ("a button needs a hit region of at least
   44x44 pt"), and Google's Android accessibility help, Touch target size (48x48 dp; a 24x24 dp icon's
   padding makes up its 48x48 dp target; Compose's `minimumInteractiveComponentSize` reserves 48 dp).
@@ -54,6 +67,14 @@ Pending the RED runs.
   answer RED; the frame, instance, system bar and picture lines restate the body for that walk and
   had no run of their own.
 
+- The desktop frame sizes and the desktop system bars: licensed by a recorded session failure, in which
+  a real session repeated "large and extra-large are desktop classes the web covers" as settled,
+  treating a width class as a platform, and the user corrected that a native desktop app and a web page
+  in a desktop browser differ in menus, windows, shortcuts, back, settings and OS integration; and by
+  `../mapping-a-feature/test-mapping-a-feature-for-a-native-mac-app.md`, whose RED skill runs left the
+  Mac app out because "the drawing skill gives no macOS frame size". Only the macOS size was run;
+  Windows, GNOME and KDE rest on their sources. The window-controls bar had no drawing run.
+
 ## Tests
 
 - `test-migrating-a-screen-to-every-target.md`: RED three runs (criteria 3, 6, 9 and 11 failed in all), GREEN not run.
@@ -63,6 +84,8 @@ Pending the RED runs.
   one skill run), GREEN three runs (1 to 8 pass in all; 9 in one, partly in two).
 - `test-drafting-a-flows-copy.md`: RED three runs per arm (criterion 4 failed in all six; one skill
   run wrote no copy), GREEN three runs (all four pass in all).
+- `../mapping-a-feature/test-mapping-a-feature-for-a-native-mac-app.md`: scores the macOS frame size as
+  its criterion 3; RED failed in all six, GREEN drew 1440x900 in all three without naming the source.
 
 ## Iterations
 
@@ -84,3 +107,5 @@ Pending the RED runs.
    section states the character rule with its substitution table, says a record's text is rewritten
    before it is placed, and says copy no file holds is drafted and marked proposed. The checklist
    carries the walk before a screen is reported done.
+8. Frame sizes and system bars for macOS, Windows, GNOME and KDE windows, and the web desktop row kept
+   apart from them, after the recorded session failure and the mapping test's RED runs.

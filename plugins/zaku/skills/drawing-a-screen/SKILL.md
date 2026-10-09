@@ -58,11 +58,25 @@ says how the tool groups and spaces them:
 | web desktop, tablet, mobile                  | 1440x900, 768x1024, 390x844 |
 | iOS phone, tablet portrait, tablet landscape | 402x874, 820x1180, 1180x820 |
 | Android phone, foldable, tablet              | 411x891, 673x841, 1280x800  |
+| macOS window                                 | 1440x900                    |
+| Windows window                               | 1366x768                    |
+| GNOME window                                 | 1024x600                    |
+| KDE window                                   | the target's own `size`     |
 
 The iOS sizes are the iPhone 16 Pro and the 11-inch iPad in points; the Android sizes are the phone,
 foldable and tablet reference devices of Compose's `PreviewScreenSizes`, in dp, so an engineer's
 preview and the frame show the same width. A frame at any other size draws a layout no device class
 was measured at.
+
+A desktop app's frame is its window. The macOS size, in points, is a Mac screenshot size App Store
+Connect accepts, 2880x1800 px at @2x; the Windows size, in effective pixels, is the smallest desktop
+screenshot the Microsoft Store takes and one of the window sizes Microsoft's "Screen sizes and
+breakpoints" lists for PCs; the GNOME size is the smallest display the GNOME Human Interface Guidelines
+say every app should support. The KDE Human
+Interface Guidelines publish no window size, only that fixed sizes are multiples of their 18 px grid
+unit, so a KDE target's size is the product's choice, written as `size` in `zaku.yaml`. A web desktop
+frame and a native desktop frame of one width are two targets: the web frame holds no window controls
+or menu bar, which the browser owns, and the native frame holds its platform's.
 
 The frame is named `<title> / <state> / <target name>`, each part exactly as the map and `zaku.yaml`
 spell it: `Sign in / Error / Android tablet`. The page already names the feature, so the title does
@@ -96,11 +110,15 @@ every frame of one screen together. A target name is written out, because an abb
 - **The platform's own patterns per target.** A native frame takes the platform's navigation and way
   back (`mapping-a-feature` lists them); a web frame takes the web's.
 - **The platform's system bars on a native frame**: a status bar and a home indicator on iOS, a status
-  bar and a navigation bar or gesture handle on Android, each an instance. Without them the content
-  is laid out over space the device keeps for itself. They come from the platform's own kit enabled as
-  a library in the product file (Apple's iOS UI Kit, Google's Material 3 Design Kit), never from the
-  design system's library; a kit names them its own way, so `zaku.yaml`'s `systemBars` lists the
-  names the kit uses.
+  bar and a navigation bar or gesture handle on Android, and on a desktop window the bar its window
+  controls sit in (the window controls at the leading edge of a macOS toolbar, a Windows title bar with
+  its caption buttons at the right, a GNOME header bar, a KDE title bar), each an instance. Without
+  them the content is laid out over space the device or the window keeps for itself. They come from
+  the platform's own kit enabled as a library in the product file (Apple's iOS UI Kit, Google's
+  Material 3 Design Kit), never from the design system's library; a kit names them its own way, so
+  `zaku.yaml`'s `systemBars` lists the names the kit uses for each family whose names differ from the
+  defaults, which are the guidelines' own terms: `Status Bar`, `Home Indicator`, `Navigation Bar` or
+  `Gesture Handle`, `Window Controls` (macOS), `Title Bar` (Windows, KDE) and `Header Bar` (GNOME).
 - **On a migration, every block of the old drawing**: the logo, the copy, the controls, the photos.
   A block left out is a decision the map records with its reason, never a silent loss.
 

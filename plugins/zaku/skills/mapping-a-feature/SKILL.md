@@ -34,10 +34,8 @@ follows it; it never leads it.
     - { url: /<path>/, { <param> } }
   exits:
     - { to: <screen-id or feature/screen-id>, via: <the control> }
-  back:
-    web: <the control and the screen it returns to>
-    ios: <the control and the screen it returns to>
-    android: <the control and the screen it returns to>
+  back: # one line per family the screen's targets have
+    <family>: <the control and the screen it returns to>
   components: [<library or product component>]
 ```
 
@@ -52,7 +50,7 @@ follows it; it never leads it.
 2. **`targets` is `all` unless a target is left out**, and every target left out is in `omits` with
    its reason. A target missing without a reason is a gap, not a decision. A target is the `id` of one
    of `zaku.yaml`'s `targets`; its `name` is what a frame name carries and its `family` (`web`, `ios`,
-   `android`) is the key under `back`.
+   `android`, `macos`, `windows`, `gnome`, `kde`) is the key under `back`.
 3. **Every screen that is not a root has an `entry`**, and every `exits.to` names a screen some map
    has. A `via` names the control in the words the screen shows on it (its label, or its accessible
    name when it shows none), and the drawing names that control's layer the same, so the connection
@@ -62,14 +60,28 @@ follows it; it never leads it.
 
 ## A way back, per platform
 
-| Family  | What the frame must show                                                                                                                                                      | Source                                                                           |
-| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| iOS     | a navigation bar with the system back button (a chevron, no "Back" word) on every pushed screen; the edge swipe is a shortcut, never the only way; a sheet has Cancel or Done | Apple Human Interface Guidelines, "Navigation bars", "Sheets"                    |
-| Android | a top app bar with the Up arrow on every screen that is not a start destination, beside the system back; a sheet closes by its close control, the scrim and back              | Material Design 3, "Top app bar"; Android developers, "Principles of navigation" |
-| web     | a breadcrumb on desktop and tablet, a link up to the parent on mobile; the browser's back closes an open overlay                                                              | Nielsen Norman Group, "Breadcrumbs" and "Accidental Overlay Dismissal"           |
+| Family  | What the frame must show                                                                                                                                                               | Source                                                                             |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| iOS     | a navigation bar with the system back button (a chevron, no "Back" word) on every pushed screen; the edge swipe is a shortcut, never the only way; a sheet has Cancel or Done          | Apple Human Interface Guidelines, "Navigation bars", "Sheets"                      |
+| Android | a top app bar with the Up arrow on every screen that is not a start destination, beside the system back; a sheet closes by its close control, the scrim and back                       | Material Design 3, "Top app bar"; Android developers, "Principles of navigation"   |
+| web     | a breadcrumb on desktop and tablet, a link up to the parent on mobile; the browser's back closes an open overlay                                                                       | Nielsen Norman Group, "Breadcrumbs" and "Accidental Overlay Dismissal"             |
+| macOS   | a back control at the far leading edge of the window's toolbar, after the window controls; a pane of a Settings window returns by the pane toolbar, which always shows the active pane | Apple Human Interface Guidelines, "Toolbars", "Windows", "Settings"                |
+| Windows | a back button at the top left of the window, in the title bar when the app draws its own, left of the app's icon and title                                                             | Microsoft Learn, "Navigation history and backwards navigation", "Title bar design" |
+| GNOME   | a back button at the start of the header bar, top left in a left-to-right locale                                                                                                       | GNOME Human Interface Guidelines, "Browsing", "Header Bars"                        |
+| KDE     | back and forward buttons in the toolbar, over the page stack                                                                                                                           | KDE Human Interface Guidelines, "Layout and navigation"                            |
 
 A web pattern drawn on a native target is wrong on that target: a breadcrumb, a hover-only control and
 a hamburger menu for primary navigation are web habits each platform guideline names as mistakes.
+
+## A width is not a platform
+
+A web target at 1440 is a page in a desktop browser. A native macOS, Windows or Linux app at the same
+width is its own target, with its own family and its own `back`, because its window controls, menus,
+shortcuts and settings come from its platform's guideline and the browser supplies none of them. Each
+native desktop runtime `profiling-a-product` marks shipped is a target in `zaku.yaml`, and the web
+desktop target never stands for it. A Linux app takes `gnome` or `kde`, after the desktop whose
+guideline its toolkit follows, because the two place window controls, menus and settings differently.
+iPadOS is `ios`: its way back is the iPhone's.
 
 ## Before drawing
 
@@ -85,3 +97,4 @@ kept apart from the drawing's commits, before a frame changes.
 | A state per target ("share sheet", "share dialog") | One state; the drawing chooses its form per target |
 | `back.web` only, on a screen that targets all      | A `back` for every family it targets               |
 | A native frame with a breadcrumb                   | The platform's own way back                        |
+| The web desktop target standing for a desktop app  | A target with the desktop platform's family        |
