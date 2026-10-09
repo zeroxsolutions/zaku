@@ -1,7 +1,9 @@
 export {
   BRIDGE_PORT,
   PLUGIN_VERSION,
+  REFUSAL_REASONS,
   checkScopeSchema,
+  fileHelloSchema,
   helloSchema,
   nodeSnapshotSchema,
   outlineNodeSchema,
@@ -9,11 +11,14 @@ export {
   readTargetSchema,
   serverMessageSchema,
   type CheckScope,
+  type Credential,
+  type FileHello,
   type Hello,
   type NodeSnapshot,
   type OutlineNode,
   type PluginMessage,
   type ReadTarget,
+  type RefusalReason,
   type ServerMessage,
 } from './bridge.js';
 export { zakuConfigSchema, type ZakuConfig } from './zaku-config.js';

@@ -38,6 +38,7 @@ const hello = (file: string): PluginMessage => ({
   selection: [],
   pluginVersion: '0.1.0',
   user: null,
+  credential: { token: 'secret' },
 });
 
 let ids = 0;
@@ -55,6 +56,14 @@ describe('FigmaBridge', () => {
     c.emit(hello('Ant Design'));
     expect(b.sessions().map((s) => s.file)).toEqual(['Ant Design']);
     expect(b.session().file).toBe('Ant Design');
+  });
+
+  it('keeps the credential out of the session the agent reads', () => {
+    const b = bridge();
+    const c = new FakeConnection();
+    b.attach(c);
+    c.emit(hello('A'));
+    expect(JSON.stringify(b.sessions())).not.toContain('secret');
   });
 
   it('asks for a file when two are connected, and refuses one that is not', () => {

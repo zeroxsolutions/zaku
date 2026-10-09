@@ -7,6 +7,7 @@ describe('StatusBar', () => {
     ['connected', 'Connected'],
     ['reconnecting', 'Reconnecting'],
     ['disconnected', 'Not connected'],
+    ['unpaired', 'Not paired'],
   ] as const)('names the %s state', async (status, label) => {
     await render(<StatusBar status={status} file={null} running={null} now={0} />);
     await expect.element(page.getByText(label, { exact: true })).toBeVisible();
@@ -24,5 +25,14 @@ describe('StatusBar', () => {
       <StatusBar status="connected" file="Acme" running={{ command: 'check', id: 'r', since: 1000 }} now={4200} />,
     );
     await expect.element(page.getByText('Checking 3s')).toBeVisible();
+  });
+
+  it('carries the action the panel hands it', async () => {
+    await render(
+      <StatusBar status="connected" file="Acme" running={null} now={0}>
+        <button type="button">Unpair</button>
+      </StatusBar>,
+    );
+    await expect.element(page.getByRole('button', { name: 'Unpair' })).toBeVisible();
   });
 });

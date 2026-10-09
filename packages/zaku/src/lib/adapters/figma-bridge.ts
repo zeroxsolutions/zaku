@@ -196,12 +196,13 @@ export class FigmaBridge {
 
   private receive(connection: BridgeConnection, message: PluginMessage): void {
     if (message.type === 'hello') {
-      const { type: _type, ...view } = message;
+      const { type: _type, credential: _credential, ...view } = message;
       this.open.set(connection, { ...view, connection });
       return;
     }
     const session = this.open.get(connection);
-    if (!session) return;
+    // The socket that admitted the connection answers its unpair.
+    if (!session || message.type === 'unpair') return;
     if (message.type === 'check') {
       for (const listener of this.checkListeners) listener(session, message.scope);
       return;

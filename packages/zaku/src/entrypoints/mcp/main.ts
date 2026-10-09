@@ -2,11 +2,14 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { resolve } from 'node:path';
 import { DEFAULT_TIMINGS, FigmaBridge, type BridgeTimings } from '../../lib/adapters/figma-bridge.js';
+import { PairingCodes } from '../../lib/domain/pairing-codes.js';
 import { DesignConfigRepository } from '../../lib/repositories/design-config-repository.js';
 import { GuideRepository } from '../../lib/repositories/guide-repository.js';
+import { FilePairingStore } from '../../lib/repositories/pairing-store.js';
 import { PLUGIN_VERSION } from '../../lib/schema/bridge.js';
 import { runCheck } from './check.js';
 import { compose } from './dependencies.js';
+import { Pairings } from './pairings.js';
 import { listenBridge, type Listening } from './socket.js';
 import { registerTools } from './tools.js';
 
@@ -18,6 +21,10 @@ export interface McpSeams {
   timings?: BridgeTimings;
   /** How often to try the port again while another process holds it. */
   retryListenMs?: number;
+  /** The file the pairings' token hashes are kept in; `pairingsPath` gives the user's own. */
+  pairingsFile: string;
+  /** How long a connection may stay open before it presents a valid credential; five seconds when omitted. */
+  admitMs?: number;
 }
 
 export interface McpRuntime {
@@ -34,7 +41,9 @@ export async function startMcp(seams: McpSeams): Promise<McpRuntime> {
   const bus = compose(bridge, guides);
   // A failed panel check has nobody waiting on it; the panel keeps its last findings.
   bridge.onCheck((session, scope) => void runCheck(bridge, session, scope).catch(() => undefined));
-  let listening: Listening = await listenBridge(bridge, seams.port);
+  const pairings = new Pairings(new PairingCodes(Date.now), new FilePairingStore(seams.pairingsFile));
+  const listen = (): Promise<Listening> => listenBridge(bridge, pairings, seams.port, seams.admitMs);
+  let listening: Listening = await listen();
   let retrying = false;
   let closed = false;
   // Another session's zaku-mcp may hold the port until it exits; listen as soon as it lets go.
@@ -43,7 +52,7 @@ export async function startMcp(seams: McpSeams): Promise<McpRuntime> {
       ? setInterval(() => {
           if (retrying) return;
           retrying = true;
-          void listenBridge(bridge, seams.port).then((next) => {
+          void listen().then((next) => {
             retrying = false;
             if (closed || !('error' in listening)) {
               if ('close' in next) void next.close();
@@ -62,6 +71,7 @@ export async function startMcp(seams: McpSeams): Promise<McpRuntime> {
     bus,
     bridge,
     guides,
+    pairings,
     config: new DesignConfigRepository(),
     designRoot: resolve(seams.cwd, seams.env['ZAKU_DESIGN_ROOT'] ?? 'docs/design'),
     listening: () => ({ port: port(), portError: portError() }),

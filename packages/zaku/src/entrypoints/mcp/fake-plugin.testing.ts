@@ -1,12 +1,16 @@
 import WebSocket from 'ws';
-import type { NodeSnapshot, PluginMessage, ServerMessage } from '../../lib/schema/bridge.js';
+import type { Credential, NodeSnapshot, PluginMessage, ServerMessage } from '../../lib/schema/bridge.js';
 
 export type Behaviour = (message: ServerMessage, send: (m: PluginMessage) => void, socket: WebSocket) => void;
 
-/** A plugin that dials the server, says hello and answers each message as the behaviour says. */
+/**
+ * A plugin that dials the server, says hello with the credential, and answers each message as the behaviour
+ * says. With a code it returns once the server has paired it.
+ */
 export async function fakePlugin(
   port: number,
   file: string,
+  credential: Credential,
   behaviour: Behaviour,
   origin?: string,
 ): Promise<WebSocket> {
@@ -16,7 +20,14 @@ export async function fakePlugin(
     socket.once('error', reject);
   });
   const send = (message: PluginMessage): void => socket.send(JSON.stringify(message));
-  socket.on('message', (data) => behaviour(JSON.parse(String(data)) as ServerMessage, send, socket));
+  let paired: () => void = () => undefined;
+  const admitted = new Promise<void>((resolve) => (paired = resolve));
+  socket.on('message', (data) => {
+    const message = JSON.parse(String(data)) as ServerMessage;
+    if (message.type === 'paired') paired();
+    // The pairing answer is for the plugin's own keeping, not for the work a behaviour does.
+    if (message.type !== 'paired' && message.type !== 'refused') behaviour(message, send, socket);
+  });
   send({
     type: 'hello',
     file,
@@ -25,7 +36,9 @@ export async function fakePlugin(
     selection: [],
     pluginVersion: '0.1.0',
     user: null,
+    credential,
   });
+  if ('code' in credential) await admitted;
   return socket;
 }
 
