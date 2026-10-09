@@ -9,12 +9,12 @@ const execute: PanelEvent = {
 };
 
 describe('panelReducer', () => {
-  it('starts disconnected, with no file, nothing running and no findings', () => {
+  it('starts disconnected, with no file, nothing running and nothing checked yet', () => {
     expect(INITIAL_PANEL_STATE).toEqual({
       status: 'disconnected',
       file: null,
       running: null,
-      findings: [],
+      findings: null,
       error: null,
     });
   });
@@ -95,6 +95,7 @@ describe('panelReducer', () => {
       now: 1,
       message: { type: 'findings', findings: [{ check: 'naming', message: 'Frame keeps a default name' }] },
     });
+    expect(run(connected).findings).toBeNull();
     expect(first.findings).toHaveLength(1);
     const cleared = panelReducer(first, { kind: 'to-sandbox', now: 2, message: { type: 'findings', findings: [] } });
     expect(cleared.findings).toEqual([]);

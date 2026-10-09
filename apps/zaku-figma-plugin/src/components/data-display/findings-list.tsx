@@ -1,36 +1,82 @@
+import {
+  ChevronRightIcon,
+  CircleAlertIcon,
+  ComponentIcon,
+  ContrastIcon,
+  ImageIcon,
+  LayersIcon,
+  LibraryIcon,
+  type LucideIcon,
+  PaintBucketIcon,
+  PaletteIcon,
+  PointerIcon,
+  SquareStackIcon,
+  TagIcon,
+  TextQuoteIcon,
+  TypeIcon,
+  WorkflowIcon,
+} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 import type { Finding } from '@/lib/panel-state';
 import { cn } from '@/lib/utils';
+
+const FINDINGS_LIST_CHECK_LABELS: Record<Finding['check'], string> = {
+  schema: 'Document schema',
+  reachability: 'Reachability',
+  'way-back': 'Way back',
+  coverage: 'Coverage',
+  library: 'Library components',
+  overrides: 'Overrides',
+  binding: 'Token binding',
+  recipe: 'Recipe',
+  font: 'Fonts',
+  copy: 'Copy',
+  'target-size': 'Target size',
+  overlap: 'Overlap',
+  tokens: 'Tokens',
+  contrast: 'Contrast',
+  freshness: 'Freshness',
+  images: 'Images',
+  frame: 'Frames',
+  'system-bars': 'System bars',
+  placement: 'Placement',
+  naming: 'Layer naming',
+  component: 'Components',
+  prototype: 'Prototype',
+};
+
+/** A rule with no icon of its own takes the alert. */
+const FINDINGS_LIST_CHECK_ICONS: Partial<Record<Finding['check'], LucideIcon>> = {
+  binding: PaintBucketIcon,
+  tokens: PaletteIcon,
+  naming: TagIcon,
+  overrides: LayersIcon,
+  library: LibraryIcon,
+  component: ComponentIcon,
+  font: TypeIcon,
+  copy: TextQuoteIcon,
+  contrast: ContrastIcon,
+  'target-size': PointerIcon,
+  overlap: SquareStackIcon,
+  images: ImageIcon,
+  prototype: WorkflowIcon,
+};
 
 type FindingsListProps = {
   findings: Finding[];
   /** Selects the node in Figma and zooms to it. */
   onSelectNode: (nodeId: string) => void;
-  /** False while no file is connected or a command runs, so a check would race it. */
-  canCheck: boolean;
-  onCheckAgain: () => void;
 } & React.ComponentProps<'div'>;
 
-function FindingsList({
-  findings,
-  onSelectNode,
-  canCheck,
-  onCheckAgain,
-  className,
-  ...props
-}: FindingsListProps): React.JSX.Element {
-  const byCheck = new Map<string, Finding[]>();
+function FindingsList({ findings, onSelectNode, className, ...props }: FindingsListProps): React.JSX.Element {
+  const byCheck = new Map<Finding['check'], Finding[]>();
   for (const finding of findings) byCheck.set(finding.check, [...(byCheck.get(finding.check) ?? []), finding]);
   return (
-    <div data-slot="findings-list" className={cn('flex flex-col gap-3 p-3', className)} {...props}>
-      <div data-slot="findings-list-header" className="flex items-center justify-between">
-        <h1 className="text-xs font-medium">{findings.length} findings</h1>
-        <Button size="sm" variant="outline" disabled={!canCheck} onClick={onCheckAgain}>
-          Check again
-        </Button>
-      </div>
+    <div data-slot="findings-list" className={cn('flex flex-col gap-4 p-3', className)} {...props}>
       {[...byCheck].map(([check, group]) => (
-        <FindingsListGroup key={check} check={check} count={group.length}>
+        <FindingsListGroup key={check} label={FINDINGS_LIST_CHECK_LABELS[check]} count={group.length}>
           {group.map((finding, index) => (
             <FindingsListRow key={`${finding.nodeId ?? ''}-${index}`} finding={finding} onSelectNode={onSelectNode} />
           ))}
@@ -40,18 +86,20 @@ function FindingsList({
   );
 }
 
-type FindingsListGroupProps = { check: string; count: number } & React.ComponentProps<'section'>;
+type FindingsListGroupProps = { label: string; count: number } & React.ComponentProps<'section'>;
 
-function FindingsListGroup({ check, count, children, className, ...props }: FindingsListGroupProps): React.JSX.Element {
-  const name = `${check} (${count})`;
+function FindingsListGroup({ label, count, children, className, ...props }: FindingsListGroupProps): React.JSX.Element {
   return (
     <section
       data-slot="findings-list-group"
-      aria-label={name}
+      aria-label={`${label}, ${count} ${count === 1 ? 'finding' : 'findings'}`}
       className={cn('flex flex-col gap-1', className)}
       {...props}
     >
-      <h2 className="text-muted-foreground text-xs font-medium">{name}</h2>
+      <h2 className="flex items-center gap-2 px-2.5 text-xs font-medium">
+        {label}
+        <Badge variant="secondary">{count}</Badge>
+      </h2>
       <ul className="flex flex-col">{children}</ul>
     </section>
   );
@@ -60,20 +108,29 @@ function FindingsListGroup({ check, count, children, className, ...props }: Find
 type FindingsListRowProps = { finding: Finding; onSelectNode: (nodeId: string) => void } & React.ComponentProps<'li'>;
 
 function FindingsListRow({ finding, onSelectNode, className, ...props }: FindingsListRowProps): React.JSX.Element {
-  const { nodeId } = finding;
+  const { check, nodeId, frame, field, message } = finding;
+  const Icon = FINDINGS_LIST_CHECK_ICONS[check] ?? CircleAlertIcon;
   return (
-    <li data-slot="findings-list-row" className={cn('text-xs', className)} {...props}>
-      {nodeId === undefined ? (
-        <p className="px-2 py-1.5">{finding.message}</p>
-      ) : (
-        <button
-          type="button"
-          className="hover:bg-accent focus-visible:ring-ring w-full rounded-md px-2 py-1.5 text-start outline-none focus-visible:ring-2"
-          onClick={() => onSelectNode(nodeId)}
-        >
-          {finding.message}
-        </button>
-      )}
+    <li data-slot="findings-list-row" className={className} {...props}>
+      <Item size="xs">
+        <ItemMedia variant="icon">
+          <Icon />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>{message}</ItemTitle>
+          {frame !== undefined && <ItemDescription>{frame}</ItemDescription>}
+        </ItemContent>
+        {(field !== undefined || nodeId !== undefined) && (
+          <ItemActions>
+            {field !== undefined && <Badge variant="outline">{field}</Badge>}
+            {nodeId !== undefined && (
+              <Button variant="ghost" size="icon-sm" aria-label="Select layer" onClick={() => onSelectNode(nodeId)}>
+                <ChevronRightIcon />
+              </Button>
+            )}
+          </ItemActions>
+        )}
+      </Item>
     </li>
   );
 }

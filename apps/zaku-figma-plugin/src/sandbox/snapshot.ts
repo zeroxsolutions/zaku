@@ -19,6 +19,15 @@ function layerOf(instance: SceneNode, id: string): unknown {
   return findOne ? findOne.call(instance, (n) => n.id === id) : null;
 }
 
+type Ancestor = { id: string; name: string; type: string; parent?: Ancestor | null };
+
+/** The top-level frame on the page that holds the node, the node itself when it is one; null off a page. */
+function frameOf(node: Ancestor): string | null {
+  let top = node;
+  while (top.parent && top.parent.type !== 'PAGE') top = top.parent;
+  return top.parent?.type === 'PAGE' ? top.name : null;
+}
+
 function holdsPicture(layer: unknown): boolean {
   const fills = (layer as { fills?: unknown } | null)?.fills;
   return Array.isArray(fills) && fills.some((paint: { type?: string }) => paint.type === 'IMAGE');
@@ -31,7 +40,7 @@ export async function snapshotNode(
   mixed: symbol = typeof figma === 'undefined' ? Symbol('mixed') : figma.mixed,
 ): Promise<NodeSnapshot> {
   const any = node as unknown as Record<string, unknown> & {
-    parent?: { id: string } | null;
+    parent?: Ancestor | null;
     boundVariables?: Record<string, unknown>;
   };
   const style = any['textStyleId'];
@@ -41,6 +50,7 @@ export async function snapshotNode(
     name: node.name,
     type: node.type,
     parentId: any.parent?.id ?? null,
+    frame: frameOf(node as unknown as Ancestor),
     created,
     fills: paints(any['fills']),
     strokes: paints(any['strokes']),

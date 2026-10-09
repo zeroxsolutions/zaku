@@ -1,25 +1,48 @@
-import { Button } from '@/components/ui/button';
-import { Empty, EmptyContent, EmptyHeader, EmptyTitle } from '@/components/ui/empty';
+import { CircleCheckIcon, ScanSearchIcon, UnplugIcon } from 'lucide-react';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+
+/** Why the panel has no findings to list: no server yet, no check yet, or a check that found nothing. */
+type FindingsEmptyReason = 'disconnected' | 'unchecked' | 'clean';
 
 type FindingsEmptyProps = {
-  /** False while no file is connected, so there is nothing to check. */
-  canCheck: boolean;
-  onCheckAgain: () => void;
+  reason: FindingsEmptyReason;
+  /** The port the panel dials zaku-mcp on. */
+  port: number;
 } & React.ComponentProps<typeof Empty>;
 
-function FindingsEmpty({ canCheck, onCheckAgain, ...props }: FindingsEmptyProps): React.JSX.Element {
+function FindingsEmpty({ reason, port, ...props }: FindingsEmptyProps): React.JSX.Element {
+  const {
+    icon: Icon,
+    title,
+    description,
+  } = {
+    disconnected: {
+      icon: UnplugIcon,
+      title: 'Waiting for zaku-mcp',
+      description: `Start your agent with the zaku MCP server. The panel connects to localhost:${port} on its own.`,
+    },
+    unchecked: {
+      icon: ScanSearchIcon,
+      title: 'Check this page',
+      description: 'zaku looks for raw values, default names and drift from the design system.',
+    },
+    clean: {
+      icon: CircleCheckIcon,
+      title: 'This page is clean',
+      description: 'The last check found nothing to fix.',
+    },
+  }[reason];
   return (
-    <Empty data-slot="findings-empty" {...props}>
+    <Empty data-slot="findings-empty" data-reason={reason} {...props}>
       <EmptyHeader>
-        <EmptyTitle>No findings</EmptyTitle>
+        <EmptyMedia variant="icon">
+          <Icon />
+        </EmptyMedia>
+        <EmptyTitle>{title}</EmptyTitle>
+        <EmptyDescription>{description}</EmptyDescription>
       </EmptyHeader>
-      <EmptyContent>
-        <Button size="sm" disabled={!canCheck} onClick={onCheckAgain}>
-          Check again
-        </Button>
-      </EmptyContent>
     </Empty>
   );
 }
 
-export { FindingsEmpty };
+export { FindingsEmpty, type FindingsEmptyReason };

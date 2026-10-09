@@ -7,6 +7,7 @@ const flat = async (node: { id: string; name: string; type: string }, created: b
   name: node.name,
   type: node.type,
   parentId: null,
+  frame: null,
   created,
   fills: [],
   strokes: [],

@@ -33,6 +33,16 @@ describe('snapshotNode', () => {
     });
   });
 
+  it('names the top-level frame on the page that holds the node, the node itself included', async () => {
+    const page = { id: '0:1', name: 'Page 1', type: 'PAGE', parent: null };
+    const screen = { id: '1:1', name: 'Trips / Desktop', type: 'FRAME', parent: page, fills: [], strokes: [] };
+    const card = { id: '1:2', name: 'Card', type: 'FRAME', parent: screen, fills: [], strokes: [] };
+    const label = { id: '1:3', name: 'Label', type: 'RECTANGLE', parent: card, fills: [], strokes: [] };
+    expect((await snapshotNode(label as never, true)).frame).toBe('Trips / Desktop');
+    expect((await snapshotNode(screen as never, true)).frame).toBe('Trips / Desktop');
+    expect((await snapshotNode({ ...card, parent: null } as never, true)).frame).toBeNull();
+  });
+
   it('skips a hidden or transparent paint', async () => {
     const node = {
       id: '1:1',

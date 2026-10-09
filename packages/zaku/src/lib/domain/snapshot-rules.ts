@@ -9,7 +9,13 @@ export function snapshotFindings(nodes: readonly NodeSnapshot[]): Finding[] {
   for (const node of nodes) {
     const label = `${node.name} (${node.type.toLowerCase()})`;
     const finding = (check: Finding['check'], field: string | undefined, message: string, nodeId = node.id): void => {
-      findings.push({ check, nodeId, ...(field ? { field } : {}), message });
+      findings.push({
+        check,
+        nodeId,
+        ...(field ? { field } : {}),
+        ...(node.frame ? { frame: node.frame } : {}),
+        message,
+      });
     };
     if (node.fills.some((paint) => !paint.bound)) finding('binding', 'fill', `${label}: fill is a raw value`);
     if (node.strokes.some((paint) => !paint.bound)) finding('binding', 'stroke', `${label}: stroke is a raw value`);
