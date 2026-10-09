@@ -88,6 +88,24 @@ const set = {
             },
           ],
         },
+        {
+          id: '1:6',
+          name: 'Icon',
+          type: 'INSTANCE',
+          componentId: '7:1',
+          absoluteBoundingBox: { x: 40, y: 4, width: 12, height: 12 },
+          fills: [],
+          children: [
+            {
+              id: 'I1:6;7:2',
+              name: 'Vector',
+              type: 'VECTOR',
+              absoluteBoundingBox: { x: 41, y: 5, width: 10, height: 10 },
+              fills: [],
+              strokes: [{ type: 'SOLID', color: { r: 0, g: 0, b: 0, a: 1 } }],
+            },
+          ],
+        },
       ],
     },
     {
@@ -208,6 +226,17 @@ describe('readLibrary', () => {
     });
     expect(dark?.items[0]?.fill).toEqual({ r: 0, g: 0.3765, b: 0.2706, a: 1 });
     expect(snapshot.tokens[0]?.values['radius/4xl']).toBe(26);
+  });
+
+  it('reads the colour an icon instance draws its glyph in, which its own frame does not carry', async () => {
+    const snapshot = await readLibrary({
+      rest: createFigmaRest({ token: 't', fetch: fakeFetch() }),
+      fileKey: 'LIB',
+      part,
+    });
+    const icon = snapshot.components[0]?.variants[0]?.modes[0]?.items.find((item) => item.path === 'Icon');
+    expect(icon).toMatchObject({ glyph: { r: 0, g: 0, b: 0, a: 1 }, bindings: { glyph: null } });
+    expect(snapshot.components[0]?.variants[0]?.modes[0]?.items[1]).not.toHaveProperty('glyph');
   });
 
   it('takes a bound paint alpha from the token alone, not again from the paint opacity', async () => {

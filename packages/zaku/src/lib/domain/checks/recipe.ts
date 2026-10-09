@@ -79,6 +79,8 @@ function comparePart(at: Compare, part: RecipePart): void {
   colour(at, 'background', item.fill, part.background);
   if (item.type.toUpperCase() === 'TEXT') colour(at, 'color', item.textColor, part.color);
   colour(at, 'borderColor', item.stroke, part.borderColor);
+  // An icon draws in the colour its part computes to, since the code's glyph strokes in currentColor.
+  if (item.glyph) colour(at, 'glyph', item.glyph, part.color);
   if (item.path === '') {
     // Another face sets the label's advance, so a width the text sizes cannot match to the pixel.
     if (!at.fallback) size(at, 'width', item.width, part.width);

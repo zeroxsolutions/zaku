@@ -10,6 +10,11 @@ export const libraryItemSchema = z
     fill: rgbaSchema.nullable(),
     stroke: rgbaSchema.nullable(),
     textColor: rgbaSchema.nullable(),
+    /**
+     * An icon instance only: the colour its glyph is drawn in, which sits on the vectors inside it and not
+     * on the instance's own frame. Absent on every other layer.
+     */
+    glyph: rgbaSchema.optional(),
     width: z.number(),
     height: z.number(),
     padding: z.tuple([z.number(), z.number(), z.number(), z.number()]).nullable(),

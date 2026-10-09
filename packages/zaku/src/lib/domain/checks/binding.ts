@@ -1,6 +1,6 @@
 import type { Check, Finding } from '../findings.js';
 
-const PAINTS = ['fill', 'stroke', 'textColor'] as const;
+const PAINTS = ['fill', 'stroke', 'textColor', 'glyph'] as const;
 /** The semantic layer's groups; an axis token bound directly ties a component to one preset. */
 const SEMANTIC = /^(color|mode|radius)\//;
 
