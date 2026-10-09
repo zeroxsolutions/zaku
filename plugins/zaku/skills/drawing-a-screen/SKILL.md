@@ -91,8 +91,8 @@ every frame of one screen together. A target name is written out, because an abb
   and adding a size or a mode to the library is a change to the design system, which this drawing does
   not make.
 - **Text outside an instance uses a library text style**, and its colour is a semantic token.
-- **Real copy.** Placeholder copy, empty text and copy that differs between the targets of one state,
-  without a reason in the map, are defects.
+- **Real copy**, written as the next section says. Placeholder copy, empty text and copy that differs
+  between the targets of one state, without a reason in the map, are defects.
 - **The platform's own patterns per target.** A native frame takes the platform's navigation and way
   back (`mapping-a-feature` lists them); a web frame takes the web's.
 - **The platform's system bars on a native frame**: a status bar and a home indicator on iOS, a status
@@ -103,6 +103,42 @@ every frame of one screen together. A target name is written out, because an abb
   names the kit uses.
 - **On a migration, every block of the old drawing**: the logo, the copy, the controls, the photos.
   A block left out is a decision the map records with its reason, never a silent loss.
+
+## Writing the copy
+
+A line comes from the product's own records where they hold it: a place's name, its price, its
+summary. Where no file holds a line the frame needs, such as a label, a button or an error message,
+the drawing drafts it, and the reply marks every drafted line as proposed so the person who owns the
+copy approves it. A line left blank for want of a source fails the copy check as a placeholder does,
+and leaves the person nothing to approve.
+
+Every character of a line the drawing places, drafted or taken from a record, is one of:
+
+- printable ASCII;
+- a letter or mark of a script one of `zaku.yaml`'s `copy.locales` is written in, so Vietnamese keeps
+  its diacritics;
+- a symbol of one of `copy.currencies`, such as the dong sign;
+- a character the library's own components already carry.
+
+A record's text is rewritten to that rule before it is placed, because the check reads the frame and
+not the record: an em dash in a catalogue summary is a finding on every frame that shows it. The copy
+in a frame is what engineering copies into the message catalogue, where typography is rendering's job,
+so a glyph typed into the design travels into the code as a character no reviewer reads. Every other
+character is written as:
+
+| Found                       | Write instead                                         |
+| --------------------------- | ----------------------------------------------------- |
+| em dash, en dash            | `-`, or two sentences; a range of hours `07:00-21:30` |
+| curly quotes and apostrophe | `"` and `'`                                           |
+| ellipsis character          | `...`                                                 |
+| middle dot, bullet          | `-`, `,` or `:`, or one layer per item                |
+| arrows                      | `->`, `<-`, or the library's icon                     |
+| multiplication sign         | `x`                                                   |
+| U+00A0, U+200B/C/D, U+FEFF  | a space, or nothing                                   |
+| an emoji                    | a word, or a library icon                             |
+
+`zaku check` reports a character outside the rule under the copy check's `characters` field, and a
+phrase from its tell list under `tone`.
 
 ## Images
 
@@ -163,3 +199,18 @@ Each means the frame is leaving the design system. Undo it, and name the gap in 
 | A grey frame named after the photo it replaces         | The photo, brought in once and reused in every frame        |
 | Bringing the same photo in once per frame              | Brought in once, its asset reused                           |
 | Stretching a button to 44 or 48 for a native guideline | The design system's variant, and the gap named in the reply |
+
+## Verification Checklist
+
+Walk it before the reply reports a screen done, however long the drawing took; each line is read off
+the file and the check, not recalled.
+
+- [ ] Every state the map names has a frame on every target, named `<title> / <state> / <target name>`
+- [ ] Every block is an instance, changed only through what its component offers
+- [ ] Every native frame holds its platform's system bars
+- [ ] Every picture is an image the file holds, never a flat frame
+- [ ] Every copy line was read against the character rule, records' text included
+- [ ] Every drafted copy line is marked proposed in the reply
+- [ ] `zaku outline --frames <ids>` and `zaku check` ran after the last write, and the copy check names
+      no `characters` or `tone` finding
+- [ ] The reply names every frame drawn and every one left, and claims nothing the check contradicts
