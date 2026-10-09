@@ -1,6 +1,23 @@
-import { ChevronRightIcon } from 'lucide-react';
+import {
+  ChevronRightIcon,
+  CircleAlertIcon,
+  ComponentIcon,
+  ContrastIcon,
+  ImageIcon,
+  LayersIcon,
+  LibraryIcon,
+  type LucideIcon,
+  PaintBucketIcon,
+  PaletteIcon,
+  PointerIcon,
+  SquareStackIcon,
+  TagIcon,
+  TextQuoteIcon,
+  TypeIcon,
+  WorkflowIcon,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
+import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 import type { Finding } from '@/lib/panel-state';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +44,23 @@ const FINDINGS_LIST_CHECK_LABELS: Record<Finding['check'], string> = {
   naming: 'Layer naming',
   component: 'Components',
   prototype: 'Prototype',
+};
+
+/** A rule with no icon of its own takes the alert. */
+const FINDINGS_LIST_CHECK_ICONS: Partial<Record<Finding['check'], LucideIcon>> = {
+  binding: PaintBucketIcon,
+  tokens: PaletteIcon,
+  naming: TagIcon,
+  overrides: LayersIcon,
+  library: LibraryIcon,
+  component: ComponentIcon,
+  font: TypeIcon,
+  copy: TextQuoteIcon,
+  contrast: ContrastIcon,
+  'target-size': PointerIcon,
+  overlap: SquareStackIcon,
+  images: ImageIcon,
+  prototype: WorkflowIcon,
 };
 
 type FindingsListProps = {
@@ -73,13 +107,23 @@ function FindingsListGroup({ label, count, children, className, ...props }: Find
 type FindingsListRowProps = { finding: Finding; onSelectNode: (nodeId: string) => void } & React.ComponentProps<'li'>;
 
 function FindingsListRow({ finding, onSelectNode, className, ...props }: FindingsListRowProps): React.JSX.Element {
-  const { nodeId, field, message } = finding;
-  const where = [field, nodeId].filter((part) => part !== undefined).join(' · ');
+  const { check, nodeId, frame, field, message } = finding;
+  const Icon = FINDINGS_LIST_CHECK_ICONS[check] ?? CircleAlertIcon;
   const content = (
-    <ItemContent>
-      <ItemTitle className="text-xs">{message}</ItemTitle>
-      {where !== '' && <ItemDescription className="text-xs">{where}</ItemDescription>}
-    </ItemContent>
+    <>
+      <ItemMedia variant="icon" className="text-muted-foreground">
+        <Icon />
+      </ItemMedia>
+      <ItemContent>
+        <ItemTitle className="text-xs">{message}</ItemTitle>
+        {(frame !== undefined || field !== undefined) && (
+          <ItemDescription className="flex items-center gap-1.5 text-xs">
+            {frame !== undefined && <span className="truncate">{frame}</span>}
+            {field !== undefined && <Badge variant="outline">{field}</Badge>}
+          </ItemDescription>
+        )}
+      </ItemContent>
+    </>
   );
   return (
     <li data-slot="findings-list-row" className={className} {...props}>

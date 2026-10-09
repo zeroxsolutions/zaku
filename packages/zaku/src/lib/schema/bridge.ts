@@ -17,6 +17,8 @@ export const nodeSnapshotSchema = z
     name: z.string(),
     type: z.string(),
     parentId: z.string().nullable(),
+    /** The name of the top-level frame on the page that holds the node, so a reader finds the screen; null off a page. */
+    frame: z.string().nullable(),
     created: z.boolean(),
     fills: z.array(paintSchema),
     strokes: z.array(paintSchema),

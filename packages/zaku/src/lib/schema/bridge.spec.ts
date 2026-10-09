@@ -29,6 +29,7 @@ describe('the bridge messages', () => {
           name: 'Card',
           type: 'FRAME',
           parentId: '0:1',
+          frame: null,
           created: true,
           fills: [{ bound: false }],
           strokes: [],

@@ -6,6 +6,7 @@ const node = (patch: Partial<NodeSnapshot>): NodeSnapshot => ({
   name: 'Card',
   type: 'FRAME',
   parentId: '0:1',
+  frame: null,
   created: true,
   fills: [],
   strokes: [],
@@ -22,6 +23,13 @@ describe('snapshotFindings', () => {
       ['binding', 'fill'],
       ['binding', 'stroke'],
     ]);
+  });
+
+  it('names the top-level frame the layer sits in, where it has one', () => {
+    expect(snapshotFindings([node({ fills: [{ bound: false }], frame: 'Trips / Desktop' })])[0]).toMatchObject({
+      frame: 'Trips / Desktop',
+    });
+    expect(snapshotFindings([node({ fills: [{ bound: false }] })])[0]).not.toHaveProperty('frame');
   });
 
   it('passes bound paints', () => {

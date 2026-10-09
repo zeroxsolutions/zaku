@@ -1,3 +1,4 @@
+import { ScanSearchIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -20,6 +21,7 @@ function CheckBar({ count, canCheck, onCheck, className, ...props }: CheckBarPro
         {count === null ? '' : `${count} ${count === 1 ? 'finding' : 'findings'}`}
       </span>
       <Button size="sm" disabled={!canCheck} onClick={onCheck}>
+        <ScanSearchIcon data-icon="inline-start" />
         Check page
       </Button>
     </footer>
