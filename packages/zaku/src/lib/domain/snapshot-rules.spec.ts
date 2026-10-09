@@ -172,6 +172,65 @@ describe('snapshotFindings', () => {
     });
   });
 
+  describe('in a product file', () => {
+    const rawSpacing = [{ field: 'paddingTop' as const, value: 48, bound: false }];
+    const kindPage = { id: '0:3', name: 'data-display / PlaceRow' };
+    const featurePage = { id: '0:4', name: 'Trips' };
+
+    it("leaves a kind page's documentation views to the reference", () => {
+      const body = node({ name: 'Body', page: kindPage, componentSource: false, spacing: rawSpacing });
+      const label = node({ type: 'TEXT', name: 'Default', page: kindPage, componentSource: false });
+      expect(snapshotFindings([body, label])).toEqual([]);
+    });
+
+    it("leaves a feature component's views in its _components Section to the reference", () => {
+      const body = node({
+        name: 'Body',
+        page: featurePage,
+        frame: '_components',
+        componentSource: false,
+        spacing: rawSpacing,
+      });
+      expect(snapshotFindings([body])).toEqual([]);
+    });
+
+    it('holds the component itself, on a kind page or in _components, to every rule', () => {
+      const onKindPage = node({
+        type: 'COMPONENT',
+        name: 'PlaceRow',
+        page: kindPage,
+        componentSource: true,
+        spacing: rawSpacing,
+      });
+      const inSection = node({
+        type: 'COMPONENT',
+        name: 'TripCard',
+        page: featurePage,
+        frame: '_components',
+        componentSource: true,
+        spacing: rawSpacing,
+      });
+      expect(snapshotFindings([onKindPage, inSection]).map((f) => f.field)).toEqual(['paddingTop', 'paddingTop']);
+    });
+
+    it('holds a screen on a feature page, and a page whose first part is not a kind, to the spacing rule', () => {
+      const screen = node({
+        name: 'Trips / Default / Desktop',
+        page: featurePage,
+        frame: 'Trips',
+        componentSource: false,
+        spacing: rawSpacing,
+      });
+      const notAKind = node({
+        name: 'Body',
+        page: { id: '0:5', name: 'Trips / Archive' },
+        componentSource: false,
+        spacing: rawSpacing,
+      });
+      expect(snapshotFindings([screen, notAKind]).map((f) => f.field)).toEqual(['paddingTop', 'paddingTop']);
+    });
+  });
+
   describe('a component set', () => {
     const variant = (id: string, x: number, y: number): NonNullable<NodeSnapshot['set']>['variants'][number] => ({
       id,

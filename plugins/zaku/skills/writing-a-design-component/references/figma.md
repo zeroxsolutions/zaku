@@ -25,9 +25,14 @@ feature until a second feature needs it.
   alphabetical, with a page named `---` between kinds, which the pages panel draws as a divider. The
   library file names its pages its own way (`building-the-library`); the two files never share a
   page.
-- A component one feature uses lives in a Section named `_components` on that feature's page.
+- A component one feature uses lives in a Section named `_components` on that feature's page, with its
+  `<Component>` and `<Component> / Guidance` frames beside it in the same Section.
 - A component's page holds a `<Component>` frame (a `DS/Header` instance and the component set) and a
   `<Component> / Guidance` frame, as the library's component pages do.
+- zaku's checks read a node on a `<kind> / <Component>` page, or in a `_components` Section, as
+  documentation unless a component or a component set holds it, and leave its padding, gaps and text
+  style to the documentation's measures; its paints are still held. A screen on a feature page is
+  held to every rule.
 
 ## Moving
 

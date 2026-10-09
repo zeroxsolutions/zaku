@@ -48,6 +48,14 @@ Without `--css` it refuses, exit 3.
 A `mode/<name>` token comes from a class pair that takes another role under `dark:`; its description is
 the pair.
 
+## Spacing
+
+Tailwind CSS v4 writes `p-<number>` as `padding: calc(var(--spacing) * <number>)`, and the default theme
+sets `--spacing: 0.25rem` (Tailwind docs, "padding" and "Theme variables"). So `spacing/<step>` is the
+step times 4 px at a 16 px root: `px-2.5` is `spacing/2_5`, 10; `gap-1.5` is `spacing/1_5`, 6. A stylesheet
+that sets its own `--spacing` in `@theme` changes the unit. `p-px` is 1 px, `spacing/px`. Each token's
+description is `calc(var(--spacing) * <step>)` and the classes that use it.
+
 ## The text styles
 
 `typography/<name>` for h1 to h4, p, blockquote, list, inline-code, lead, large, small and muted, from

@@ -36539,11 +36539,15 @@ function refusedCalls(script) {
 var ENTRY_PAGE_PREFIX = '\u2756 ';
 var DOCUMENTATION_PAGES = /* @__PURE__ */ new Set(['Thumbnail', 'Component for Docs']);
 var EDGE_TOLERANCE = 0.01;
+var COMPONENT_KINDS = ['data-entry', 'navigation', 'feedback', 'data-display', 'layout', 'general'];
+var KIND_PAGE = new RegExp(`^(${COMPONENT_KINDS.join('|')}) / .+$`);
+var FEATURE_COMPONENTS_SECTION = '_components';
 function isDocumentation(node2) {
   const page = node2.page?.name;
   if (page === void 0) return false;
   if (DOCUMENTATION_PAGES.has(page)) return true;
-  return page.startsWith(ENTRY_PAGE_PREFIX) && node2.componentSource === false;
+  if (node2.componentSource !== false) return false;
+  return page.startsWith(ENTRY_PAGE_PREFIX) || KIND_PAGE.test(page) || node2.frame === FEATURE_COMPONENTS_SECTION;
 }
 function overlaps(a, b) {
   const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);

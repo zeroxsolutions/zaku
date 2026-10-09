@@ -22,7 +22,10 @@ Pending the RED runs.
 
 ## What shipped on weak evidence
 
-Pending the RED runs.
+- The line that a component's views keep the documentation's measures, and the reference's line on
+  where zaku's checks read documentation. No run measured them; zaku's spacing rule refused the
+  measures this skill already prescribed for the views (the checker's own spec failed first), and the
+  library's documentation had been exempted for the same reason.
 
 ## Tests
 
@@ -40,3 +43,6 @@ Pending the RED runs.
 3. `references/sketch.md` removed with the Sketch reader in the checker: a skill-arm run on Sketch
    2026.3.1 built a library the user judged far below the Figma one, and the team will not maintain or
    check a second tool. The body stays tool-neutral; Figma is its only reference.
+4. The views' measures left to the documentation: zaku's checks read a node on a `<kind> / <Component>`
+   page or in a `_components` Section, outside the components, as documentation, as they read the
+   library's. A feature component's two views sit in its `_components` Section beside it.

@@ -133,12 +133,13 @@ its own library. The design system's reference lists its axes and the `zaku.yaml
 product's choices; a value a product adds that the design system does not generate is the `project`
 axis, one value per product.
 
-| Semantic token     | When                                                                     | Its value                                                                                                                                                                                                                               |
-| ------------------ | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `color/<role>`     | every colour role of the design system                                   | the role's value on its axis, in Light and Dark                                                                                                                                                                                         |
-| `color/<role>-<n>` | the code applies a role at an opacity (`bg-destructive/10`)              | the role at n%, in Light and Dark                                                                                                                                                                                                       |
-| `mode/<name>`      | a part takes a different role in Dark (`bg-background dark:bg-input/30`) | each mode's own `color/` token; the description is the code that picks it; `<name>` is the component or shared role it paints, then the variant, part or state (`button-outline-bg`, `switch-thumb-on`, `control-bg`, `invalid-border`) |
-| `radius/<step>`    | every step of the radius scale                                           | the radius axis's step                                                                                                                                                                                                                  |
+| Semantic token     | When                                                                                    | Its value                                                                                                                                                                                                                               |
+| ------------------ | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `color/<role>`     | every colour role of the design system                                                  | the role's value on its axis, in Light and Dark                                                                                                                                                                                         |
+| `color/<role>-<n>` | the code applies a role at an opacity (`bg-destructive/10`)                             | the role at n%, in Light and Dark                                                                                                                                                                                                       |
+| `mode/<name>`      | a part takes a different role in Dark (`bg-background dark:bg-input/30`)                | each mode's own `color/` token; the description is the code that picks it; `<name>` is the component or shared role it paints, then the variant, part or state (`button-outline-bg`, `switch-thumb-on`, `control-bg`, `invalid-border`) |
+| `radius/<step>`    | every step of the radius scale                                                          | the radius axis's step                                                                                                                                                                                                                  |
+| `spacing/<step>`   | every step a spacing class in the code uses: padding, gap, margin (`px-2.5`, `gap-1.5`) | the step times the design system's spacing unit, in px; its description is that formula and the classes that use it                                                                                                                     |
 
 - **A component uses only semantic tokens**, so one change of a product's choices reaches every
   component without touching one.
@@ -148,6 +149,13 @@ axis, one value per product.
 - **A derived token keeps its formula**, written in its description and computed, never copied by eye:
   `<role>-<n>` is the role's colour with its alpha at n/100, in Light and in Dark, so a change of the
   role carries it.
+- **Every padding and gap is bound to a `spacing/` token**, because zaku's checks refuse a raw one, and
+  the token is computed from the code rather than invented to pass. The library holds one per step a
+  spacing class uses in the design system's components and their demos, named for the step as the
+  tool's reference spells it. A design system whose spacing is one unit times a step (Tailwind's) has a
+  value for any step, so a rule that accepted any raw value on its scale would accept nearly every
+  number; a token per step keeps the binding checkable. A step a screen needs that the library lacks
+  is a library change, computed the same way.
 - **Text styles are the design system's type styles**, `typography/<name>`, each with the size, weight,
   line height and tracking the code computes, its family from the typography axis, and the code that
   sets it as its description. The design system's reference lists them. A stack that opens on a

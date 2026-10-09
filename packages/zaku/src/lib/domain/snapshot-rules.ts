@@ -12,15 +12,24 @@ const DOCUMENTATION_PAGES: ReadonlySet<string> = new Set(['Thumbnail', 'Componen
 /** A box edge this close to another is touching, not overlapping. */
 const EDGE_TOLERANCE = 0.01;
 
+/** The kinds a product component is filed under, as writing-a-design-component's table names them. */
+const COMPONENT_KINDS = ['data-entry', 'navigation', 'feedback', 'data-display', 'layout', 'general'] as const;
+/** A product file's page for one component, `<kind> / <Component>`, as writing-a-design-component's Figma reference names it. */
+const KIND_PAGE = new RegExp(`^(${COMPONENT_KINDS.join('|')}) / .+$`);
+/** The Section on a feature's page holding the components only that feature uses, with their views. */
+const FEATURE_COMPONENTS_SECTION = '_components';
+
 /**
- * Whether the node is the library's documentation, whose measures and type the reference writes as numbers:
- * anything on the cover or documentation-component page, and anything on an entry page outside its components.
+ * Whether the node is documentation, whose measures and type the references write as numbers. In the library: anything
+ * on the cover or documentation-component page, and anything on an entry page outside its components. In a product
+ * file: anything on a kind's component page, or in a feature's `_components` Section, outside the components.
  */
 function isDocumentation(node: NodeSnapshot): boolean {
   const page = node.page?.name;
   if (page === undefined) return false;
   if (DOCUMENTATION_PAGES.has(page)) return true;
-  return page.startsWith(ENTRY_PAGE_PREFIX) && node.componentSource === false;
+  if (node.componentSource !== false) return false;
+  return page.startsWith(ENTRY_PAGE_PREFIX) || KIND_PAGE.test(page) || node.frame === FEATURE_COMPONENTS_SECTION;
 }
 
 type Box = { x: number; y: number; width: number; height: number };
