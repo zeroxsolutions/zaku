@@ -16,6 +16,10 @@ export interface Panel {
   /** Revokes this plugin's pairing and forgets its token. */
   unpair(): void;
   select(nodeId: string): void;
+  /** Closes the sandbox error. */
+  dismissError(): void;
+  /** Sends the panel command that threw again, and closes its error. */
+  retryError(): void;
   resize(width: number, height: number): void;
 }
 
@@ -72,6 +76,11 @@ export function usePanel(): Panel {
       dispatch({ kind: 'unpair' });
     },
     select: (nodeId) => toSandbox({ type: 'select', nodeId }),
+    dismissError: () => dispatch({ kind: 'dismiss-error' }),
+    retryError: (): void => {
+      if (state.error?.retry) toSandbox(state.error.retry);
+      dispatch({ kind: 'dismiss-error' });
+    },
     resize: (width, height) => toSandbox({ type: 'resize', width, height }),
   };
 }

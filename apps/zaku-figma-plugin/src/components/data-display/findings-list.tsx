@@ -1,15 +1,23 @@
 import {
   ChevronRightIcon,
-  CircleAlertIcon,
+  CodeXmlIcon,
   ComponentIcon,
   ContrastIcon,
+  CornerUpLeftIcon,
+  FileCodeIcon,
+  FrameIcon,
+  HistoryIcon,
   ImageIcon,
   LayersIcon,
+  LayoutTemplateIcon,
   LibraryIcon,
+  ListChecksIcon,
   type LucideIcon,
   PaintBucketIcon,
   PaletteIcon,
+  PanelTopIcon,
   PointerIcon,
+  RouteIcon,
   SquareStackIcon,
   TagIcon,
   TextQuoteIcon,
@@ -47,8 +55,17 @@ const FINDINGS_LIST_CHECK_LABELS: Record<Finding['check'], string> = {
   prototype: 'Prototype',
 };
 
-/** A rule with no icon of its own takes the alert. */
-const FINDINGS_LIST_CHECK_ICONS: Partial<Record<Finding['check'], LucideIcon>> = {
+/** Every check has its own icon, so a new check fails the typecheck until it is given one. */
+const FINDINGS_LIST_CHECK_ICONS: Record<Finding['check'], LucideIcon> = {
+  schema: FileCodeIcon,
+  reachability: RouteIcon,
+  'way-back': CornerUpLeftIcon,
+  coverage: ListChecksIcon,
+  recipe: CodeXmlIcon,
+  freshness: HistoryIcon,
+  frame: FrameIcon,
+  'system-bars': PanelTopIcon,
+  placement: LayoutTemplateIcon,
   binding: PaintBucketIcon,
   tokens: PaletteIcon,
   naming: TagIcon,
@@ -109,7 +126,7 @@ type FindingsListRowProps = { finding: Finding; onSelectNode: (nodeId: string) =
 
 function FindingsListRow({ finding, onSelectNode, className, ...props }: FindingsListRowProps): React.JSX.Element {
   const { check, nodeId, frame, field, message } = finding;
-  const Icon = FINDINGS_LIST_CHECK_ICONS[check] ?? CircleAlertIcon;
+  const Icon = FINDINGS_LIST_CHECK_ICONS[check];
   return (
     <li data-slot="findings-list-row" className={className} {...props}>
       <Item size="xs">

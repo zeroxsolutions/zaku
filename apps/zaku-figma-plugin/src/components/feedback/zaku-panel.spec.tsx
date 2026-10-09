@@ -21,6 +21,8 @@ async function panelOver(state: Partial<PanelState>): Promise<unknown[][]> {
       unpair={record('unpair')}
       select={record('select')}
       resize={record('resize')}
+      dismissError={record('dismissError')}
+      retryError={record('retryError')}
     />,
   );
   return calls;
@@ -85,5 +87,41 @@ describe('ZakuPanel', () => {
     await panelOver({ pairing: { phase: 'paired' }, connection: { state: 'reconnecting', port: 7340 } });
     await expect.element(page.getByText('Reconnecting', { exact: true })).toBeVisible();
     await expect.element(page.getByRole('button', { name: 'Unpair' })).not.toBeInTheDocument();
+  });
+
+  it('asks before it unpairs, and unpairs only on the destructive Unpair', async () => {
+    const calls = await panelOver({ pairing: { phase: 'paired' }, connection: { state: 'connected', port: 7340 } });
+    await page.getByRole('button', { name: 'Unpair' }).click();
+    const dialog = page.getByRole('alertdialog', { name: 'Unpair zaku?' });
+    await expect.element(dialog).toBeVisible();
+    await expect
+      .element(
+        dialog.getByText('zaku-mcp forgets this plugin. To connect again, ask your agent for a new pairing code.'),
+      )
+      .toBeVisible();
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect.element(dialog).not.toBeInTheDocument();
+    expect(calls).toEqual([]);
+    await page.getByRole('button', { name: 'Unpair' }).click();
+    await page.getByRole('alertdialog', { name: 'Unpair zaku?' }).getByRole('button', { name: 'Unpair' }).click();
+    expect(calls).toEqual([['unpair']]);
+  });
+
+  it('shows a sandbox error the user can dismiss', async () => {
+    const calls = await panelOver({ error: { message: 'TypeError: node is gone', retry: null } });
+    const alert = page.getByRole('alert');
+    await expect.element(alert.getByText('The plugin hit an error in Figma')).toBeVisible();
+    await expect.element(alert.getByText('TypeError: node is gone')).toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+    await page.getByRole('button', { name: 'Dismiss' }).click();
+    expect(calls).toEqual([['dismissError']]);
+  });
+
+  it('offers to retry a panel command that threw', async () => {
+    const calls = await panelOver({
+      error: { message: 'TypeError: node is gone', retry: { type: 'select', nodeId: '1:1' } },
+    });
+    await page.getByRole('button', { name: 'Retry' }).click();
+    expect(calls).toEqual([['retryError']]);
   });
 });

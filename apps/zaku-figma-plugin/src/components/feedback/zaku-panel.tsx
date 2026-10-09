@@ -4,10 +4,11 @@ import { FindingsEmpty } from '@/components/data-display/findings-empty';
 import { FindingsList } from '@/components/data-display/findings-list';
 import { PairingForm } from '@/components/data-entry/pairing-form';
 import { PortForm } from '@/components/data-entry/port-form';
+import { SandboxErrorAlert } from '@/components/feedback/sandbox-error-alert';
 import { StatusBar } from '@/components/feedback/status-bar';
+import { UnpairDialog } from '@/components/feedback/unpair-dialog';
 import { CheckBar } from '@/components/general/check-bar';
 import { ResizeHandle } from '@/components/general/resize-handle';
-import { Button } from '@/components/ui/button';
 import type { Panel } from '@/hooks/use-panel';
 import { panelStatus } from '@/lib/panel-state';
 import { cn } from '@/lib/utils';
@@ -27,6 +28,8 @@ function ZakuPanel({
   unpair,
   select,
   resize,
+  dismissError,
+  retryError,
   className,
   ...props
 }: ZakuPanelProps): React.JSX.Element {
@@ -38,16 +41,14 @@ function ZakuPanel({
     <div data-slot="zaku-panel" className={cn('flex h-screen flex-col', className)} {...props}>
       <StatusBar status={status} file={state.file} running={state.running} now={now}>
         {/* Unpair revokes through zaku-mcp, so it means nothing while the panel cannot reach it. */}
-        {state.pairing.phase === 'paired' && connected && (
-          <Button variant="ghost" size="xs" onClick={unpair}>
-            Unpair
-          </Button>
-        )}
+        {state.pairing.phase === 'paired' && connected && <UnpairDialog onUnpair={unpair} />}
       </StatusBar>
       {state.error !== null && (
-        <p role="alert" className="text-error border-b px-3 py-2 text-xs">
-          {state.error}
-        </p>
+        <div className="px-3 pt-3">
+          <SandboxErrorAlert onDismiss={dismissError} onRetry={state.error.retry !== null ? retryError : undefined}>
+            {state.error.message}
+          </SandboxErrorAlert>
+        </div>
       )}
       <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {state.connection.state === 'disconnected' ? (

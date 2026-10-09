@@ -25,6 +25,12 @@ export type Pairing =
 /** What the status bar names: not paired outranks whatever the socket is doing, short of nothing answering. */
 export type PanelStatus = Connection | { state: 'unpaired' };
 
+/** A throw the sandbox reported; `retry` is the panel's own command that threw, to send again, or null. */
+export interface SandboxError {
+  message: string;
+  retry: object | null;
+}
+
 export interface PanelState {
   connection: Connection;
   pairing: Pairing;
@@ -32,7 +38,7 @@ export interface PanelState {
   running: Running | null;
   /** Null until the first check reports, so a clean page reads apart from one never checked. */
   findings: Finding[] | null;
-  error: string | null;
+  error: SandboxError | null;
 }
 
 /** What the panel sees: the relay's connection, and the traffic it carries each way. */
@@ -42,7 +48,9 @@ export type PanelEvent =
   | { kind: 'from-sandbox'; message: unknown }
   /** The user sent a pairing code. */
   | { kind: 'pair' }
-  | { kind: 'unpair' };
+  | { kind: 'unpair' }
+  /** The user closed the sandbox error, or sent its command again. */
+  | { kind: 'dismiss-error' };
 
 export const INITIAL_PANEL_STATE: PanelState = {
   connection: { state: 'idle' },
@@ -77,13 +85,15 @@ function fromSandbox(state: PanelState, message: PluginMessage): PanelState {
 }
 
 /** The sandbox's own report of a throw it could not answer through the bridge. */
-function sandboxError(message: unknown): string | null {
+function sandboxError(message: unknown): SandboxError | null {
   if (typeof message !== 'object' || message === null) return null;
-  const { type, error } = message as { type?: unknown; error?: unknown };
-  return type === 'sandbox-error' && typeof error === 'string' ? error : null;
+  const { type, error, retry } = message as { type?: unknown; error?: unknown; retry?: unknown };
+  if (type !== 'sandbox-error' || typeof error !== 'string') return null;
+  return { message: error, retry: typeof retry === 'object' && retry !== null ? retry : null };
 }
 
 export function panelReducer(state: PanelState, event: PanelEvent): PanelState {
+  if (event.kind === 'dismiss-error') return { ...state, error: null };
   if (event.kind === 'pair') return { ...state, pairing: { phase: 'unpaired', refusal: null } };
   if (event.kind === 'unpair')
     return { ...state, pairing: { phase: 'unpaired', refusal: null }, file: null, findings: null, running: null };
