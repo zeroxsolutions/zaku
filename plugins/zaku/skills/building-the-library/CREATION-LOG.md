@@ -38,6 +38,9 @@ Pending the RED runs.
 - The icon colour in item 2. Two real sessions drew a library button whose label was white and whose
   prefix icon was black, and nothing compared the icon's colour with the code. `zaku check` now reads an icon instance's glyph colour and holds
   it to the colour the recipe page computes for that icon part. No run has measured the skill line.
+  Carbon states the same practice: its Button usage page, "Icons must match the color value of the
+  label within a button", and its Icons usage page (last updated Aug 12, 2026), "match your icon color
+  with your text color when pairing them".
 
 ## Tests
 
