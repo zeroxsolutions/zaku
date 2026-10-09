@@ -51,6 +51,17 @@ describe('zakuConfigSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('refuses a copy locale that is not a language tag, and a currency that is not ISO 4217', () => {
+    expect(
+      zakuConfigSchema.safeParse({ ...minimal, copy: { locales: ['en', 'vi'], currencies: ['VND'] } }).success,
+    ).toBe(true);
+    const result = zakuConfigSchema.safeParse({ ...minimal, copy: { locales: ['english'], currencies: ['DONG'] } });
+    expect(result.error?.issues.map((issue) => issue.path)).toEqual([
+      ['copy', 'locales', 0],
+      ['copy', 'currencies', 0],
+    ]);
+  });
+
   it('refuses a key it does not know', () => {
     expect(zakuConfigSchema.safeParse({ ...minimal, theme: 'dark' }).success).toBe(false);
   });

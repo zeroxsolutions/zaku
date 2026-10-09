@@ -9424,7 +9424,7 @@ var require_inject = __commonJS({
     'use strict';
     Object.defineProperty(exports, '__esModule', { value: true });
     var reflection_helpers_1 = require_reflection_helpers();
-    function inject7(token, options) {
+    function inject8(token, options) {
       const data = {
         token,
         multiple: false,
@@ -9432,7 +9432,7 @@ var require_inject = __commonJS({
       };
       return reflection_helpers_1.defineInjectionTokenMetadata(data);
     }
-    exports.default = inject7;
+    exports.default = inject8;
   },
 });
 
@@ -9444,7 +9444,7 @@ var require_injectable = __commonJS({
     var reflection_helpers_1 = require_reflection_helpers();
     var dependency_container_1 = require_dependency_container();
     var dependency_container_2 = require_dependency_container();
-    function injectable12(options) {
+    function injectable13(options) {
       return function (target) {
         dependency_container_1.typeInfo.set(target, reflection_helpers_1.getParamInfo(target));
         if (options && options.token) {
@@ -9458,7 +9458,7 @@ var require_injectable = __commonJS({
         }
       };
     }
-    exports.default = injectable12;
+    exports.default = injectable13;
   },
 });
 
@@ -13344,8 +13344,21 @@ var RecordBudgetCalls = class extends DomainCommand {
   }
 };
 
+// packages/zaku/dist/lib/commands/execute-script.js
+var ExecuteScript = class extends DomainCommand {
+  file;
+  script;
+  mode;
+  constructor(input2) {
+    super();
+    this.file = input2.file;
+    this.script = input2.script;
+    this.mode = input2.mode;
+  }
+};
+
 // packages/zaku/dist/lib/domain/checks/binding.js
-var PAINTS = ['fill', 'stroke', 'textColor'];
+var PAINTS = ['fill', 'stroke', 'textColor', 'glyph'];
 var SEMANTIC = /^(color|mode|radius)\//;
 var binding = ({ library }) => {
   if (!library) return { notRun: 'library.json is missing' };
@@ -14967,12 +14980,7 @@ var $ZodRealError = $constructor('$ZodError', initializer, void 0, {
 function node(obj, key, make) {
   if (!Object.prototype.hasOwnProperty.call(obj, key)) {
     if (key === '__proto__') {
-      Object.defineProperty(obj, key, {
-        value: make(),
-        writable: true,
-        enumerable: true,
-        configurable: true,
-      });
+      Object.defineProperty(obj, key, { value: make(), writable: true, enumerable: true, configurable: true });
     } else {
       obj[key] = make();
     }
@@ -19057,10 +19065,7 @@ var error4 = () => {
       unit: '\u0441\u0438\u043C\u0432\u043E\u043B\u0430',
       verb: '\u0434\u0430 \u0441\u044A\u0434\u044A\u0440\u0436\u0430',
     },
-    file: {
-      unit: '\u0431\u0430\u0439\u0442\u0430',
-      verb: '\u0434\u0430 \u0441\u044A\u0434\u044A\u0440\u0436\u0430',
-    },
+    file: { unit: '\u0431\u0430\u0439\u0442\u0430', verb: '\u0434\u0430 \u0441\u044A\u0434\u044A\u0440\u0436\u0430' },
     array: {
       unit: '\u0435\u043B\u0435\u043C\u0435\u043D\u0442\u0430',
       verb: '\u0434\u0430 \u0441\u044A\u0434\u044A\u0440\u0436\u0430',
@@ -19190,22 +19195,10 @@ function bg_default() {
 // node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/locales/bn.js
 var error5 = () => {
   const Sizable = {
-    string: {
-      unit: '\u0985\u0995\u09CD\u09B7\u09B0',
-      verb: '\u09A5\u09BE\u0995\u09A4\u09C7 \u09B9\u09AC\u09C7',
-    },
-    file: {
-      unit: '\u09AC\u09BE\u0987\u099F',
-      verb: '\u09A5\u09BE\u0995\u09A4\u09C7 \u09B9\u09AC\u09C7',
-    },
-    array: {
-      unit: '\u0986\u0987\u099F\u09C7\u09AE',
-      verb: '\u09A5\u09BE\u0995\u09A4\u09C7 \u09B9\u09AC\u09C7',
-    },
-    set: {
-      unit: '\u0986\u0987\u099F\u09C7\u09AE',
-      verb: '\u09A5\u09BE\u0995\u09A4\u09C7 \u09B9\u09AC\u09C7',
-    },
+    string: { unit: '\u0985\u0995\u09CD\u09B7\u09B0', verb: '\u09A5\u09BE\u0995\u09A4\u09C7 \u09B9\u09AC\u09C7' },
+    file: { unit: '\u09AC\u09BE\u0987\u099F', verb: '\u09A5\u09BE\u0995\u09A4\u09C7 \u09B9\u09AC\u09C7' },
+    array: { unit: '\u0986\u0987\u099F\u09C7\u09AE', verb: '\u09A5\u09BE\u0995\u09A4\u09C7 \u09B9\u09AC\u09C7' },
+    set: { unit: '\u0986\u0987\u099F\u09C7\u09AE', verb: '\u09A5\u09BE\u0995\u09A4\u09C7 \u09B9\u09AC\u09C7' },
     map: {
       unit: '\u098F\u09A8\u09CD\u099F\u09CD\u09B0\u09BF',
       verb: '\u09A5\u09BE\u0995\u09A4\u09C7 \u09B9\u09AC\u09C7',
@@ -19915,14 +19908,8 @@ var error11 = () => {
       verb: '\u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9',
     },
     file: { unit: 'bytes', verb: '\u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9' },
-    array: {
-      unit: '\u03C3\u03C4\u03BF\u03B9\u03C7\u03B5\u03AF\u03B1',
-      verb: '\u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9',
-    },
-    set: {
-      unit: '\u03C3\u03C4\u03BF\u03B9\u03C7\u03B5\u03AF\u03B1',
-      verb: '\u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9',
-    },
+    array: { unit: '\u03C3\u03C4\u03BF\u03B9\u03C7\u03B5\u03AF\u03B1', verb: '\u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9' },
+    set: { unit: '\u03C3\u03C4\u03BF\u03B9\u03C7\u03B5\u03AF\u03B1', verb: '\u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9' },
     map: {
       unit: '\u03BA\u03B1\u03C4\u03B1\u03C7\u03C9\u03C1\u03AE\u03C3\u03B5\u03B9\u03C2',
       verb: '\u03BD\u03B1 \u03AD\u03C7\u03B5\u03B9',
@@ -20407,22 +20394,10 @@ var error15 = () => {
       unit: '\u06A9\u0627\u0631\u0627\u06A9\u062A\u0631',
       verb: '\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F',
     },
-    file: {
-      unit: '\u0628\u0627\u06CC\u062A',
-      verb: '\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F',
-    },
-    array: {
-      unit: '\u0622\u06CC\u062A\u0645',
-      verb: '\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F',
-    },
-    set: {
-      unit: '\u0622\u06CC\u062A\u0645',
-      verb: '\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F',
-    },
-    map: {
-      unit: '\u0622\u06CC\u062A\u0645',
-      verb: '\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F',
-    },
+    file: { unit: '\u0628\u0627\u06CC\u062A', verb: '\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F' },
+    array: { unit: '\u0622\u06CC\u062A\u0645', verb: '\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F' },
+    set: { unit: '\u0622\u06CC\u062A\u0645', verb: '\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F' },
+    map: { unit: '\u0622\u06CC\u062A\u0645', verb: '\u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u062F' },
   };
   function getSizing(origin) {
     return Sizable[origin] ?? null;
@@ -20892,22 +20867,10 @@ function fr_CA_default() {
 // node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/locales/gu.js
 var error19 = () => {
   const Sizable = {
-    string: {
-      unit: '\u0A85\u0A95\u0ACD\u0AB7\u0AB0',
-      verb: '\u0AB9\u0ACB\u0AB5\u0ABE \u0A9C\u0ACB\u0A88\u0A8F',
-    },
-    file: {
-      unit: '\u0AAC\u0ABE\u0AAF\u0A9F',
-      verb: '\u0AB9\u0ACB\u0AB5\u0ABE \u0A9C\u0ACB\u0A88\u0A8F',
-    },
-    array: {
-      unit: '\u0A86\u0A87\u0A9F\u0AAE',
-      verb: '\u0AB9\u0ACB\u0AB5\u0ABE \u0A9C\u0ACB\u0A88\u0A8F',
-    },
-    set: {
-      unit: '\u0A86\u0A87\u0A9F\u0AAE',
-      verb: '\u0AB9\u0ACB\u0AB5\u0ABE \u0A9C\u0ACB\u0A88\u0A8F',
-    },
+    string: { unit: '\u0A85\u0A95\u0ACD\u0AB7\u0AB0', verb: '\u0AB9\u0ACB\u0AB5\u0ABE \u0A9C\u0ACB\u0A88\u0A8F' },
+    file: { unit: '\u0AAC\u0ABE\u0AAF\u0A9F', verb: '\u0AB9\u0ACB\u0AB5\u0ABE \u0A9C\u0ACB\u0A88\u0A8F' },
+    array: { unit: '\u0A86\u0A87\u0A9F\u0AAE', verb: '\u0AB9\u0ACB\u0AB5\u0ABE \u0A9C\u0ACB\u0A88\u0A8F' },
+    set: { unit: '\u0A86\u0A87\u0A9F\u0AAE', verb: '\u0AB9\u0ACB\u0AB5\u0ABE \u0A9C\u0ACB\u0A88\u0A8F' },
     map: {
       unit: '\u0A8F\u0AA8\u0ACD\u0A9F\u0ACD\u0AB0\u0AC0',
       verb: '\u0AB9\u0ACB\u0AB5\u0ABE \u0A9C\u0ACB\u0A88\u0A8F',
@@ -21024,19 +20987,13 @@ var error20 = () => {
   const TypeNames = {
     string: { label: '\u05DE\u05D7\u05E8\u05D5\u05D6\u05EA', gender: 'f' },
     number: { label: '\u05DE\u05E1\u05E4\u05E8', gender: 'm' },
-    boolean: {
-      label: '\u05E2\u05E8\u05DA \u05D1\u05D5\u05DC\u05D9\u05D0\u05E0\u05D9',
-      gender: 'm',
-    },
+    boolean: { label: '\u05E2\u05E8\u05DA \u05D1\u05D5\u05DC\u05D9\u05D0\u05E0\u05D9', gender: 'm' },
     bigint: { label: 'BigInt', gender: 'm' },
     date: { label: '\u05EA\u05D0\u05E8\u05D9\u05DA', gender: 'm' },
     array: { label: '\u05DE\u05E2\u05E8\u05DA', gender: 'm' },
     object: { label: '\u05D0\u05D5\u05D1\u05D9\u05D9\u05E7\u05D8', gender: 'm' },
     null: { label: '\u05E2\u05E8\u05DA \u05E8\u05D9\u05E7 (null)', gender: 'm' },
-    undefined: {
-      label: '\u05E2\u05E8\u05DA \u05DC\u05D0 \u05DE\u05D5\u05D2\u05D3\u05E8 (undefined)',
-      gender: 'm',
-    },
+    undefined: { label: '\u05E2\u05E8\u05DA \u05DC\u05D0 \u05DE\u05D5\u05D2\u05D3\u05E8 (undefined)', gender: 'm' },
     symbol: { label: '\u05E1\u05D9\u05DE\u05D1\u05D5\u05DC (Symbol)', gender: 'm' },
     function: { label: '\u05E4\u05D5\u05E0\u05E7\u05E6\u05D9\u05D4', gender: 'f' },
     map: { label: '\u05DE\u05E4\u05D4 (Map)', gender: 'f' },
@@ -21091,10 +21048,7 @@ var error20 = () => {
   };
   const FormatDictionary = {
     regex: { label: '\u05E7\u05DC\u05D8', gender: 'm' },
-    email: {
-      label: '\u05DB\u05EA\u05D5\u05D1\u05EA \u05D0\u05D9\u05DE\u05D9\u05D9\u05DC',
-      gender: 'f',
-    },
+    email: { label: '\u05DB\u05EA\u05D5\u05D1\u05EA \u05D0\u05D9\u05DE\u05D9\u05D9\u05DC', gender: 'f' },
     url: { label: '\u05DB\u05EA\u05D5\u05D1\u05EA \u05E8\u05E9\u05EA', gender: 'f' },
     emoji: { label: "\u05D0\u05D9\u05DE\u05D5\u05D2'\u05D9", gender: 'm' },
     uuid: { label: 'UUID', gender: 'm' },
@@ -21116,10 +21070,7 @@ var error20 = () => {
     mac: { label: '\u05DB\u05EA\u05D5\u05D1\u05EA MAC', gender: 'f' },
     cidrv4: { label: '\u05D8\u05D5\u05D5\u05D7 IPv4', gender: 'm' },
     cidrv6: { label: '\u05D8\u05D5\u05D5\u05D7 IPv6', gender: 'm' },
-    base64: {
-      label: '\u05DE\u05D7\u05E8\u05D5\u05D6\u05EA \u05D1\u05D1\u05E1\u05D9\u05E1 64',
-      gender: 'f',
-    },
+    base64: { label: '\u05DE\u05D7\u05E8\u05D5\u05D6\u05EA \u05D1\u05D1\u05E1\u05D9\u05E1 64', gender: 'f' },
     base64url: {
       label:
         '\u05DE\u05D7\u05E8\u05D5\u05D6\u05EA \u05D1\u05D1\u05E1\u05D9\u05E1 64 \u05DC\u05DB\u05EA\u05D5\u05D1\u05D5\u05EA \u05E8\u05E9\u05EA',
@@ -21278,14 +21229,8 @@ var error21 = () => {
       unit: '\u092C\u093E\u0907\u091F\u094D\u0938',
       verb: '\u0930\u0916\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F',
     },
-    array: {
-      unit: '\u0924\u0924\u094D\u0935',
-      verb: '\u0930\u0916\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F',
-    },
-    set: {
-      unit: '\u0924\u0924\u094D\u0935',
-      verb: '\u0930\u0916\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F',
-    },
+    array: { unit: '\u0924\u0924\u094D\u0935', verb: '\u0930\u0916\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F' },
+    set: { unit: '\u0924\u0924\u094D\u0935', verb: '\u0930\u0916\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F' },
     map: {
       unit: '\u092A\u094D\u0930\u0935\u093F\u0937\u094D\u091F\u093F\u092F\u093E\u0901',
       verb: '\u0930\u0916\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F',
@@ -22369,10 +22314,7 @@ function ka_default() {
 // node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/locales/km.js
 var error30 = () => {
   const Sizable = {
-    string: {
-      unit: '\u178F\u17BD\u17A2\u1780\u17D2\u179F\u179A',
-      verb: '\u1782\u17BD\u179A\u1798\u17B6\u1793',
-    },
+    string: { unit: '\u178F\u17BD\u17A2\u1780\u17D2\u179F\u179A', verb: '\u1782\u17BD\u179A\u1798\u17B6\u1793' },
     file: { unit: '\u1794\u17C3', verb: '\u1782\u17BD\u179A\u1798\u17B6\u1793' },
     array: { unit: '\u1792\u17B6\u178F\u17BB', verb: '\u1782\u17BD\u179A\u1798\u17B6\u1793' },
     set: { unit: '\u1792\u17B6\u178F\u17BB', verb: '\u1782\u17BD\u179A\u1798\u17B6\u1793' },
@@ -22494,22 +22436,10 @@ function kh_default() {
 // node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/locales/kn.js
 var error31 = () => {
   const Sizable = {
-    string: {
-      unit: '\u0C85\u0C95\u0CCD\u0CB7\u0CB0\u0C97\u0CB3\u0CC1',
-      verb: '\u0CB9\u0CCA\u0C82\u0CA6\u0CB2\u0CC1',
-    },
-    file: {
-      unit: '\u0CAC\u0CC8\u0C9F\u0CCD\u200C\u0C97\u0CB3\u0CC1',
-      verb: '\u0CB9\u0CCA\u0C82\u0CA6\u0CB2\u0CC1',
-    },
-    array: {
-      unit: '\u0CB5\u0CB8\u0CCD\u0CA4\u0CC1\u0C97\u0CB3\u0CC1',
-      verb: '\u0CB9\u0CCA\u0C82\u0CA6\u0CB2\u0CC1',
-    },
-    set: {
-      unit: '\u0CB5\u0CB8\u0CCD\u0CA4\u0CC1\u0C97\u0CB3\u0CC1',
-      verb: '\u0CB9\u0CCA\u0C82\u0CA6\u0CB2\u0CC1',
-    },
+    string: { unit: '\u0C85\u0C95\u0CCD\u0CB7\u0CB0\u0C97\u0CB3\u0CC1', verb: '\u0CB9\u0CCA\u0C82\u0CA6\u0CB2\u0CC1' },
+    file: { unit: '\u0CAC\u0CC8\u0C9F\u0CCD\u200C\u0C97\u0CB3\u0CC1', verb: '\u0CB9\u0CCA\u0C82\u0CA6\u0CB2\u0CC1' },
+    array: { unit: '\u0CB5\u0CB8\u0CCD\u0CA4\u0CC1\u0C97\u0CB3\u0CC1', verb: '\u0CB9\u0CCA\u0C82\u0CA6\u0CB2\u0CC1' },
+    set: { unit: '\u0CB5\u0CB8\u0CCD\u0CA4\u0CC1\u0C97\u0CB3\u0CC1', verb: '\u0CB9\u0CCA\u0C82\u0CA6\u0CB2\u0CC1' },
     map: { unit: 'entries', verb: '\u0CB9\u0CCA\u0C82\u0CA6\u0CB2\u0CC1' },
   };
   function getSizing(origin) {
@@ -22953,26 +22883,11 @@ function lt_default() {
 // node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/locales/mk.js
 var error34 = () => {
   const Sizable = {
-    string: {
-      unit: '\u0437\u043D\u0430\u0446\u0438',
-      verb: '\u0434\u0430 \u0438\u043C\u0430\u0430\u0442',
-    },
-    file: {
-      unit: '\u0431\u0430\u0458\u0442\u0438',
-      verb: '\u0434\u0430 \u0438\u043C\u0430\u0430\u0442',
-    },
-    array: {
-      unit: '\u0441\u0442\u0430\u0432\u043A\u0438',
-      verb: '\u0434\u0430 \u0438\u043C\u0430\u0430\u0442',
-    },
-    set: {
-      unit: '\u0441\u0442\u0430\u0432\u043A\u0438',
-      verb: '\u0434\u0430 \u0438\u043C\u0430\u0430\u0442',
-    },
-    map: {
-      unit: '\u0441\u0442\u0430\u0432\u043A\u0438',
-      verb: '\u0434\u0430 \u0438\u043C\u0430\u0430\u0442',
-    },
+    string: { unit: '\u0437\u043D\u0430\u0446\u0438', verb: '\u0434\u0430 \u0438\u043C\u0430\u0430\u0442' },
+    file: { unit: '\u0431\u0430\u0458\u0442\u0438', verb: '\u0434\u0430 \u0438\u043C\u0430\u0430\u0442' },
+    array: { unit: '\u0441\u0442\u0430\u0432\u043A\u0438', verb: '\u0434\u0430 \u0438\u043C\u0430\u0430\u0442' },
+    set: { unit: '\u0441\u0442\u0430\u0432\u043A\u0438', verb: '\u0434\u0430 \u0438\u043C\u0430\u0430\u0442' },
+    map: { unit: '\u0441\u0442\u0430\u0432\u043A\u0438', verb: '\u0434\u0430 \u0438\u043C\u0430\u0430\u0442' },
   };
   function getSizing(origin) {
     return Sizable[origin] ?? null;
@@ -23191,22 +23106,10 @@ function ms_default() {
 // node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/locales/ne.js
 var error36 = () => {
   const Sizable = {
-    string: {
-      unit: '\u0905\u0915\u094D\u0937\u0930',
-      verb: '\u0939\u0941\u0928\u0941\u092A\u0930\u094D\u091B',
-    },
-    file: {
-      unit: '\u092C\u093E\u0907\u091F',
-      verb: '\u0939\u0941\u0928\u0941\u092A\u0930\u094D\u091B',
-    },
-    array: {
-      unit: '\u0924\u0924\u094D\u0935',
-      verb: '\u0939\u0941\u0928\u0941\u092A\u0930\u094D\u091B',
-    },
-    set: {
-      unit: '\u0924\u0924\u094D\u0935',
-      verb: '\u0939\u0941\u0928\u0941\u092A\u0930\u094D\u091B',
-    },
+    string: { unit: '\u0905\u0915\u094D\u0937\u0930', verb: '\u0939\u0941\u0928\u0941\u092A\u0930\u094D\u091B' },
+    file: { unit: '\u092C\u093E\u0907\u091F', verb: '\u0939\u0941\u0928\u0941\u092A\u0930\u094D\u091B' },
+    array: { unit: '\u0924\u0924\u094D\u0935', verb: '\u0939\u0941\u0928\u0941\u092A\u0930\u094D\u091B' },
+    set: { unit: '\u0924\u0924\u094D\u0935', verb: '\u0939\u0941\u0928\u0941\u092A\u0930\u094D\u091B' },
     map: {
       unit: '\u092A\u094D\u0930\u0935\u093F\u0937\u094D\u091F\u093F',
       verb: '\u0939\u0941\u0928\u0941\u092A\u0930\u094D\u091B',
@@ -24068,10 +23971,7 @@ var error43 = () => {
     function: { name: 'fun\xE7\xE3o', articles: Gender.feminine },
   };
   function translateOriginWithArticle(type, articleType) {
-    const translatedValue = TypeDictionary[type] ?? {
-      name: `valor "${type}"`,
-      articles: Gender.masculine,
-    };
+    const translatedValue = TypeDictionary[type] ?? { name: `valor "${type}"`, articles: Gender.masculine };
     return `${translatedValue.articles[articleType]} ${translatedValue.name}`;
   }
   return (issue2) => {
@@ -24210,10 +24110,7 @@ var error44 = () => {
     function: { name: 'fun\xE7\xE3o', articles: Gender.feminine },
   };
   function translateOriginWithArticle(type, articleType) {
-    const translatedValue = TypeDictionary[type] ?? {
-      name: `valor "${type}"`,
-      articles: Gender.masculine,
-    };
+    const translatedValue = TypeDictionary[type] ?? { name: `valor "${type}"`, articles: Gender.masculine };
     return `${translatedValue.articles[articleType]} ${translatedValue.name}`;
   }
   return (issue2) => {
@@ -25050,10 +24947,7 @@ var error51 = () => {
       unit: '\u0430\u043B\u043E\u043C\u0430\u0442',
       verb: '\u0434\u043E\u0448\u0442\u0430 \u0431\u043E\u0448\u0430\u0434',
     },
-    file: {
-      unit: '\u0431\u0430\u0439\u0442',
-      verb: '\u0434\u043E\u0448\u0442\u0430 \u0431\u043E\u0448\u0430\u0434',
-    },
+    file: { unit: '\u0431\u0430\u0439\u0442', verb: '\u0434\u043E\u0448\u0442\u0430 \u0431\u043E\u0448\u0430\u0434' },
     array: {
       unit: '\u0443\u043D\u0441\u0443\u0440',
       verb: '\u0434\u043E\u0448\u0442\u0430 \u0431\u043E\u0448\u0430\u0434',
@@ -25062,10 +24956,7 @@ var error51 = () => {
       unit: '\u0443\u043D\u0441\u0443\u0440',
       verb: '\u0434\u043E\u0448\u0442\u0430 \u0431\u043E\u0448\u0430\u0434',
     },
-    map: {
-      unit: '\u0441\u0430\u0431\u0442',
-      verb: '\u0434\u043E\u0448\u0442\u0430 \u0431\u043E\u0448\u0430\u0434',
-    },
+    map: { unit: '\u0441\u0430\u0431\u0442', verb: '\u0434\u043E\u0448\u0442\u0430 \u0431\u043E\u0448\u0430\u0434' },
   };
   function getSizing(origin) {
     return Sizable[origin] ?? null;
@@ -25179,10 +25070,7 @@ function tg_default() {
 // node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/locales/th.js
 var error52 = () => {
   const Sizable = {
-    string: {
-      unit: '\u0E15\u0E31\u0E27\u0E2D\u0E31\u0E01\u0E29\u0E23',
-      verb: '\u0E04\u0E27\u0E23\u0E21\u0E35',
-    },
+    string: { unit: '\u0E15\u0E31\u0E27\u0E2D\u0E31\u0E01\u0E29\u0E23', verb: '\u0E04\u0E27\u0E23\u0E21\u0E35' },
     file: { unit: '\u0E44\u0E1A\u0E15\u0E4C', verb: '\u0E04\u0E27\u0E23\u0E21\u0E35' },
     array: { unit: '\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23', verb: '\u0E04\u0E27\u0E23\u0E21\u0E35' },
     set: { unit: '\u0E23\u0E32\u0E22\u0E01\u0E32\u0E23', verb: '\u0E04\u0E27\u0E23\u0E21\u0E35' },
@@ -25514,14 +25402,8 @@ function tr_default() {
 // node_modules/.pnpm/zod@4.6.5/node_modules/zod/v4/locales/uk.js
 var error55 = () => {
   const Sizable = {
-    string: {
-      unit: '\u0441\u0438\u043C\u0432\u043E\u043B\u0456\u0432',
-      verb: '\u043C\u0430\u0442\u0438\u043C\u0435',
-    },
-    file: {
-      unit: '\u0431\u0430\u0439\u0442\u0456\u0432',
-      verb: '\u043C\u0430\u0442\u0438\u043C\u0435',
-    },
+    string: { unit: '\u0441\u0438\u043C\u0432\u043E\u043B\u0456\u0432', verb: '\u043C\u0430\u0442\u0438\u043C\u0435' },
+    file: { unit: '\u0431\u0430\u0439\u0442\u0456\u0432', verb: '\u043C\u0430\u0442\u0438\u043C\u0435' },
     array: {
       unit: '\u0435\u043B\u0435\u043C\u0435\u043D\u0442\u0456\u0432',
       verb: '\u043C\u0430\u0442\u0438\u043C\u0435',
@@ -29158,10 +29040,7 @@ function extractDefs(ctx, schema) {
       }
       const id2 = entry[1].defId ?? entry[1].schema.id ?? `schema${ctx.counter++}`;
       entry[1].defId = id2;
-      return {
-        defId: id2,
-        ref: `${uriGenerator('__shared')}#/${defsSegment}/${encodeJSONPointerSegment(id2)}`,
-      };
+      return { defId: id2, ref: `${uriGenerator('__shared')}#/${defsSegment}/${encodeJSONPointerSegment(id2)}` };
     }
     const uriPrefix = `#`;
     const defUriPrefix = `${uriPrefix}/${defsSegment}/`;
@@ -33025,9 +32904,7 @@ function deepPartial(schema) {
 function withChecks(side, checks) {
   if (!checks?.length) return side;
   const def = side._zod.def;
-  return clone(side, mergeDefs(def, { checks: [...(def.checks ?? []), ...checks] }), {
-    parent: true,
-  });
+  return clone(side, mergeDefs(def, { checks: [...(def.checks ?? []), ...checks] }), { parent: true });
 }
 function outSide(def) {
   return withChecks(def.out, def.checks);
@@ -33112,10 +32989,7 @@ var targetSchema = external_exports
       .refine((name) => !name.includes('/'), 'a name has no slash, which separates the parts of a frame name'),
     /** The frame size every frame of this target is drawn at; the frame check compares it. */
     size: external_exports
-      .object({
-        width: external_exports.number().positive(),
-        height: external_exports.number().positive(),
-      })
+      .object({ width: external_exports.number().positive(), height: external_exports.number().positive() })
       .strict()
       .optional(),
   })
@@ -33186,6 +33060,28 @@ var recipeSchema = external_exports
     darkClass: external_exports.string().min(1).default('dark'),
   })
   .strict();
+function writtenInAScript(tag) {
+  try {
+    return new Intl.Locale(tag).maximize().script !== void 0;
+  } catch {
+    return false;
+  }
+}
+var copySchema = external_exports
+  .object({
+    locales: external_exports
+      .array(external_exports.string().refine(writtenInAScript, 'a BCP 47 language tag, such as en or vi'))
+      .min(1)
+      .default(['en']),
+    currencies: external_exports
+      .array(
+        external_exports
+          .string()
+          .refine((code) => Intl.supportedValuesOf('currency').includes(code), 'an ISO 4217 code, such as VND or USD'),
+      )
+      .default([]),
+  })
+  .strict();
 var zakuConfigSchema = external_exports
   .object({
     product: external_exports.string().min(1),
@@ -33202,6 +33098,7 @@ var zakuConfigSchema = external_exports
       .optional(),
     budget: budgetSchema.default({ mcpPerDay: 200, mcpPerRun: 30, reserve: 0.2 }),
     recipe: recipeSchema.optional(),
+    copy: copySchema.default({ locales: ['en'], currencies: [] }),
   })
   .strict()
   .superRefine((config2, ctx) => {
@@ -33325,11 +33222,7 @@ var screenSchema = external_exports
       .array(external_exports.object({ to: screenRef, via: external_exports.string().min(1) }).strict())
       .default([]),
     back: external_exports
-      .object({
-        web: external_exports.string(),
-        ios: external_exports.string(),
-        android: external_exports.string(),
-      })
+      .object({ web: external_exports.string(), ios: external_exports.string(), android: external_exports.string() })
       .partial()
       .strict()
       .default({}),
@@ -33422,16 +33315,146 @@ function indexTitles(maps) {
   return { titles, duplicates };
 }
 
+// packages/zaku/dist/lib/domain/copy-tells/en.js
+var APOSTROPHE = "['\u2019]";
+var EN_TELLS = [
+  { pattern: /\bdelv(?:e|es|ed|ing)\b/iu, instead: 'write "look at" or "read"' },
+  { pattern: /\bleverag(?:e|es|ed|ing)\b/iu, instead: 'write "use"' },
+  { pattern: /\butili[sz](?:e|es|ed|ing|ation)\b/iu, instead: 'write "use"' },
+  { pattern: /\brobust(?:ly|ness)?\b/iu, instead: 'write what it withstands' },
+  { pattern: /\btapestr(?:y|ies)\b/iu, instead: 'write "mix", or name the parts' },
+  { pattern: /\btestaments?\b/iu, instead: 'write "proof", or the fact itself' },
+  { pattern: /\bvibrant(?:ly)?\b/iu, instead: 'write "busy", or what is there' },
+  { pattern: /\bempower(?:s|ed|ing|ment)?\b/iu, instead: 'write "let" or "allow"' },
+  { pattern: /\bunlock(?:s|ed|ing)?\b/iu, instead: 'write "get" or "open"' },
+  { pattern: /\bunleash(?:es|ed|ing)?\b/iu, instead: 'write "use" or "start"' },
+  { pattern: /\bgame[- ]?changers?\b/iu, instead: 'write what it changes' },
+  { pattern: /\bsupercharg(?:e|es|ed|ing)\b/iu, instead: 'write "speed up", with the figure' },
+  { pattern: new RegExp(`\\blet${APOSTROPHE}s\\b`, 'iu'), instead: 'write the action itself, such as "Plan a trip"' },
+  {
+    pattern: new RegExp(`\\b(?:it${APOSTROPHE}s|it is) (?:important|worth|crucial) (?:to note|noting)\\b`, 'iu'),
+    instead: 'delete it',
+  },
+  { pattern: /\bin order to\b/iu, instead: 'write "to"' },
+  { pattern: /\bnot (?:just|only|merely)\b[^.!?]{0,80}?\bbut\b/iu, instead: 'write the second half on its own' },
+];
+
+// packages/zaku/dist/lib/domain/copy-tells/index.js
+var COPY_TELLS = { en: EN_TELLS };
+
+// packages/zaku/dist/lib/domain/copy-rules.js
+var PRINTABLE_ASCII = /^[\x20-\x7e]$/;
+var LINE_BREAK = /^[\n\u2028]$/;
+var LETTER_OR_MARK = /^[\p{L}\p{M}]$/u;
+var INHERITED_MARK = new RegExp('^(?=\\p{M})\\p{Script=Inherited}$', 'u');
+var EMOJI = new RegExp('^\\p{Extended_Pictographic}$', 'u');
+var ARROW = /^[\u2190-\u21ff\u27f0-\u27ff\u2900-\u297f\u2b00-\u2b11]$/u;
+var INSTEAD = /* @__PURE__ */ new Map([
+  ['\u2014', { name: 'em dash', instead: 'write "-", or two sentences' }],
+  ['\u2013', { name: 'en dash', instead: 'write "-", or two sentences' }],
+  ['\u2018', { name: 'left single quotation mark', instead: "write '" }],
+  ['\u2019', { name: 'right single quotation mark', instead: "write '" }],
+  ['\u201C', { name: 'left double quotation mark', instead: 'write "' }],
+  ['\u201D', { name: 'right double quotation mark', instead: 'write "' }],
+  ['\u2026', { name: 'horizontal ellipsis', instead: 'write "..."' }],
+  ['\xB7', { name: 'middle dot', instead: 'write "-", "," or ":"' }],
+  ['\u2022', { name: 'bullet', instead: 'write "-", "," or ":"' }],
+  ['\u2192', { name: 'rightwards arrow', instead: 'write "->"' }],
+  ['\u2190', { name: 'leftwards arrow', instead: 'write "<-"' }],
+  ['\xD7', { name: 'multiplication sign', instead: 'write "x"' }],
+  ['\xA0', { name: 'no-break space', instead: 'write a space' }],
+  ['\u200B', { name: 'zero width space', instead: 'write nothing' }],
+  ['\u200C', { name: 'zero width non-joiner', instead: 'write nothing' }],
+  ['\u200D', { name: 'zero width joiner', instead: 'write nothing' }],
+  ['\uFEFF', { name: 'zero width no-break space', instead: 'write nothing' }],
+]);
+function currencySymbols(locales, currency) {
+  return locales.flatMap((locale) =>
+    ['symbol', 'narrowSymbol'].flatMap((currencyDisplay) =>
+      new Intl.NumberFormat(locale, { style: 'currency', currency, currencyDisplay })
+        .formatToParts(0)
+        .filter((part) => part.type === 'currency')
+        .map((part) => part.value),
+    ),
+  );
+}
+function copyPolicy(copy2, carried) {
+  const scripts = new Set(copy2.locales.map((locale) => new Intl.Locale(locale).maximize().script ?? ''));
+  const symbols = copy2.currencies.flatMap((currency) => currencySymbols(copy2.locales, currency));
+  const languages = new Set(copy2.locales.map((locale) => new Intl.Locale(locale).language));
+  return {
+    scripts: [...scripts].filter(Boolean).map((script) => new RegExp(`^\\p{Script_Extensions=${script}}$`, 'u')),
+    extra: new Set([...symbols, ...carried].flatMap((text) => [...text.normalize('NFC')])),
+    tells: [...languages].flatMap((language) => COPY_TELLS[language] ?? []),
+  };
+}
+function allowed(char, policy) {
+  if (PRINTABLE_ASCII.test(char) || LINE_BREAK.test(char) || policy.extra.has(char)) return true;
+  if (!LETTER_OR_MARK.test(char)) return false;
+  return INHERITED_MARK.test(char) || policy.scripts.some((script) => script.test(char));
+}
+function codePoint(char) {
+  return `U+${(char.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, '0')}`;
+}
+function characterMessage(char) {
+  const known = INSTEAD.get(char);
+  if (known) return `${codePoint(char)} ${known.name}: ${known.instead}`;
+  if (EMOJI.test(char)) return `${codePoint(char)} emoji: write a word, or a library icon`;
+  if (ARROW.test(char)) return `${codePoint(char)} arrow: write "->" or "<-"`;
+  return `${codePoint(char)} is outside the locales and currencies copy names in zaku.yaml: write it in ASCII, or add its locale or currency there`;
+}
+function copyIssues(text, policy) {
+  const issues = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const char of text.normalize('NFC')) {
+    if (seen.has(char) || allowed(char, policy)) continue;
+    seen.add(char);
+    issues.push({ field: 'characters', message: characterMessage(char) });
+  }
+  for (const tell of policy.tells) {
+    const match = tell.pattern.exec(text);
+    if (match) issues.push({ field: 'tone', message: `"${match[0]}": ${tell.instead}` });
+  }
+  return issues;
+}
+
 // packages/zaku/dist/lib/domain/checks/copy.js
 var PLACEHOLDER = /^(lorem ipsum.*|placeholder|text|label|button|item \d+)$/i;
+function overriddenTexts(instance) {
+  return new Set(
+    instance.overrides.filter((override) => override.fields.includes('characters')).map((override) => override.nodeId),
+  );
+}
+function libraryTexts(outlines) {
+  return outlines.flatMap((outline) =>
+    outline.frames.flatMap((frame) =>
+      frame.instances.flatMap((instance) => {
+        const overridden = overriddenTexts(instance);
+        return instance.texts.filter((text) => !overridden.has(text.nodeId)).map((text) => text.characters);
+      }),
+    ),
+  );
+}
 var copy = ({ config: config2, maps, outlines }) => {
   const screens = indexScreens(maps);
   const bars = systemBarNames(config2);
+  const policy = copyPolicy(config2.copy, libraryTexts(outlines));
   const findings = [];
   for (const outline of outlines) {
     const byState = /* @__PURE__ */ new Map();
     for (const frame of outline.frames) {
       const where = { feature: outline.feature, screen: outline.screen, frame: frame.name };
+      const authored = [
+        ...frame.texts,
+        ...frame.instances.flatMap((instance) => {
+          const overridden = overriddenTexts(instance);
+          return instance.texts.filter((text) => overridden.has(text.nodeId));
+        }),
+      ];
+      for (const text of authored) {
+        for (const issue2 of copyIssues(text.characters, policy))
+          findings.push({ check: 'copy', ...where, nodeId: text.nodeId, ...issue2 });
+      }
       const texts = [
         ...frame.texts.map((text) => ({ nodeId: text.nodeId, characters: text.characters })),
         ...frame.instances
@@ -33866,7 +33889,7 @@ var wayBack = ({ maps, config: config2 }) => {
 };
 
 // packages/zaku/dist/lib/domain/checks/overrides.js
-var ALLOWED = /* @__PURE__ */ new Set([
+var ALLOWED_OVERRIDES = /* @__PURE__ */ new Set([
   'characters',
   'name',
   'componentProperties',
@@ -33891,7 +33914,7 @@ var overrides = ({ outlines, library }) => {
       for (const instance of frame.instances) {
         for (const override of instance.overrides) {
           for (const field of override.fields) {
-            if (ALLOWED.has(field)) continue;
+            if (ALLOWED_OVERRIDES.has(field)) continue;
             if (field === 'fills' && pictures.has(override.nodeId)) continue;
             const self2 = override.nodeId === instance.nodeId;
             if (self2 && field === 'width' && instance.sizing.horizontal !== 'FIXED') continue;
@@ -34161,6 +34184,7 @@ function comparePart(at, part) {
   colour(at, 'background', item.fill, part.background);
   if (item.type.toUpperCase() === 'TEXT') colour(at, 'color', item.textColor, part.color);
   colour(at, 'borderColor', item.stroke, part.borderColor);
+  if (item.glyph) colour(at, 'glyph', item.glyph, part.color);
   if (item.path === '') {
     if (!at.fallback) size(at, 'width', item.width, part.width);
     size(at, 'height', item.height, part.height);
@@ -34705,6 +34729,11 @@ var libraryItemSchema = external_exports
     fill: rgbaSchema.nullable(),
     stroke: rgbaSchema.nullable(),
     textColor: rgbaSchema.nullable(),
+    /**
+     * An icon instance only: the colour its glyph is drawn in, which sits on the vectors inside it and not
+     * on the instance's own frame. Absent on every other layer.
+     */
+    glyph: rgbaSchema.optional(),
     width: external_exports.number(),
     height: external_exports.number(),
     padding: external_exports
@@ -35001,10 +35030,7 @@ var instanceOutlineSchema = external_exports
     swaps: external_exports.array(external_exports.string()),
     overrides: external_exports.array(
       external_exports
-        .object({
-          nodeId: external_exports.string(),
-          fields: external_exports.array(external_exports.string()),
-        })
+        .object({ nodeId: external_exports.string(), fields: external_exports.array(external_exports.string()) })
         .strict(),
     ),
     /** Every instance inside, so a control a component wraps is sized and placed like a top-level one. */
@@ -35055,11 +35081,7 @@ var rawOutlineSchema = external_exports
   })
   .strict();
 var imageOutlineSchema = external_exports
-  .object({
-    nodeId: external_exports.string(),
-    name: external_exports.string(),
-    filled: external_exports.boolean(),
-  })
+  .object({ nodeId: external_exports.string(), name: external_exports.string(), filled: external_exports.boolean() })
   .strict();
 var linkOutlineSchema = external_exports
   .object({
@@ -35244,21 +35266,13 @@ async function loadDesign(root) {
   const tokens = await optional2(() => readOptionalDesignFile(paths.tokens, tokenDocumentSchema), findings);
   const recipe2 = await optional2(() => readOptionalDesignFile(paths.recipe, recipeDocumentSchema), findings);
   return {
-    input: {
-      config: config2,
-      maps,
-      outlines,
-      unmapped: unmapped?.frames ?? [],
-      library,
-      tokens,
-      recipe: recipe2,
-    },
+    input: { config: config2, maps, outlines, unmapped: unmapped?.frames ?? [], library, tokens, recipe: recipe2 },
     findings,
   };
 }
 
 // packages/zaku/dist/entrypoints/cli/dependencies.js
-var import_tsyringe12 = __toESM(require_cjs(), 1);
+var import_tsyringe13 = __toESM(require_cjs(), 1);
 import { homedir } from 'node:os';
 
 // packages/zaku/dist/lib/adapters/playwright-recipe-page.js
@@ -35361,6 +35375,7 @@ var TOKENS = {
   CLOCK: 'zaku.clock',
   COMMAND_HANDLER: 'zaku.commandHandler',
   FIGMA_REST: 'zaku.figmaRest',
+  FIGMA_BRIDGE: 'zaku.figmaBridge',
   RUN_COMMAND: 'zaku.runCommand',
   RECIPE_PAGE_READER: 'zaku.recipePageReader',
   BUDGET_LEDGER: 'zaku.budgetLedger',
@@ -35369,6 +35384,7 @@ var TOKENS = {
   RECIPE_REPOSITORY: 'zaku.recipeRepository',
   JSON_SCHEMA_FILES: 'zaku.jsonSchemaFiles',
   SOURCE_FILES: 'zaku.sourceFiles',
+  GUIDE_REPOSITORY: 'zaku.guideRepository',
 };
 
 // packages/zaku/dist/lib/domain/errors/css-required.js
@@ -35410,6 +35426,31 @@ var RecipeUrlRequired = class extends Error {
     this.name = 'RecipeUrlRequired';
   }
 };
+
+// packages/zaku/dist/lib/domain/errors/script-refused.js
+var ScriptRefused = class extends Error {
+  calls;
+  constructor(calls) {
+    super(`ScriptRefused: the script calls ${calls.join(', ')}`);
+    this.calls = calls;
+    this.name = 'ScriptRefused';
+  }
+};
+
+// packages/zaku/dist/lib/utils/unavailable.js
+function unavailable(what) {
+  return new Proxy(
+    {},
+    {
+      get: (_target, property) => {
+        if (property === 'then') return void 0;
+        return () => {
+          throw new Error(`${what} is not available in this entrypoint`);
+        };
+      },
+    },
+  );
+}
 
 // node_modules/.pnpm/tslib@2.8.1/node_modules/tslib/tslib.es6.mjs
 function __decorate2(decorators, target, key, desc) {
@@ -35574,12 +35615,7 @@ function dtcgTokenDocument(system, schemes, name) {
       const radii = `${system.radii}.`;
       if (token.type === 'color' && path2.startsWith(colours)) {
         const value = colourOf(path2, token.value);
-        const rgba = {
-          r: round2(value.r),
-          g: round2(value.g),
-          b: round2(value.b),
-          a: round2(value.a),
-        };
+        const rgba = { r: round2(value.r), g: round2(value.g), b: round2(value.b), a: round2(value.a) };
         color[path2.slice(colours.length).replaceAll('.', '/')] = {
           $type: 'color',
           $value: {
@@ -35890,6 +35926,23 @@ function strokeWeightsOf(node2) {
   const weight = node2.strokeWeight ?? 0;
   return [weight, weight, weight, weight];
 }
+var GLYPH_TYPES = /* @__PURE__ */ new Set(['VECTOR', 'BOOLEAN_OPERATION', 'LINE', 'ELLIPSE', 'POLYGON', 'STAR']);
+function glyphOf(instance, at) {
+  let text = false;
+  let glyph = null;
+  const visit2 = (node2) => {
+    if (node2.visible === false) return;
+    if (node2.type === 'TEXT') text = true;
+    if (!glyph && GLYPH_TYPES.has(node2.type)) {
+      const stroke = paintOf(node2.strokes, at);
+      const paint = stroke.value ? stroke : paintOf(node2.fills, at);
+      if (paint.value) glyph = paint;
+    }
+    for (const child of node2.children ?? []) visit2(child);
+  };
+  for (const child of instance.children ?? []) visit2(child);
+  return text ? null : glyph;
+}
 function itemsOf(root, at) {
   const out = [];
   const visit2 = (node2, path2) => {
@@ -35904,6 +35957,7 @@ function itemsOf(root, at) {
     const auto = node2.layoutMode !== void 0 && node2.layoutMode !== 'NONE';
     const box = node2.absoluteBoundingBox;
     const textStyle = node2.styles?.['text'];
+    const glyph = path2 !== '' && node2.type === 'INSTANCE' ? glyphOf(node2, at) : null;
     const componentId = node2.type === 'INSTANCE' ? node2.componentId : path2 === '' ? node2.id : void 0;
     out.push({
       nodeId: node2.id,
@@ -35912,6 +35966,7 @@ function itemsOf(root, at) {
       fill: isText ? null : fill.value,
       stroke: stroke.value,
       textColor: isText ? fill.value : null,
+      ...(glyph?.value ? { glyph: glyph.value } : {}),
       width: box?.width ?? 0,
       height: box?.height ?? 0,
       padding: auto
@@ -35929,6 +35984,7 @@ function itemsOf(root, at) {
         stroke: stroke.binding,
         textColor: isText ? fill.binding : null,
         radius: radiusName,
+        ...(glyph?.value ? { glyph: glyph.binding } : {}),
       },
     });
     if (path2 === '' || node2.type !== 'INSTANCE') {
@@ -36033,10 +36089,12 @@ var import_yaml2 = __toESM(require_dist(), 1);
 import { mkdir as mkdir2, rm, writeFile as writeFile4 } from 'node:fs/promises';
 import { dirname as dirname3 } from 'node:path';
 
-// packages/zaku/dist/lib/adapters/figma-rest-outline.js
-var CONTAINERS = /* @__PURE__ */ new Set(['FRAME', 'GROUP', 'SECTION']);
+// packages/zaku/dist/lib/domain/layer-names.js
 var DEFAULT_LAYER_NAME =
   /^(Frame|Group|Rectangle|Ellipse|Line|Vector|Polygon|Star|Section|Slice|Image|Component|Instance|Arrow|Shape)( \d+)?$/;
+
+// packages/zaku/dist/lib/adapters/figma-rest-outline.js
+var CONTAINERS = /* @__PURE__ */ new Set(['FRAME', 'GROUP', 'SECTION']);
 var PICTURE_NAME = /\b(photo|image|picture|avatar|cover|thumbnail|hero|banner|illustration)\b/i;
 var visiblePaint = (paints) => (paints ?? []).some((paint) => paint.visible !== false && (paint.opacity ?? 1) > 0);
 var holdsImage = (node2) => (node2.fills ?? []).some((paint) => paint.type === 'IMAGE' && paint.visible !== false);
@@ -36399,8 +36457,155 @@ RecordBudgetCallsHandler = __decorate2(
   RecordBudgetCallsHandler,
 );
 
-// packages/zaku/dist/lib/repositories/design-config-repository.js
+// packages/zaku/dist/lib/handlers/execute-script.js
 var import_tsyringe7 = __toESM(require_cjs(), 1);
+
+// packages/zaku/dist/lib/domain/reply-cut.js
+var REPLY_LIMIT = 2e4;
+var LISTED = 20;
+var printed = (value) => JSON.stringify(value, null, 2)?.length ?? 0;
+function cutIds(ids, parents) {
+  const set2 = new Set(ids);
+  const all = ids.filter((id2) => {
+    const parent = parents[id2];
+    return parent === void 0 || parent === null || !set2.has(parent);
+  });
+  return { count: ids.length, roots: all.slice(0, LISTED), more: all.length - Math.min(all.length, LISTED) };
+}
+function countByCheck(findings) {
+  const counts = {};
+  for (const finding of findings) counts[finding.check] = (counts[finding.check] ?? 0) + 1;
+  return counts;
+}
+function cutReply(reply, limit = REPLY_LIMIT) {
+  const { snapshotParents, ...rest } = reply;
+  if (printed(rest) < limit) return snapshotParents === void 0 ? reply : rest;
+  const parents = snapshotParents ?? {};
+  const valueBytes = printed(reply.value ?? null);
+  const cut = {
+    ...rest,
+    created: cutIds(reply.created, parents),
+    mutated: cutIds(reply.mutated, parents),
+    value: valueBytes < limit / 2 ? reply.value : { cut: true, bytes: valueBytes },
+    cut: true,
+  };
+  if (reply.findings !== void 0 && printed(reply.findings) >= limit / 4) {
+    cut.findings = reply.findings.slice(0, LISTED);
+    cut.findingCounts = countByCheck(reply.findings);
+  }
+  if (reply.untouchable !== void 0 && reply.untouchable.length > LISTED) {
+    cut.untouchable = reply.untouchable.slice(0, LISTED);
+    cut.untouchableCount = reply.untouchable.length;
+  }
+  return cut;
+}
+
+// packages/zaku/dist/lib/domain/script-refusal.js
+var REFUSED = [
+  { call: 'figma.closePlugin', pattern: /\bfigma\s*\.\s*closePlugin\b/ },
+  { call: 'figma.notify', pattern: /\bfigma\s*\.\s*notify\b/ },
+  { call: 'figma.loadAllPagesAsync', pattern: /\bfigma\s*\.\s*loadAllPagesAsync\b/ },
+  { call: 'setting figma.currentPage', pattern: /\bfigma\s*\.\s*currentPage\s*=(?!=)/ },
+];
+function refusedCalls(script) {
+  return REFUSED.filter(({ pattern }) => pattern.test(script)).map(({ call }) => call);
+}
+
+// packages/zaku/dist/lib/domain/snapshot-rules.js
+function snapshotFindings(nodes) {
+  const findings = [];
+  for (const node2 of nodes) {
+    const label2 = `${node2.name} (${node2.type.toLowerCase()})`;
+    const finding = (check2, field, message, nodeId = node2.id) => {
+      findings.push({
+        check: check2,
+        nodeId,
+        ...(field ? { field } : {}),
+        ...(node2.frame ? { frame: node2.frame } : {}),
+        message,
+      });
+    };
+    if (node2.fills.some((paint) => !paint.bound)) finding('binding', 'fill', `${label2}: fill is a raw value`);
+    if (node2.strokes.some((paint) => !paint.bound)) finding('binding', 'stroke', `${label2}: stroke is a raw value`);
+    if (node2.type === 'TEXT' && node2.textStyleId === null)
+      finding('binding', 'textStyle', `${label2}: text has no library text style`);
+    for (const space of node2.spacing) {
+      if (space.value > 0 && !space.bound)
+        finding('binding', space.field, `${label2}: ${space.field} ${space.value} is not a spacing variable`);
+    }
+    if (node2.instance) {
+      for (const override of node2.instance.overrides) {
+        for (const field of override.fields) {
+          if (ALLOWED_OVERRIDES.has(field)) continue;
+          if (field === 'fills' && override.picture) continue;
+          const self2 = override.nodeId === node2.id;
+          if (self2 && field === 'width' && node2.instance.sizing.horizontal !== 'FIXED') continue;
+          if (self2 && field === 'height' && node2.instance.sizing.vertical !== 'FIXED') continue;
+          finding('overrides', field, `${field} overridden inside an instance of ${node2.name}`, override.nodeId);
+        }
+      }
+    }
+    if (node2.type !== 'TEXT' && DEFAULT_LAYER_NAME.test(node2.name))
+      finding('naming', void 0, `${node2.name} keeps a default name`);
+  }
+  return findings;
+}
+
+// packages/zaku/dist/lib/handlers/execute-script.js
+var UNKNOWN = { outcome: 'unknown', message: 'read before retrying' };
+var ExecuteScriptHandler = class ExecuteScriptHandler2 {
+  bridge;
+  command = ExecuteScript;
+  constructor(bridge) {
+    this.bridge = bridge;
+  }
+  async handle(command) {
+    const refused = refusedCalls(command.script);
+    if (refused.length > 0) throw new ScriptRefused(refused);
+    const session = this.bridge.session(command.file);
+    return this.bridge.exclusive(session, async () => {
+      const ran = await this.bridge.run(session, command.script);
+      if (ran.kind === 'dropped') return UNKNOWN;
+      const empty = { value: null, created: [], mutated: [], findings: [], untouchable: [] };
+      if (ran.kind === 'threw')
+        return { outcome: 'rolled-back', reason: 'threw', error: ran.error, ...empty, untouchable: ran.untouchable };
+      if (ran.kind === 'timeout')
+        return {
+          outcome: 'rolled-back',
+          reason: 'timeout',
+          // The script may still be running; what it changed on nodes that already existed is not known yet.
+          message: 'the script may have changed nodes that already existed; read before retrying',
+          ...empty,
+        };
+      const findings = snapshotFindings(ran.snapshot);
+      const decision = command.mode === 'strict' && findings.length > 0 ? 'rollback' : 'commit';
+      const settled = await this.bridge.decide(session, ran.runId, decision);
+      if (settled.kind === 'dropped') return UNKNOWN;
+      this.bridge.push(session, { type: 'findings', findings });
+      const parents = Object.fromEntries(ran.snapshot.map((node2) => [node2.id, node2.parentId]));
+      return cutReply({
+        outcome: settled.outcome,
+        ...(decision === 'rollback' ? { reason: 'findings' } : {}),
+        value: ran.value,
+        created: ran.created,
+        mutated: ran.mutated,
+        findings,
+        untouchable: settled.untouchable,
+        snapshotParents: parents,
+      });
+    });
+  }
+};
+ExecuteScriptHandler = __decorate2(
+  [
+    (0, import_tsyringe7.injectable)({ token: TOKENS.COMMAND_HANDLER }),
+    __param2(0, (0, import_tsyringe7.inject)(TOKENS.FIGMA_BRIDGE)),
+  ],
+  ExecuteScriptHandler,
+);
+
+// packages/zaku/dist/lib/repositories/design-config-repository.js
+var import_tsyringe8 = __toESM(require_cjs(), 1);
 var DesignConfigRepository = class DesignConfigRepository2 {
   read(root) {
     return readDesignFile(designPaths(root).config, zakuConfigSchema);
@@ -36410,12 +36615,12 @@ var DesignConfigRepository = class DesignConfigRepository2 {
   }
 };
 DesignConfigRepository = __decorate2(
-  [(0, import_tsyringe7.injectable)({ token: TOKENS.DESIGN_CONFIG_REPOSITORY })],
+  [(0, import_tsyringe8.injectable)({ token: TOKENS.DESIGN_CONFIG_REPOSITORY })],
   DesignConfigRepository,
 );
 
 // packages/zaku/dist/lib/repositories/token-document-repository.js
-var import_tsyringe8 = __toESM(require_cjs(), 1);
+var import_tsyringe9 = __toESM(require_cjs(), 1);
 var TokenDocumentRepository = class TokenDocumentRepository2 {
   async save(root, doc) {
     const path2 = designPaths(root).tokens;
@@ -36424,12 +36629,12 @@ var TokenDocumentRepository = class TokenDocumentRepository2 {
   }
 };
 TokenDocumentRepository = __decorate2(
-  [(0, import_tsyringe8.injectable)({ token: TOKENS.TOKEN_DOCUMENT_REPOSITORY })],
+  [(0, import_tsyringe9.injectable)({ token: TOKENS.TOKEN_DOCUMENT_REPOSITORY })],
   TokenDocumentRepository,
 );
 
 // packages/zaku/dist/lib/repositories/recipe-repository.js
-var import_tsyringe9 = __toESM(require_cjs(), 1);
+var import_tsyringe10 = __toESM(require_cjs(), 1);
 var RecipeRepository = class RecipeRepository2 {
   async save(root, doc) {
     const path2 = designPaths(root).recipe;
@@ -36438,12 +36643,12 @@ var RecipeRepository = class RecipeRepository2 {
   }
 };
 RecipeRepository = __decorate2(
-  [(0, import_tsyringe9.injectable)({ token: TOKENS.RECIPE_REPOSITORY })],
+  [(0, import_tsyringe10.injectable)({ token: TOKENS.RECIPE_REPOSITORY })],
   RecipeRepository,
 );
 
 // packages/zaku/dist/lib/repositories/json-schema-files.js
-var import_tsyringe10 = __toESM(require_cjs(), 1);
+var import_tsyringe11 = __toESM(require_cjs(), 1);
 import { mkdir as mkdir3 } from 'node:fs/promises';
 import { join as join6 } from 'node:path';
 var JsonSchemaFiles = class JsonSchemaFiles2 {
@@ -36459,12 +36664,12 @@ var JsonSchemaFiles = class JsonSchemaFiles2 {
   }
 };
 JsonSchemaFiles = __decorate2(
-  [(0, import_tsyringe10.injectable)({ token: TOKENS.JSON_SCHEMA_FILES })],
+  [(0, import_tsyringe11.injectable)({ token: TOKENS.JSON_SCHEMA_FILES })],
   JsonSchemaFiles,
 );
 
 // packages/zaku/dist/lib/repositories/source-files.js
-var import_tsyringe11 = __toESM(require_cjs(), 1);
+var import_tsyringe12 = __toESM(require_cjs(), 1);
 import { readFile as readFile4 } from 'node:fs/promises';
 var SourceFiles = class SourceFiles2 {
   readText(path2) {
@@ -36474,11 +36679,27 @@ var SourceFiles = class SourceFiles2 {
     return JSON.parse(await readFile4(path2, 'utf8'));
   }
 };
-SourceFiles = __decorate2([(0, import_tsyringe11.injectable)({ token: TOKENS.SOURCE_FILES })], SourceFiles);
+SourceFiles = __decorate2([(0, import_tsyringe12.injectable)({ token: TOKENS.SOURCE_FILES })], SourceFiles);
+
+// packages/zaku/dist/lib/repositories/pairing-store.js
+var pairingsFileSchema = external_exports
+  .object({
+    pairings: external_exports.array(
+      external_exports
+        .object({
+          id: external_exports.string(),
+          hash: external_exports.string(),
+          file: external_exports.string(),
+          created: external_exports.string(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
 
 // packages/zaku/dist/entrypoints/cli/dependencies.js
 function compose(seams) {
-  const scope = import_tsyringe12.container.createChildContainer();
+  const scope = import_tsyringe13.container.createChildContainer();
   scope.register(TOKENS.CLOCK, { useValue: { now: seams.now } });
   scope.register(TOKENS.RUN_COMMAND, { useValue: seams.run });
   scope.register(TOKENS.BUDGET_LEDGER, {
@@ -36491,6 +36712,7 @@ function compose(seams) {
   };
   scope.register(TOKENS.RECIPE_PAGE_READER, { useValue: reader });
   scope.register(TOKENS.FIGMA_REST, { useValue: seams.rest ?? missingRest() });
+  scope.register(TOKENS.FIGMA_BRIDGE, { useValue: unavailable('the Figma bridge (run zaku-mcp)') });
   return bootstrap(scope, { commandHandler: TOKENS.COMMAND_HANDLER });
 }
 function missingRest() {
