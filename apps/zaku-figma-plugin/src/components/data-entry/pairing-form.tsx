@@ -1,10 +1,11 @@
 import type { RefusalReason } from '@zeroxsolutions/zaku/schema';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { useId, useState } from 'react';
+import { KeyRoundIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { Field, FieldError, FieldLabel } from '@/components/ui/field';
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
-import { cn } from '@/lib/utils';
 
 const PAIRING_FORM_REFUSALS = {
   'wrong-code': 'That code is not right. Check it and try again.',
@@ -23,9 +24,9 @@ type PairingFormProps = {
   onPair: (code: string) => void;
   /** Offers "Use another port" when given, for a code that went to, or would go to, the wrong zaku-mcp. */
   onUseAnotherPort?: () => void;
-} & Omit<React.ComponentProps<'form'>, 'onSubmit'>;
+} & React.ComponentProps<typeof Empty>;
 
-function PairingForm({ refusal, onPair, onUseAnotherPort, className, ...props }: PairingFormProps): React.JSX.Element {
+function PairingForm({ refusal, onPair, onUseAnotherPort, ...props }: PairingFormProps): React.JSX.Element {
   const id = useId();
   const [code, setCode] = useState('');
   const [shownRefusal, setShownRefusal] = useState(refusal);
@@ -36,53 +37,61 @@ function PairingForm({ refusal, onPair, onUseAnotherPort, className, ...props }:
   }
   const invalid = refusal !== null;
   return (
-    <form
-      data-slot="pairing-form"
-      className={cn('p-3', className)}
-      onSubmit={(event) => event.preventDefault()}
-      {...props}
-    >
-      <FieldGroup>
-        <Field data-invalid={invalid || undefined}>
-          <FieldLabel htmlFor={id}>Pairing code</FieldLabel>
-          <InputOTP
-            id={id}
-            name="code"
-            maxLength={PAIRING_CODE_LENGTH}
-            pattern={REGEXP_ONLY_DIGITS}
-            // The agent shows the code as `1234 5678`; the digits pattern refuses a paste that keeps the space.
-            pasteTransformer={(pasted) => pasted.replace(/[\s-]/g, '')}
-            value={code}
-            onChange={setCode}
-            onComplete={onPair}
-            aria-invalid={invalid || undefined}
-          >
-            <InputOTPGroup>
-              <InputOTPSlot index={0} aria-invalid={invalid || undefined} />
-              <InputOTPSlot index={1} aria-invalid={invalid || undefined} />
-              <InputOTPSlot index={2} aria-invalid={invalid || undefined} />
-              <InputOTPSlot index={3} aria-invalid={invalid || undefined} />
-            </InputOTPGroup>
-            <InputOTPSeparator />
-            <InputOTPGroup>
-              <InputOTPSlot index={4} aria-invalid={invalid || undefined} />
-              <InputOTPSlot index={5} aria-invalid={invalid || undefined} />
-              <InputOTPSlot index={6} aria-invalid={invalid || undefined} />
-              <InputOTPSlot index={7} aria-invalid={invalid || undefined} />
-            </InputOTPGroup>
-          </InputOTP>
-          <FieldDescription>Ask your agent to pair with zaku, then type the code here.</FieldDescription>
-          {invalid && <FieldError>{PAIRING_FORM_REFUSALS[refusal]}</FieldError>}
-        </Field>
-        {onUseAnotherPort !== undefined && (
-          <Field orientation="horizontal">
-            <Button type="button" variant="ghost" onClick={onUseAnotherPort}>
-              Use another port
-            </Button>
+    <Empty {...props}>
+      <EmptyHeader>
+        <EmptyMedia variant="icon">
+          <KeyRoundIcon />
+        </EmptyMedia>
+        <EmptyTitle role="heading" aria-level={2}>
+          Pair with your agent
+        </EmptyTitle>
+        <EmptyDescription>Ask your agent to pair with zaku, then type the code here.</EmptyDescription>
+      </EmptyHeader>
+      <EmptyContent>
+        <form data-slot="pairing-form" className="w-full" onSubmit={(event) => event.preventDefault()}>
+          <Field data-invalid={invalid || undefined}>
+            {/* The title above is the visible heading; the label names the field for assistive tech. */}
+            <FieldLabel htmlFor={id} className="sr-only">
+              Pairing code
+            </FieldLabel>
+            <div className="flex justify-center">
+              <InputOTP
+                id={id}
+                name="code"
+                maxLength={PAIRING_CODE_LENGTH}
+                pattern={REGEXP_ONLY_DIGITS}
+                // The agent shows the code as `1234 5678`; the digits pattern refuses a paste that keeps the space.
+                pasteTransformer={(pasted) => pasted.replace(/[\s-]/g, '')}
+                value={code}
+                onChange={setCode}
+                onComplete={onPair}
+                aria-invalid={invalid || undefined}
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} aria-invalid={invalid || undefined} />
+                  <InputOTPSlot index={1} aria-invalid={invalid || undefined} />
+                  <InputOTPSlot index={2} aria-invalid={invalid || undefined} />
+                  <InputOTPSlot index={3} aria-invalid={invalid || undefined} />
+                </InputOTPGroup>
+                <InputOTPSeparator />
+                <InputOTPGroup>
+                  <InputOTPSlot index={4} aria-invalid={invalid || undefined} />
+                  <InputOTPSlot index={5} aria-invalid={invalid || undefined} />
+                  <InputOTPSlot index={6} aria-invalid={invalid || undefined} />
+                  <InputOTPSlot index={7} aria-invalid={invalid || undefined} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            {invalid && <FieldError>{PAIRING_FORM_REFUSALS[refusal]}</FieldError>}
           </Field>
+        </form>
+        {onUseAnotherPort !== undefined && (
+          <Button type="button" variant="link" onClick={onUseAnotherPort}>
+            Use another port
+          </Button>
         )}
-      </FieldGroup>
-    </form>
+      </EmptyContent>
+    </Empty>
   );
 }
 

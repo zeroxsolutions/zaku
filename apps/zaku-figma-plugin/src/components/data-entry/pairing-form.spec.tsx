@@ -14,8 +14,9 @@ async function copy(text: string): Promise<void> {
 }
 
 describe('PairingForm', () => {
-  it('says the panel is not paired, and asks for the code', async () => {
+  it('asks for the code under its own heading, with the field still named', async () => {
     await render(<PairingForm refusal={null} onPair={() => undefined} />);
+    await expect.element(page.getByRole('heading', { name: 'Pair with your agent' })).toBeVisible();
     await expect
       .element(page.getByText('Ask your agent to pair with zaku, then type the code here.', { exact: true }))
       .toBeVisible();

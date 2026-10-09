@@ -5,8 +5,9 @@ import { PortForm } from './port-form';
 const PORTS = [7337, 7338, 7339, 7340, 7341, 7342, 7343, 7344, 7345, 7346] as const;
 
 describe('PortForm', () => {
-  it('names the port nothing answers on, and offers it to change', async () => {
+  it('names the port nothing answers on under its own heading, and offers it to change', async () => {
     await render(<PortForm port={7337} ports={PORTS} onConnect={() => undefined} />);
+    await expect.element(page.getByRole('heading', { name: 'Connect to zaku-mcp' })).toBeVisible();
     await expect
       .element(page.getByText('No zaku-mcp answers on port 7337. Ask your agent for its port.'))
       .toBeVisible();
