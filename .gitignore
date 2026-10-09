@@ -80,3 +80,8 @@ __screenshots__/
 .vitest-attachments/
 
 gate.log
+
+vite.config.*.timestamp*
+.vitest
+# Built per platform by zaku-mcp:plugin-bin; the launcher beside them is committed
+plugins/zaku/bin/zaku-mcp-*

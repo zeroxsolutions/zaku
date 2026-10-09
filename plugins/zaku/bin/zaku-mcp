@@ -1,0 +1,23 @@
+#!/bin/sh
+# Starts the zaku MCP server for this platform. dist.json says where the binary comes from;
+# `workspace` runs the one `nx run @zeroxsolutions/zaku-mcp:plugin-bin` copied next to this file.
+set -eu
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+root=$(dirname -- "$here")
+source=$(sed -n 's/.*"source"[^"]*"\([^"]*\)".*/\1/p' "$root/dist.json")
+case "$(uname -s)-$(uname -m)" in
+  Darwin-arm64) platform=darwin-arm64 ;;
+  Darwin-x86_64) platform=darwin-x64 ;;
+  Linux-x86_64) platform=linux-x64 ;;
+  Linux-aarch64) platform=linux-arm64 ;;
+  *) echo "zaku-mcp: no build for $(uname -s)-$(uname -m)" >&2; exit 1 ;;
+esac
+case "$source" in
+  workspace) binary="$here/zaku-mcp-$platform" ;;
+  *) echo "zaku-mcp: source $source is not supported yet" >&2; exit 1 ;;
+esac
+if [ ! -x "$binary" ]; then
+  echo "zaku-mcp: $binary is missing; run pnpm nx run @zeroxsolutions/zaku-mcp:plugin-bin" >&2
+  exit 1
+fi
+ZAKU_SKILLS_DIR="$root/skills" exec "$binary" "$@"

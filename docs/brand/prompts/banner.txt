@@ -1,0 +1,11 @@
+A wide 16:9 cover banner for "zaku", a design-discipline tool that checks an AI agent's work in Figma. Microsoft Fluent 2 style.
+
+Background: dark Mica-like surface #0E1411, with a soft blurred field of green #3FA36B and magenta #FF3D7F light glowing behind the left third. One large frosted acrylic panel, translucent, with a faint thin design-tool grid on it, floating at a slight angle across the right two thirds.
+
+On the left third: the zaku mark, a rounded squircle in a smooth green gradient (#1F5F3F to #3FA36B, lit from the top-left), with a glassy near-black horizontal visor slit across its middle and one glowing magenta-pink round eye #FF3D7F in the slit, soft layered shapes, a soft shadow beneath.
+
+On the right, on the acrylic panel, exactly two lines of text in a clean geometric sans-serif, white:
+Line 1, large: zaku
+Line 2, smaller, 70% white: Design rules your agent can't skip
+
+No other text, letters, logos, UI screenshots or characters anywhere. No robot head or face. Spell both lines exactly as given.

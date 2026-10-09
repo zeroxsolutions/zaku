@@ -20,6 +20,7 @@ export default [
       '**/.next',
       '**/.open-next',
       '**/.wrangler',
+      '**/vite.config.*.timestamp*',
     ],
   },
   {

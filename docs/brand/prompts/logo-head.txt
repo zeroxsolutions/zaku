@@ -1,0 +1,3 @@
+An app icon made from the attached character's head alone. Use the attached image as the reference: the same round green helmet-head (#3FA36B lit, #1F5F3F in shade), the same horizontal glassy near-black visor slit, the same single glowing magenta-pink round eye (#FF3D7F), in the same soft 3D Microsoft Fluent rendering lit from the top-left, with a soft contact shadow beneath.
+
+Head only: no body, no arms, no hands, no stylus. Seen from the front, slightly turned as in the reference. Square 1:1 canvas, transparent background, the head centred with generous padding, filling about 80% of the canvas. Simple enough to read at 16 px. No text, no letters, no other objects. Clean anti-aliased alpha edges: no halo, no fringe, no stray pixels outside the head and its shadow.

@@ -1,0 +1,5 @@
+A chibi mascot character for "zaku", a design-discipline tool that checks an AI agent's work in Figma. Microsoft Fluent 2 3D style, like Fluent's 3D emoji: soft rounded clay-like forms, smooth gentle gradients lit from the top-left, soft contact shadow, no outlines. Square 1:1 canvas, transparent background, the whole character centred with generous padding.
+
+The character: an original, friendly chibi robot, about two heads tall, with a big round helmet-head in green (#3FA36B lit, #1F5F3F in shade). Across the helmet, one horizontal glassy near-black visor slit with a single glowing magenta-pink round eye (#FF3D7F) in it. A small rounded body and stubby arms and legs in the same green with darker green joints. It holds a small pencil-like stylus in one hand, as a designer would, and gives a tiny thumbs-up with the other.
+
+Original design only: no breathing tubes or hoses, no shoulder spikes or spiked pauldron, no faction emblem or crest, no weapon, no copy of any existing robot, anime mecha or logo. No text, no letters. Clean anti-aliased alpha edges: no halo, no fringe, no stray pixels outside the character and its shadow.

@@ -1,0 +1,282 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "product": {
+      "type": "string",
+      "minLength": 1
+    },
+    "designSystem": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "shadcn": {
+              "type": "object",
+              "properties": {
+                "preset": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": ["preset"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["shadcn"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "dtcg": {
+              "type": "object",
+              "properties": {
+                "resolver": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "light": {
+                  "anyOf": [
+                    {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  ]
+                },
+                "dark": {
+                  "anyOf": [
+                    {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    }
+                  ]
+                },
+                "colors": {
+                  "default": "color",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "radii": {
+                  "default": "radius",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "contrast": {
+                  "default": [],
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "prefixItems": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    ],
+                    "items": false,
+                    "minItems": 2,
+                    "maxItems": 2
+                  }
+                }
+              },
+              "required": ["light", "dark"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["dtcg"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "figma": {
+      "type": "object",
+      "properties": {
+        "library": {
+          "type": "string",
+          "minLength": 1
+        },
+        "product": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": ["library", "product"],
+      "additionalProperties": false
+    },
+    "targets": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "family": {
+            "type": "string",
+            "enum": ["web", "ios", "android"]
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^\\S(.*\\S)?$"
+          },
+          "size": {
+            "type": "object",
+            "properties": {
+              "width": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "height": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": ["width", "height"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["id", "family", "name"],
+        "additionalProperties": false
+      }
+    },
+    "modes": {
+      "default": {},
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "interactive": {
+      "default": [
+        "Button",
+        "Button Group",
+        "Checkbox",
+        "Combobox",
+        "Dropdown Menu",
+        "Input",
+        "Input Group",
+        "Input OTP",
+        "Native Select",
+        "Pagination",
+        "Radio Group",
+        "Select",
+        "Slider",
+        "Switch",
+        "Tabs",
+        "Textarea",
+        "Toggle",
+        "Toggle Group"
+      ],
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "systemBars": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "enum": ["web", "ios", "android"]
+      },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": ["web", "ios", "android"]
+    },
+    "budget": {
+      "default": {
+        "mcpPerDay": 200,
+        "mcpPerRun": 30,
+        "reserve": 0.2
+      },
+      "type": "object",
+      "properties": {
+        "mcpPerDay": {
+          "default": 200,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "mcpPerRun": {
+          "default": 30,
+          "type": "integer",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991
+        },
+        "reserve": {
+          "default": 0.2,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "recipe": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "dark": {
+          "default": "class",
+          "type": "string",
+          "enum": ["class", "media"]
+        },
+        "darkClass": {
+          "default": "dark",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "required": ["product", "designSystem", "figma", "targets"],
+  "additionalProperties": false
+}

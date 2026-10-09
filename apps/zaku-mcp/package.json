@@ -1,0 +1,164 @@
+{
+  "name": "@zeroxsolutions/zaku-mcp",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "name": "zaku-mcp",
+    "targets": {
+      "build": {
+        "executor": "@nx/esbuild:esbuild",
+        "outputs": [
+          "{options.outputPath}"
+        ],
+        "defaultConfiguration": "production",
+        "options": {
+          "platform": "node",
+          "outputPath": "apps/zaku-mcp/dist",
+          "format": [
+            "esm"
+          ],
+          "bundle": true,
+          "main": "apps/zaku-mcp/src/main.ts",
+          "tsConfig": "apps/zaku-mcp/tsconfig.app.json",
+          "assets": [],
+          "esbuildOptions": {
+            "sourcemap": true,
+            "outExtension": {
+              ".js": ".mjs"
+            },
+            "banner": {
+              "js": "import { createRequire as zakuCreateRequire } from 'node:module'; const require = zakuCreateRequire(import.meta.url);"
+            }
+          },
+          "thirdParty": true
+        },
+        "configurations": {
+          "development": {},
+          "production": {
+            "esbuildOptions": {
+              "sourcemap": false,
+              "outExtension": {
+                ".js": ".mjs"
+              }
+            }
+          }
+        }
+      },
+      "prune-lockfile": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": true,
+        "executor": "@nx/js:prune-lockfile",
+        "inputs": [
+          "default",
+          "^default",
+          "{workspaceRoot}/pnpm-workspace.yaml",
+          "{workspaceRoot}/package.json",
+          {
+            "runtime": "node -e \"try{console.log('pnpm major '+require('child_process').execSync('pnpm --version',{stdio:['ignore','pipe','ignore']}).toString().trim().split('.')[0])}catch{console.log('pnpm major unavailable')}\""
+          }
+        ],
+        "outputs": [
+          "{workspaceRoot}/apps/zaku-mcp/dist/package.json",
+          "{workspaceRoot}/apps/zaku-mcp/dist/pnpm-lock.yaml",
+          "{workspaceRoot}/apps/zaku-mcp/dist/pnpm-workspace.yaml",
+          "{workspaceRoot}/apps/zaku-mcp/dist/patches",
+          "{workspaceRoot}/apps/zaku-mcp/dist/local_path_modules"
+        ],
+        "options": {
+          "buildTarget": "build"
+        }
+      },
+      "copy-workspace-modules": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": true,
+        "outputs": [
+          "{workspaceRoot}/apps/zaku-mcp/dist/workspace_modules"
+        ],
+        "executor": "@nx/js:copy-workspace-modules",
+        "options": {
+          "buildTarget": "build"
+        }
+      },
+      "prune": {
+        "dependsOn": [
+          "prune-lockfile",
+          "copy-workspace-modules"
+        ],
+        "executor": "nx:noop"
+      },
+      "serve": {
+        "continuous": true,
+        "executor": "@nx/js:node",
+        "defaultConfiguration": "development",
+        "dependsOn": [
+          "build"
+        ],
+        "options": {
+          "buildTarget": "zaku-mcp:build",
+          "runBuildTargetDependencies": false
+        },
+        "configurations": {
+          "development": {
+            "buildTarget": "zaku-mcp:build:development"
+          },
+          "production": {
+            "buildTarget": "zaku-mcp:build:production"
+          }
+        }
+      },
+      "compile": {
+        "executor": "nx:run-commands",
+        "dependsOn": [
+          "build"
+        ],
+        "cache": true,
+        "inputs": [
+          "production",
+          "^production",
+          {
+            "runtime": "bun --version"
+          }
+        ],
+        "outputs": [
+          "{projectRoot}/dist/zaku-mcp"
+        ],
+        "options": {
+          "command": "bun build --compile --minify --sourcemap src/main.ts --outfile dist/zaku-mcp",
+          "cwd": "{projectRoot}"
+        }
+      },
+      "plugin-bin": {
+        "executor": "nx:run-commands",
+        "dependsOn": [
+          "compile"
+        ],
+        "outputs": [
+          "{workspaceRoot}/plugins/zaku/bin"
+        ],
+        "options": {
+          "command": "cp apps/zaku-mcp/dist/zaku-mcp plugins/zaku/bin/zaku-mcp-$(node -p 'process.platform+\"-\"+process.arch')",
+          "cwd": "{workspaceRoot}"
+        }
+      },
+      "e2e": {
+        "executor": "nx:run-commands",
+        "dependsOn": [
+          "compile"
+        ],
+        "cache": false,
+        "options": {
+          "command": "node --test apps/zaku-mcp/e2e/binary.test.ts",
+          "cwd": "{workspaceRoot}"
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "@zeroxsolutions/zaku": "workspace:*"
+  },
+  "type": "module"
+}

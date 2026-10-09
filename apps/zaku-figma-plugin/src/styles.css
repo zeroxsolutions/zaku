@@ -1,0 +1,79 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+/* Figma puts figma-dark on the root element when its UI is dark. */
+@custom-variant dark (&:is(.figma-dark *));
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  /* Figma's own UI face; the panel sits inside Figma, so it borrows Figma's look whole. */
+  --font-sans: Inter, system-ui, sans-serif;
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* Figma sets these under themeColors, and swaps them itself for its dark theme. */
+  --radius: 0.375rem;
+  --background: var(--figma-color-bg);
+  --foreground: var(--figma-color-text);
+  --card: var(--figma-color-bg);
+  --card-foreground: var(--figma-color-text);
+  --popover: var(--figma-color-bg);
+  --popover-foreground: var(--figma-color-text);
+  --primary: var(--figma-color-bg-brand);
+  --primary-foreground: var(--figma-color-text-onbrand);
+  --secondary: var(--figma-color-bg-secondary);
+  --secondary-foreground: var(--figma-color-text);
+  --muted: var(--figma-color-bg-secondary);
+  --muted-foreground: var(--figma-color-text-secondary);
+  --accent: var(--figma-color-bg-hover);
+  --accent-foreground: var(--figma-color-text);
+  --destructive: var(--figma-color-bg-danger);
+  --border: var(--figma-color-border);
+  --input: var(--figma-color-border);
+  --ring: var(--figma-color-border-selected);
+  --success: var(--figma-color-bg-success);
+  --warning: var(--figma-color-bg-warning);
+  /* Text on the panel's own background; --destructive is a fill. */
+  --error: var(--figma-color-text-danger);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

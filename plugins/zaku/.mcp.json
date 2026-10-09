@@ -1,0 +1,5 @@
+{
+  "mcpServers": {
+    "zaku": { "command": "${CLAUDE_PLUGIN_ROOT}/bin/zaku-mcp" }
+  }
+}
