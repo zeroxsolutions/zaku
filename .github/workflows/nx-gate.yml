@@ -1,0 +1,80 @@
+# Run nx targets against this repository. No deployment environment is declared here, so a job
+# running this workflow resolves no environment secret: a gate cannot deploy.
+name: nx-gate
+
+on:
+  workflow_call:
+    inputs:
+      targets:
+        description: 'Space-separated nx targets, e.g. "lint build test".'
+        required: true
+        type: string
+      mode:
+        description: >
+          "affected" runs only what the change reaches - the right question for a gate. "run-many"
+          sweeps every project defining the target. Falls back to run-many when no usable base
+          commit exists.
+        required: false
+        type: string
+        default: affected
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    # GitHub's default is 360 minutes; a hung e2e holds the run that long.
+    timeout-minutes: 30
+    steps:
+      # Full history, which `nx affected` needs to resolve a base commit.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/nx-setup
+
+      # Nothing that launches a browser installs it, and a `test` target can launch one as well as
+      # `e2e`. The browsers and their system libraries come from this workspace's own Playwright.
+      - name: Install Playwright browsers
+        shell: bash
+        run: |
+          [ -e node_modules/@playwright/test ] || {
+            echo 'no playwright in this workspace; nothing to install'
+            exit 0
+          }
+          pnpm exec playwright install --with-deps
+
+      # A push that creates a branch reports an all-zero "before" commit, and a force-push can name
+      # one the checkout lacks. Either degrades to a full sweep: a superset is safe for a gate.
+      - name: Resolve the affected range
+        id: range
+        shell: bash
+        run: |
+          mode='${{ inputs.mode }}'
+          base='${{ github.event.pull_request.base.sha || github.event.before }}'
+          case "$base" in
+            ''|0000000000000000000000000000000000000000) base='' ;;
+          esac
+          if [ -n "$base" ] && ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            echo "base $base is not reachable in this checkout; sweeping instead"
+            base=''
+          fi
+          if [ "$mode" = 'affected' ] && [ -z "$base" ]; then
+            echo 'no usable base commit; falling back to run-many'
+            mode='run-many'
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+
+      - name: Run the targets
+        shell: bash
+        env:
+          NX_BASE: ${{ steps.range.outputs.base }}
+          NX_HEAD: ${{ github.sha }}
+        run: |
+          if [ '${{ steps.range.outputs.mode }}' = 'affected' ]; then
+            pnpm nx affected -t ${{ inputs.targets }}
+          else
+            pnpm nx run-many -t ${{ inputs.targets }}
+          fi
