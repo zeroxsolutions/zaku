@@ -226,8 +226,10 @@ A component is checked item by item, not by its root:
 1. Every paint, radius, padding, gap and font on every item, nested ones included, uses a semantic
    token or a library text style. A raw value is a defect.
 2. Every variant resolves, in Light and in Dark, to the values the code computes for that variant and
-   that part: background, text colour, border, width, height, padding, gap, radius, font size and
-   family. The label is checked as hard as the background.
+   that part: background, text colour, icon colour, border, width, height, padding, gap, radius, font
+   size and family. The label is checked as hard as the background, and an icon as hard as the label:
+   its glyph is drawn in the colour the code renders that icon part in, so an icon beside a label
+   takes the label's foreground token wherever the code's glyph follows the text colour.
 3. The variants are the code's variants: a variant on one side and not the other is a defect.
 
 `zaku library save` writes `docs/design/library.json`, every variant item by item in every mode, from

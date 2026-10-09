@@ -149,6 +149,38 @@ describe('recipe, on the parts a field belongs to', () => {
   });
 });
 
+describe('recipe check on an icon', () => {
+  function runWithIcon(glyph: LibraryItem['glyph'], coded: RecipePart['color']): string[] {
+    const library = testLibrary();
+    const icon = library.components[0]?.variants[0]?.modes[0]?.items.find((item) => item.path === 'Icon');
+    if (icon) icon.glyph = glyph;
+    const component = library.components[0];
+    if (component?.map) component.map.parts['Icon'] = 'icon';
+    const code = doc({}, { width: 80 });
+    const variant = code.components[0]?.variants[0];
+    if (variant)
+      variant.parts['icon'] = {
+        ...part,
+        width: 16,
+        height: 16,
+        padding: [0, 0, 0, 0],
+        gap: null,
+        radii: null,
+        color: coded,
+      };
+    const outcome = recipe(testInput({ config, library, recipe: code }));
+    return 'findings' in outcome ? outcome.findings.map((finding) => `${finding.field ?? ''}: ${finding.message}`) : [];
+  }
+
+  it('reports an icon drawn in another colour than the one the code renders it in', () => {
+    const white = { r: 0.9243, g: 0.992, b: 0.9602, a: 1 };
+    expect(runWithIcon({ r: 0, g: 0, b: 0, a: 1 }, white)).toEqual([
+      'glyph: Button variant=default, size=default icon: glyph is #000000 in the library and #ecfdf5 in code (light)',
+    ]);
+    expect(runWithIcon(white, white)).toEqual([]);
+  });
+});
+
 describe('recipe check per side and per corner', () => {
   function runRecipeCheck(code: Partial<RecipePart>, drawn: Partial<LibraryItem>): string[] {
     const library = testLibrary();

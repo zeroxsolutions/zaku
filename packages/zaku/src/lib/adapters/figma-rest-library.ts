@@ -102,6 +102,26 @@ function strokeWeightsOf(node: RestNode): [number, number, number, number] {
   return [weight, weight, weight, weight];
 }
 
+const GLYPH_TYPES = new Set(['VECTOR', 'BOOLEAN_OPERATION', 'LINE', 'ELLIPSE', 'POLYGON', 'STAR']);
+
+/** The first painted vector of an instance that holds no text, which is how an icon is drawn; null otherwise. */
+function glyphOf(instance: RestNode, at: Resolve): { value: Rgba | null; binding: string | null } | null {
+  let text = false;
+  let glyph: { value: Rgba | null; binding: string | null } | null = null;
+  const visit = (node: RestNode): void => {
+    if (node.visible === false) return;
+    if (node.type === 'TEXT') text = true;
+    if (!glyph && GLYPH_TYPES.has(node.type)) {
+      const stroke = paintOf(node.strokes, at);
+      const paint = stroke.value ? stroke : paintOf(node.fills, at);
+      if (paint.value) glyph = paint;
+    }
+    for (const child of node.children ?? []) visit(child);
+  };
+  for (const child of instance.children ?? []) visit(child);
+  return text ? null : glyph;
+}
+
 function itemsOf(root: RestNode, at: Resolve): LibraryItem[] {
   const out: LibraryItem[] = [];
   const visit = (node: RestNode, path: string): void => {
@@ -117,6 +137,7 @@ function itemsOf(root: RestNode, at: Resolve): LibraryItem[] {
     const auto = node.layoutMode !== undefined && node.layoutMode !== 'NONE';
     const box = node.absoluteBoundingBox;
     const textStyle = node.styles?.['text'];
+    const glyph = path !== '' && node.type === 'INSTANCE' ? glyphOf(node, at) : null;
     const componentId = node.type === 'INSTANCE' ? node.componentId : path === '' ? node.id : undefined;
     out.push({
       nodeId: node.id,
@@ -125,6 +146,7 @@ function itemsOf(root: RestNode, at: Resolve): LibraryItem[] {
       fill: isText ? null : fill.value,
       stroke: stroke.value,
       textColor: isText ? fill.value : null,
+      ...(glyph?.value ? { glyph: glyph.value } : {}),
       width: box?.width ?? 0,
       height: box?.height ?? 0,
       padding: auto
@@ -142,6 +164,7 @@ function itemsOf(root: RestNode, at: Resolve): LibraryItem[] {
         stroke: stroke.binding,
         textColor: isText ? fill.binding : null,
         radius: radiusName,
+        ...(glyph?.value ? { glyph: glyph.binding } : {}),
       },
     });
     if (path === '' || node.type !== 'INSTANCE') {

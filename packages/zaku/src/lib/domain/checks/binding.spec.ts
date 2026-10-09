@@ -40,6 +40,27 @@ describe('binding', () => {
   });
 });
 
+describe('binding, on an icon', () => {
+  it('reports an icon whose glyph is drawn in a raw colour', () => {
+    const library = testLibrary();
+    const icon = library.components[0]?.variants[0]?.modes[0]?.items.find((item) => item.path === 'Icon');
+    if (icon) {
+      icon.glyph = { r: 0, g: 0, b: 0, a: 1 };
+      icon.bindings['glyph'] = null;
+    }
+    expect(binding(testInput({ library }))).toEqual({
+      findings: [
+        {
+          check: 'binding',
+          nodeId: '100:3',
+          field: 'glyph',
+          message: 'Button Variant=default, Size=default Icon: glyph is a raw value',
+        },
+      ],
+    });
+  });
+});
+
 describe('binding, to the wrong layer of tokens', () => {
   it('reports a paint bound to an axis token rather than a semantic one', () => {
     const library = testLibrary();
