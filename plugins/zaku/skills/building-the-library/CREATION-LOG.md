@@ -24,9 +24,24 @@ below.
   (Symbol Sources on the Symbols page, the override kinds, Stack order); the Sketch 2026.3 JavaScript
   API, whose `Swatch` exposes only a name and a colour.
 
+- A recorded session building an antd 6.6.5 library into an empty file with the zaku plugin, stopped
+  by the user partway: its transcript, the files it wrote and the user's screenshot of the canvas.
+  `test-a-first-library-pass-under-findings.md` holds it.
+- Figma Plugin API reference: `figma.fileKey` ("Only private plugins and Figma-owned resources ...
+  have access to this"), `figma.createFrame` ("parented under `figma.currentPage`"),
+  `counterAxisSizingMode`.
+
 ## What was refused
 
-Pending the RED runs.
+- Pending the RED runs, for the rules drafted before them.
+- Refusing `mode: "report"` in `execute` for library work. zaku-mcp cannot tell a library file from a
+  product file (the plugin gets no file key), and report mode is zaku's own tool for any file. The skill
+  holds library work to strict mode instead, and strict mode already returns every finding.
+- A frame pinned to each mode, one per mode, for Dark. The reference already says no library frame sets
+  a mode, because a pinned frame ignores the designer's switch. The Tags that read as Dark were Light
+  Disabled variants on the editor's canvas; a view frame painted with the page surface answers it.
+- A check on the shape of the key in `zaku.yaml`. Figma does not publish the key's format, and a
+  wrong but well-formed key would pass it; step 0 is a rule in the body.
 
 ## What shipped on weak evidence
 
@@ -42,10 +57,18 @@ Pending the RED runs.
   label within a button", and its Icons usage page (last updated Aug 12, 2026), "match your icon color
   with your text color when pairing them".
 
+- The Iron Law, its rationalization table and red flags, the step before the first drawing, the order
+  of drawing an entry and the reply's REQUIRED lines answer one recorded session, not a RED run: no
+  drawing run on a live file has reproduced them, and none has measured them.
+- The reference's line that a wrapping set resized after it was set to hug stays at the resized
+  height: the recorded set did; Figma's reference for `resize` does not say it.
+
 ## Tests
 
 - `test-fixing-a-library-button.md`: RED not run, GREEN not run.
 - `test-building-a-library-from-code.md`: RED not run, GREEN not run.
+- `test-a-first-library-pass-under-findings.md`: RED is the recorded session; description runs without
+  Figma, three per arm (control, the skill before, the skill after); GREEN on Figma not run.
 
 ## Iterations
 
@@ -63,3 +86,9 @@ Pending the RED runs.
 5. `references/sketch.md` removed with the Sketch reader in the checker: a skill-arm run on Sketch
    2026.3.1 built a library the user judged far below the Figma one, and the team will not maintain or
    check a second tool. The body stays tool-neutral; Figma is its only reference.
+6. From a recorded session: the step before the first drawing (the file's key in `zaku.yaml`), the
+   Iron Law on strict mode with its rationalizations and red flags, the order of drawing an entry, and
+   the reply's REQUIRED lines. In the checker, in the same change: a text style a script creates is no
+   longer read as an unstyled text node (the session's "false positive" was one); documentation on the
+   reference's pages is not held to the spacing and text-style rules; a set placed on an entry page
+   outside its view is `placement`, and a variant over another or past its set's edge is `overlap`.

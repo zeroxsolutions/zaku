@@ -142,4 +142,49 @@ describe('snapshotNode', () => {
       sizing: { horizontal: 'HUG', vertical: 'HUG' },
     });
   });
+  it('names the page that holds the node, and whether a component holds it', async () => {
+    const page = { id: '0:7', name: '\u2756 Tag', type: 'PAGE', parent: null };
+    const view = { id: '1:1', name: 'Nova / Tag', type: 'FRAME', parent: page, fills: [], strokes: [] };
+    const set = { id: '1:2', name: 'Tag', type: 'COMPONENT_SET', parent: view, fills: [], strokes: [], children: [] };
+    const variant = { id: '1:3', name: 'State=Default', type: 'COMPONENT', parent: set, fills: [], strokes: [] };
+    const label = { id: '1:4', name: 'Label', type: 'TEXT', parent: variant, fills: [], strokes: [] };
+    expect(await snapshotNode(view as never, true)).toMatchObject({
+      page: { id: '0:7', name: '\u2756 Tag' },
+      componentSource: false,
+    });
+    expect((await snapshotNode(set as never, true)).componentSource).toBe(true);
+    expect((await snapshotNode(label as never, true)).componentSource).toBe(true);
+    expect((await snapshotNode({ ...view, parent: null } as never, true)).page).toBeNull();
+  });
+
+  it("reads a component set's size and each variant's box", async () => {
+    const variant = (id: string, x: number): Record<string, unknown> => ({
+      id,
+      name: `State=${id}`,
+      type: 'COMPONENT',
+      x,
+      y: 32,
+      width: 60,
+      height: 24,
+    });
+    const set = {
+      id: '1:2',
+      name: 'Tag',
+      type: 'COMPONENT_SET',
+      parent: null,
+      fills: [],
+      strokes: [],
+      width: 1000,
+      height: 100,
+      children: [variant('1:3', 32), variant('1:4', 124)],
+    };
+    expect((await snapshotNode(set as never, true)).set).toEqual({
+      width: 1000,
+      height: 100,
+      variants: [
+        { id: '1:3', name: 'State=1:3', x: 32, y: 32, width: 60, height: 24 },
+        { id: '1:4', name: 'State=1:4', x: 124, y: 32, width: 60, height: 24 },
+      ],
+    });
+  });
 });

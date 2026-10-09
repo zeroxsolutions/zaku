@@ -4,7 +4,17 @@ const AsyncFunction = Object.getPrototypeOf(async (): Promise<void> => undefined
   ...params: string[]
 ) => (...args: unknown[]) => Promise<unknown>;
 
-type AnyNode = { id: string; name: string; type: string; removed: boolean; remove(): void };
+type AnyNode = {
+  id: string;
+  name: string;
+  type: string;
+  removed: boolean;
+  remove(): void;
+  parent?: AnyNode | null;
+};
+
+/** A node on a page. A style a create* call returns has an id and a type, `TEXT` for a text style, and no parent. */
+const onPage = (node: AnyNode): boolean => 'parent' in node;
 type Change = { nodeChanges: { type: string; node: { id: string } }[] };
 
 export interface RunnerHost {
@@ -115,10 +125,19 @@ export function createRunner(
     }
     const snapshot: NodeSnapshot[] = [];
     try {
-      for (const node of run.created) if (!node.removed) snapshot.push(await host.snapshot(node, true));
+      const live = run.created.filter((node) => !node.removed && onPage(node));
+      for (const node of live) snapshot.push(await host.snapshot(node, true));
       for (const id of run.mutated) {
         const node = await figma.getNodeByIdAsync(id);
         if (node && !node.removed) snapshot.push(await host.snapshot(node, false));
+      }
+      // A set combined on a page other than the one listened to is heard by no event; its variants still name it.
+      const seen = new Set([...live.map((node) => node.id), ...run.mutated]);
+      for (const node of live) {
+        const set = node.parent;
+        if (set?.type !== 'COMPONENT_SET' || set.removed || seen.has(set.id)) continue;
+        seen.add(set.id);
+        snapshot.push(await host.snapshot(set, false));
       }
     } catch (error) {
       // Unanswered, the server would wait out its timeout; a change nobody could check is not kept.

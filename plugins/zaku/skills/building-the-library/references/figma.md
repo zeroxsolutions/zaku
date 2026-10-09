@@ -4,6 +4,28 @@ What has to survive a swap of drawing tool: one token axis per choice the design
 Light and Dark that components use, values read per item and per mode as the tool resolves them, and
 an entry per component built from the documentation components.
 
+## The library file and its key
+
+The key is the part of the file's address after `/design/`: in
+`https://www.figma.com/design/<key>/<name>`, `<key>`. The plugin cannot read it, because the Plugin
+API gives `figma.fileKey` only to private plugins, so it comes from the person, from the address of a
+file saved in the team. `figma.library` in `zaku.yaml` holds it before the first drawing.
+
+## Drawing an entry
+
+- Every `figma.create*()` call puts its node on `figma.currentPage`, and the current page follows the
+  page the person opens while a script runs. A script that draws an entry looks the entry's page up by
+  name and appends each node it makes to its parent there, before it returns.
+- The views are two frames appended to the entry's page; the set is made with
+  `figma.combineAsVariants(components, demoCard)`, its parent the Component section's `Preview` (or
+  the `Matrix` frame inside it), never the page.
+- A set that wraps its variants fixes its width and hugs its height (`counterAxisSizingMode =
+  'AUTO'` on a horizontal set). Set the hugging axis after the last `resize()`, then read the set's
+  height back: a wrapping set resized to 100 high after it was set to hug stays 100 high and cuts off
+  its second row.
+- Variants placed by hand in a `Matrix` sit apart, with the gaps the `Preview` rows give, and the set
+  is resized to enclose them.
+
 ## Pages and names
 
 | Part                     | Page                                  | Names                                                                                                                                                                                                                                                                                                                                                                                                                              |

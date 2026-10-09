@@ -36536,6 +36536,28 @@ function refusedCalls(script) {
 }
 
 // packages/zaku/dist/lib/domain/snapshot-rules.js
+var ENTRY_PAGE_PREFIX = '\u2756 ';
+var DOCUMENTATION_PAGES = /* @__PURE__ */ new Set(['Thumbnail', 'Component for Docs']);
+var EDGE_TOLERANCE = 0.01;
+function isDocumentation(node2) {
+  const page = node2.page?.name;
+  if (page === void 0) return false;
+  if (DOCUMENTATION_PAGES.has(page)) return true;
+  return page.startsWith(ENTRY_PAGE_PREFIX) && node2.componentSource === false;
+}
+function overlaps(a, b) {
+  const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+  const height = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+  return width > EDGE_TOLERANCE && height > EDGE_TOLERANCE;
+}
+function outside(box, width, height) {
+  return (
+    box.x < -EDGE_TOLERANCE ||
+    box.y < -EDGE_TOLERANCE ||
+    box.x + box.width > width + EDGE_TOLERANCE ||
+    box.y + box.height > height + EDGE_TOLERANCE
+  );
+}
 function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
   const policy = copyPolicy(
     copy2,
@@ -36553,13 +36575,36 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
         message,
       });
     };
+    const documentation = isDocumentation(node2);
     if (node2.fills.some((paint) => !paint.bound)) finding('binding', 'fill', `${label2}: fill is a raw value`);
     if (node2.strokes.some((paint) => !paint.bound)) finding('binding', 'stroke', `${label2}: stroke is a raw value`);
-    if (node2.type === 'TEXT' && node2.textStyleId === null)
+    if (node2.type === 'TEXT' && node2.textStyleId === null && !documentation)
       finding('binding', 'textStyle', `${label2}: text has no library text style`);
-    for (const space of node2.spacing) {
+    for (const space of documentation ? [] : node2.spacing) {
       if (space.value > 0 && !space.bound)
         finding('binding', space.field, `${label2}: ${space.field} ${space.value} is not a spacing variable`);
+    }
+    if (
+      (node2.type === 'COMPONENT' || node2.type === 'COMPONENT_SET') &&
+      node2.page?.name.startsWith(ENTRY_PAGE_PREFIX) &&
+      node2.parentId === node2.page.id
+    )
+      finding('placement', void 0, `${label2}: sits on the page, outside its entry's component view`);
+    if (node2.set) {
+      const { width, height, variants } = node2.set;
+      variants.forEach((variant, i) => {
+        for (const other of variants.slice(i + 1)) {
+          if (overlaps(variant, other))
+            finding('overlap', void 0, `${node2.name}: ${variant.name} overlaps ${other.name}`, variant.id);
+        }
+        if (outside(variant, width, height))
+          finding(
+            'overlap',
+            void 0,
+            `${node2.name}: ${variant.name} reaches past the set, which cuts it off`,
+            variant.id,
+          );
+      });
     }
     if (node2.characters !== void 0) {
       for (const issue2 of copyIssues(node2.characters, policy))
