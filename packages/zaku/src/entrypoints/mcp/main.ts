@@ -10,16 +10,17 @@ import { PLUGIN_VERSION } from '../../lib/schema/bridge.js';
 import { runCheck } from './check.js';
 import { compose } from './dependencies.js';
 import { Pairings } from './pairings.js';
-import { listenBridge, type Listening } from './socket.js';
+import { listenFirstFree, type Listening } from './socket.js';
 import { registerTools } from './tools.js';
 
 export interface McpSeams {
   cwd: string;
   env: Record<string, string | undefined>;
   skillsDir: string;
-  port: number;
+  /** The ports to listen on, tried in order until one is free; `bridgePorts` gives the ones the plugin can reach. */
+  ports: readonly number[];
   timings?: BridgeTimings;
-  /** How often to try the port again while another process holds it. */
+  /** How often to try the ports again while other processes hold every one. */
   retryListenMs?: number;
   /** The file the pairings' token hashes are kept in; `pairingsPath` gives the user's own. */
   pairingsFile: string;
@@ -42,11 +43,11 @@ export async function startMcp(seams: McpSeams): Promise<McpRuntime> {
   // A failed panel check has nobody waiting on it; the panel keeps its last findings.
   bridge.onCheck((session, scope) => void runCheck(bridge, session, scope).catch(() => undefined));
   const pairings = new Pairings(new PairingCodes(Date.now), new FilePairingStore(seams.pairingsFile));
-  const listen = (): Promise<Listening> => listenBridge(bridge, pairings, seams.port, seams.admitMs);
+  const listen = (): Promise<Listening> => listenFirstFree(bridge, pairings, seams.ports, seams.admitMs);
   let listening: Listening = await listen();
   let retrying = false;
   let closed = false;
-  // Another session's zaku-mcp may hold the port until it exits; listen as soon as it lets go.
+  // Other sessions' zaku-mcp may hold every port until one exits; listen as soon as one lets go.
   const retry =
     'error' in listening
       ? setInterval(() => {
@@ -95,7 +96,7 @@ export async function startMcp(seams: McpSeams): Promise<McpRuntime> {
 
 /**
  * Serves the tools on stdin and stdout. The client ends a session by closing stdin; a server that
- * outlived it would keep the bridge port, and the next session's server could not listen.
+ * outlived it would keep its bridge port, and the next session's server would have one port fewer.
  */
 export async function serveStdio(runtime: McpRuntime): Promise<void> {
   let closing = false;

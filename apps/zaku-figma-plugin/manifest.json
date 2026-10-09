@@ -7,8 +7,19 @@
   "editorType": ["figma"],
   "documentAccess": "dynamic-page",
   "networkAccess": {
-    "allowedDomains": ["ws://localhost:7337"],
-    "reasoning": "zaku talks to the zaku-mcp server the agent runs on this machine, on a fixed local port."
+    "allowedDomains": [
+      "ws://localhost:7337",
+      "ws://localhost:7338",
+      "ws://localhost:7339",
+      "ws://localhost:7340",
+      "ws://localhost:7341",
+      "ws://localhost:7342",
+      "ws://localhost:7343",
+      "ws://localhost:7344",
+      "ws://localhost:7345",
+      "ws://localhost:7346"
+    ],
+    "reasoning": "zaku talks to the zaku-mcp server the agent runs on this machine. It listens on the first free port from 7337 to 7346, so a port another program holds does not keep the panel from connecting."
   },
   "permissions": ["currentuser"]
 }

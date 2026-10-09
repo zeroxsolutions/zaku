@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { mkdtemp } from 'node:fs/promises';
+import { createServer, type AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import WebSocket from 'ws';
@@ -19,6 +20,27 @@ async function until(condition: () => boolean | Promise<boolean>, ms = 2000): Pr
     if (Date.now() > deadline) throw new Error('condition not met in time');
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
+}
+
+/** A port nothing listens on a moment ago: the system hands out a free one, and it is let go at once. */
+async function freePort(): Promise<number> {
+  const server = createServer();
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address() as AddressInfo;
+  await new Promise((resolve) => server.close(resolve));
+  return port;
+}
+
+/** A client over the runtime's own server; answers a tool's body. */
+async function clientOf(runtime: McpRuntime): Promise<(name: string) => Promise<Record<string, unknown>>> {
+  const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+  await runtime.server.connect(serverSide);
+  const client = new Client({ name: 'spec', version: '0' });
+  await client.connect(clientSide);
+  return async (name) => {
+    const result = (await client.callTool({ name, arguments: {} })) as { content: { text: string }[] };
+    return JSON.parse(result.content[0]?.text ?? 'null') as Record<string, unknown>;
+  };
 }
 
 type Call = (
@@ -51,7 +73,7 @@ async function setup(
     cwd,
     env: {},
     skillsDir: join(cwd, 'skills'),
-    port: 0,
+    ports: [0],
     timings,
     pairingsFile,
     admitMs: options.admitMs ?? 300,
@@ -145,7 +167,7 @@ describe('zaku-mcp over a real socket', () => {
       error: true,
       body: {
         error:
-          'PluginNotConnected: open zaku in Figma (Plugins > zaku); if its panel says Not paired, call pair and have the user type the code into it',
+          'PluginNotConnected: open zaku in Figma (Plugins > zaku); if its panel says Not paired, call pair and have the user type the code into it; if it says Not connected, have the user enter the port get_state reports',
       },
     });
   });
@@ -250,19 +272,41 @@ describe('zaku-mcp over a real socket', () => {
     expect((await call('get_state')).body.files).toHaveLength(1);
   });
 
-  it('answers get_state when the port is taken', async () => {
-    const first = await setup();
+  it('listens on the first free port of those it tries, and reports it in get_state and pair', async () => {
+    const taken = await setup();
+    const free = await freePort();
     const cwd = await mkdtemp(join(tmpdir(), 'zaku-mcp-'));
-    const second = await startMcp({
+    const runtime = await startMcp({
       cwd,
       env: {},
       skillsDir: cwd,
-      port: first.runtime.port as number,
+      ports: [taken.runtime.port as number, free],
       pairingsFile: join(cwd, 'pairings.json'),
     });
-    open.push({ runtime: second, sockets: [] });
-    expect(second.port).toBeNull();
-    expect(second.portError).toMatch(/in use/);
+    open.push({ runtime, sockets: [] });
+    expect(runtime.port).toBe(free);
+    expect(runtime.portError).toBeNull();
+    const call = await clientOf(runtime);
+    expect(await call('get_state')).toMatchObject({ port: free, portError: null });
+    expect(await call('pair')).toMatchObject({ port: free });
+  });
+
+  it('answers get_state when every port it tries is taken, naming the range', async () => {
+    const first = await setup();
+    const second = await setup();
+    const ports = [first.runtime.port as number, second.runtime.port as number].sort((a, b) => a - b);
+    const cwd = await mkdtemp(join(tmpdir(), 'zaku-mcp-'));
+    const runtime = await startMcp({
+      cwd,
+      env: {},
+      skillsDir: cwd,
+      ports,
+      pairingsFile: join(cwd, 'pairings.json'),
+    });
+    open.push({ runtime, sockets: [] });
+    expect(runtime.port).toBeNull();
+    expect(runtime.portError).toBe(`no free port in ${ports[0]}-${ports[1]} (another zaku-mcp on each?)`);
+    expect(await (await clientOf(runtime))('get_state')).toMatchObject({ port: null });
   });
 
   it('names the taken port when no plugin is connected, and listens once the port frees up', async () => {
@@ -273,7 +317,7 @@ describe('zaku-mcp over a real socket', () => {
       cwd,
       env: {},
       skillsDir: cwd,
-      port: taken,
+      ports: [taken],
       retryListenMs: 20,
       pairingsFile: join(cwd, 'pairings.json'),
     });

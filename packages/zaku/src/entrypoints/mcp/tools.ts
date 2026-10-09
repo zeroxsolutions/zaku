@@ -136,7 +136,12 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
       answer(async () => {
         const { code, expiresAt } = seams.pairings.issueCode();
         const minutes = CODE_LIFETIME_MS / 60_000;
-        const next = `Type the code into the zaku panel in Figma (Plugins > zaku). It works once, for ${minutes} minutes.`;
+        const { port } = seams.listening();
+        const where =
+          port === null
+            ? ''
+            : ` zaku-mcp is on port ${port}. If the panel says Not connected, or refuses the code as wrong, the user enters that port in the panel (Use another port) and types the code again.`;
+        const next = `Type the code into the zaku panel in Figma (Plugins > zaku). It works once, for ${minutes} minutes.${where}`;
         const expires = new Date(expiresAt).toISOString();
         // A dialog shows the code to the user as it is; in a tool result the model would have to repeat it.
         if (server.server.getClientCapabilities()?.elicitation?.form) {
@@ -146,12 +151,12 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
               message: `Your zaku pairing code is ${displayCode(code)}. ${next}`,
               requestedSchema: { type: 'object', properties: {} },
             });
-            return { shown: 'The code is in a dialog the user saw.', expiresAt: expires, next };
+            return { shown: 'The code is in a dialog the user saw.', expiresAt: expires, port, next };
           } catch {
             // The client declared the capability and still failed the request; the code goes in the result.
           }
         }
-        return { code: displayCode(code), expiresAt: expires, next };
+        return { code: displayCode(code), expiresAt: expires, port, next };
       }),
   );
 

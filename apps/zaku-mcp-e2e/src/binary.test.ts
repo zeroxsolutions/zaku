@@ -1,13 +1,14 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 
 const BINARY = join(import.meta.dirname, '..', '..', 'zaku-mcp', 'dist', 'zaku-mcp');
-// The port the plugin's manifest admits; the binary listens on nothing else.
-const BRIDGE = 'ws://127.0.0.1:7337';
+// The ports the plugin's manifest admits; another session's zaku-mcp may hold any of them while this suite runs.
+const RANGE = [7337, 7338, 7339, 7340, 7341, 7342, 7343, 7344, 7345, 7346];
 
 // macOS scans a binary it has not run before, and a freshly compiled one took from under a second to past ten
 // on its first launch; every wait below is counted from the first reply, never from the spawn.
@@ -36,11 +37,16 @@ class Binary {
   private nextId = 2;
   private out = '';
 
-  constructor(configHome: string) {
-    this.child = spawn(BINARY, [], {
-      cwd: mkdtempSync(join(tmpdir(), 'zaku-bin-')),
-      env: { ...process.env, ZAKU_SKILLS_DIR: '', XDG_CONFIG_HOME: configHome },
-    });
+  /** stderr as the binary wrote it. */
+  err = '';
+
+  /** `port` becomes ZAKU_PORT; null leaves it unset, so the binary takes the first free port in the range. */
+  constructor(configHome: string, port: number | string | null) {
+    const env: NodeJS.ProcessEnv = { ...process.env, ZAKU_SKILLS_DIR: '', XDG_CONFIG_HOME: configHome };
+    delete env['ZAKU_PORT'];
+    if (port !== null) env['ZAKU_PORT'] = String(port);
+    this.child = spawn(BINARY, [], { cwd: mkdtempSync(join(tmpdir(), 'zaku-bin-')), env });
+    this.child.stderr.on('data', (chunk) => (this.err += chunk));
     this.failed = new Promise((_, reject) => this.child.once('error', reject));
     this.child.stdout.on('data', (chunk) => {
       this.out += chunk;
@@ -70,6 +76,15 @@ class Binary {
     return JSON.parse(content.text) as Record<string, unknown>;
   }
 
+  /** The exit code of a binary that stops on its own, such as one refusing its environment. */
+  exited(): Promise<number | null> {
+    return Promise.race([
+      new Promise<number | null>((resolve) => this.child.once('exit', (code) => resolve(code))),
+      this.failed,
+      deadline<number | null>(FIRST_REPLY_MS, 'the exit'),
+    ]);
+  }
+
   /** Closes stdin, the way a client ends its session, and answers the exit code. */
   async stop(): Promise<number | null> {
     const exited = new Promise<number | null>((resolve) => this.child.once('exit', (code) => resolve(code)));
@@ -95,9 +110,9 @@ interface Heard {
   socket: WebSocket;
 }
 
-/** Dials the bridge, sends the first message, and answers what came back once the socket closed or paired. */
-async function dial(first: object, quietMs = 1000): Promise<Heard> {
-  const socket = new WebSocket(BRIDGE);
+/** Dials the bridge on `port`, sends the first message, and answers what came back once the socket closed or paired. */
+async function dial(port: number, first: object, quietMs = 1000): Promise<Heard> {
+  const socket = new WebSocket(`ws://127.0.0.1:${port}`);
   const heard: Heard = { messages: [], closed: false, socket };
   const settled = new Promise<void>((resolve) => {
     socket.addEventListener('message', (event) => {
@@ -134,15 +149,35 @@ const hello = (credential?: object): object => ({
 
 const configHome = (): string => mkdtempSync(join(tmpdir(), 'zaku-config-'));
 
+/** Whether nothing holds `port` on loopback; the probe lets go of it at once. */
+const isFree = (port: number): Promise<boolean> =>
+  new Promise((resolve) => {
+    const probe = createServer();
+    probe.once('error', () => resolve(false));
+    probe.listen(port, '127.0.0.1', () => probe.close(() => resolve(true)));
+  });
+
+/** The first port of the range nothing holds now. */
+async function firstFree(): Promise<number> {
+  for (const port of RANGE) if (await isFree(port)) return port;
+  throw new Error(`every port in ${RANGE[0]}-${RANGE.at(-1)} is held; stop a zaku-mcp and run again`);
+}
+
 test(
-  'the compiled zaku-mcp answers get_state over stdio',
+  'the compiled zaku-mcp answers get_state over stdio, naming the first free port in the range it took',
   async () => {
-    const binary = new Binary(configHome());
+    const expected = await firstFree();
+    const binary = new Binary(configHome(), null);
     try {
       await binary.start();
-      const state = (await binary.call('get_state')) as { files: unknown[]; config: { loaded: boolean } };
+      const state = (await binary.call('get_state')) as {
+        files: unknown[];
+        config: { loaded: boolean };
+        port: number | null;
+      };
       assert.deepEqual(state.files, []);
       assert.equal(state.config.loaded, false);
+      assert.equal(state.port, expected);
     } finally {
       await binary.stop();
     }
@@ -153,7 +188,7 @@ test(
 test(
   'the compiled zaku-mcp exits and frees its port when stdin closes',
   async () => {
-    const binary = new Binary(configHome());
+    const binary = new Binary(configHome(), await firstFree());
     await binary.start();
     assert.equal(await binary.stop(), 0);
   },
@@ -164,12 +199,14 @@ test(
   'the compiled zaku-mcp admits a plugin after pair and its code, and the same plugin later by its token',
   async () => {
     const home = configHome();
-    const first = new Binary(home);
+    const port = await firstFree();
+    const first = new Binary(home, port);
     let token: string | undefined;
     try {
       await first.start();
-      const { code } = (await first.call('pair')) as { code: string };
-      const paired = await dial(hello({ code: code.replace(/\s/g, '') }));
+      const pair = (await first.call('pair')) as { code: string; port: number };
+      assert.equal(pair.port, port);
+      const paired = await dial(port, hello({ code: pair.code.replace(/\s/g, '') }));
       assert.equal(paired.messages[0]?.type, 'paired');
       token = paired.messages[0]?.token;
       assert.ok(token);
@@ -181,10 +218,10 @@ test(
     } finally {
       await first.stop();
     }
-    const second = new Binary(home);
+    const second = new Binary(home, port);
     try {
       await second.start();
-      const again = await dial(hello({ token }));
+      const again = await dial(port, hello({ token }));
       assert.deepEqual(again.messages, []);
       assert.equal(again.closed, false);
       assert.equal(((await second.call('get_state')) as { files: unknown[] }).files.length, 1);
@@ -197,15 +234,19 @@ test(
 );
 
 test(
-  'the compiled zaku-mcp refuses a socket with no credential and one with a token it never issued',
+  'the compiled zaku-mcp refuses a socket with no credential, one with a token it never issued, and a ZAKU_PORT outside the range',
   async () => {
-    const binary = new Binary(configHome());
+    const outside = new Binary(configHome(), 9000);
+    assert.equal(await outside.exited(), 1);
+    assert.match(outside.err, /ZAKU_PORT=9000 .*7337-7346/);
+    const port = await firstFree();
+    const binary = new Binary(configHome(), port);
     try {
       await binary.start();
-      const bare = await dial(hello(), REPLY_MS);
+      const bare = await dial(port, hello(), REPLY_MS);
       assert.deepEqual(bare.messages, []);
       assert.equal(bare.closed, true);
-      const forged = await dial(hello({ token: 'forged' }), REPLY_MS);
+      const forged = await dial(port, hello({ token: 'forged' }), REPLY_MS);
       assert.deepEqual(forged.messages, [{ type: 'refused', reason: 'unknown-token' }]);
       assert.equal(forged.closed, true);
       assert.deepEqual(((await binary.call('get_state')) as { files: unknown[] }).files, []);

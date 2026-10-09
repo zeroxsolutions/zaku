@@ -1,15 +1,18 @@
-import { BRIDGE_PORT } from '@zeroxsolutions/zaku/schema';
+import { BRIDGE_PORTS } from '@zeroxsolutions/zaku/schema';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { INITIAL_PANEL_STATE, panelReducer, type PanelState } from '@/lib/panel-state';
 import { startRelay, type Relay, type SocketLike } from '@/lib/relay';
 
-interface Panel {
+/** The panel's state and what the user can do from it. */
+export interface Panel {
   state: PanelState;
   /** The clock the running command's time is read against; ticks only while something runs. */
   now: number;
   checkAgain(): void;
   /** Sends the digits of a pairing code to zaku-mcp. */
   pair(code: string): void;
+  /** Dials zaku-mcp on `port`, one of the ports the manifest admits, and keeps to it. */
+  connect(port: number): void;
   /** Revokes this plugin's pairing and forgets its token. */
   unpair(): void;
   select(nodeId: string): void;
@@ -28,7 +31,7 @@ export function usePanel(): Panel {
     // StrictMode runs this effect twice in development; a second relay would dial a second socket.
     if (relay.current !== null) return;
     relay.current = startRelay({
-      url: `ws://localhost:${BRIDGE_PORT}`,
+      ports: BRIDGE_PORTS,
       post: (message) => {
         dispatch({ kind: 'to-sandbox', message, now: Date.now() });
         toSandbox(message);
@@ -42,7 +45,7 @@ export function usePanel(): Panel {
         }),
       open: (url) => new WebSocket(url) as unknown as SocketLike,
       schedule: (fn, ms) => window.setTimeout(fn, ms),
-      onStatus: (status) => dispatch({ kind: 'status', status }),
+      onConnection: (connection) => dispatch({ kind: 'connection', connection }),
     });
     toSandbox({ type: 'read-token' });
   }, []);
@@ -62,6 +65,7 @@ export function usePanel(): Panel {
       dispatch({ kind: 'pair' });
       relay.current?.pair(code);
     },
+    connect: (port) => relay.current?.connect(port),
     unpair: (): void => {
       relay.current?.unpair();
       toSandbox({ type: 'forget-token' });

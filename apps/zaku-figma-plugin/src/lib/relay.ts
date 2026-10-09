@@ -9,16 +9,24 @@ export interface SocketLike {
   close(): void;
 }
 
-/** Disconnected until the first open, and again once the redial delay has reached its cap. */
-export type RelayStatus = 'connected' | 'reconnecting' | 'disconnected';
+/** Where the relay stands with zaku-mcp; `port` is the one it is connected on, or keeps dialing. */
+export type Connection =
+  /** It holds no credential, so it dials nothing. */
+  | { state: 'idle' }
+  | { state: 'connected'; port: number }
+  /** It dropped after an open, and redials before the delay reaches its cap. */
+  | { state: 'reconnecting'; port: number }
+  /** Nothing answered: on any port of the first scan, then on `port` once the delay reached its cap. */
+  | { state: 'disconnected'; port: number };
 
 export interface RelayOptions {
-  url: string;
+  /** The ports zaku-mcp may listen on; the first is dialed until the sandbox names the last one that connected. */
+  ports: readonly [number, ...number[]];
   post: (message: unknown) => void;
   listen: (callback: (message: unknown) => void) => void;
   open: (url: string) => SocketLike;
   schedule: (fn: () => void, ms: number) => void;
-  onStatus: (status: RelayStatus) => void;
+  onConnection: (connection: Connection) => void;
 }
 
 export interface Relay {
@@ -28,6 +36,11 @@ export interface Relay {
   pair(code: string): void;
   /** Asks the server to revoke the token, closes the socket, and dials no more until the next pair. */
   unpair(): void;
+  /**
+   * Dials `port` at once and redials it from then on, with no scan of the other ports; while it holds no
+   * credential, it only keeps the port for the next code.
+   */
+  connect(port: number): void;
 }
 
 const FIRST_DELAY = 500;
@@ -42,15 +55,29 @@ export function storedToken(message: unknown): string | null | undefined {
   return typeof token === 'string' ? token : null;
 }
 
+/** The port the sandbox kept beside the token: the last one the panel connected on, or null. */
+function storedPort(message: unknown): number | null {
+  const { port } = message as { port?: unknown };
+  return typeof port === 'number' ? port : null;
+}
+
 /**
  * Carries messages between the sandbox and zaku-mcp, and redials after a drop. It dials only while it holds
  * a credential, and puts that credential on the sandbox's hello, which is the first message the server reads.
+ * The first dial for a credential tries the preferred port, then every other port once, unless the user chose
+ * the port; a redial tries the preferred port alone.
  */
 export function startRelay(options: RelayOptions): Relay {
   let socket: SocketLike | null = null;
   let credential: Credential | null = null;
   let delay = FIRST_DELAY;
   let everOpened = false;
+  /** The port dialed first and redialed after a drop: the last one connected on, or the one the user asked for. */
+  let preferred = options.ports[0];
+  /** The ports the first dial for a credential still has to try before it reports nothing answered. */
+  let scan: number[] = [];
+  /** The user picked `preferred`, so a code goes there alone; another zaku-mcp would refuse it as wrong. */
+  let chosen = false;
   const send = (message: unknown): void => {
     if (socket?.readyState === OPEN) socket.send(JSON.stringify(message));
   };
@@ -64,6 +91,8 @@ export function startRelay(options: RelayOptions): Relay {
   options.listen((message) => {
     const token = storedToken(message);
     if (token !== undefined) {
+      const port = storedPort(message);
+      if (port !== null && options.ports.includes(port)) preferred = port;
       if (token !== null) dialWith({ token });
       return;
     }
@@ -78,14 +107,16 @@ export function startRelay(options: RelayOptions): Relay {
     // The server closes a refused connection; dialing again would present the same refused credential.
     if (parsed.data.type === 'refused') credential = null;
   };
-  const dial = (): void => {
-    const current = options.open(options.url);
+  const dial = (port: number): void => {
+    const current = options.open(`ws://localhost:${port}`);
     socket = current;
     current.onopen = (): void => {
       delay = FIRST_DELAY;
       everOpened = true;
-      options.onStatus('connected');
-      options.post({ type: 'connected' });
+      preferred = port;
+      scan = [];
+      options.onConnection({ state: 'connected', port });
+      options.post({ type: 'connected', port });
     };
     current.onmessage = (event): void => {
       let message: unknown;
@@ -100,12 +131,17 @@ export function startRelay(options: RelayOptions): Relay {
     current.onclose = (): void => {
       socket = null;
       if (credential === null) {
-        options.onStatus('disconnected');
+        options.onConnection({ state: 'idle' });
         return;
       }
-      options.onStatus(everOpened && delay < LAST_DELAY ? 'reconnecting' : 'disconnected');
+      const next = scan.shift();
+      if (next !== undefined) return dial(next);
+      options.onConnection({
+        state: everOpened && delay < LAST_DELAY ? 'reconnecting' : 'disconnected',
+        port: preferred,
+      });
       options.schedule(() => {
-        if (socket === null && credential !== null) dial();
+        if (socket === null && credential !== null) dial(preferred);
       }, delay);
       delay = Math.min(delay * 2, LAST_DELAY);
     };
@@ -114,9 +150,10 @@ export function startRelay(options: RelayOptions): Relay {
     credential = next;
     hangUp();
     delay = FIRST_DELAY;
-    dial();
+    scan = chosen ? [] : options.ports.filter((port) => port !== preferred);
+    dial(preferred);
   };
-  options.onStatus('disconnected');
+  options.onConnection({ state: 'idle' });
   return {
     send,
     pair: (code) => dialWith({ code }),
@@ -124,7 +161,16 @@ export function startRelay(options: RelayOptions): Relay {
       send({ type: 'unpair' });
       credential = null;
       hangUp();
-      options.onStatus('disconnected');
+      options.onConnection({ state: 'idle' });
+    },
+    connect: (port): void => {
+      preferred = port;
+      chosen = true;
+      if (credential === null) return;
+      hangUp();
+      delay = FIRST_DELAY;
+      scan = [];
+      dial(port);
     },
   };
 }

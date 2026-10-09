@@ -23,6 +23,14 @@ panel then keeps a token and connects on its own from then on; Unpair in the pan
 `zaku/pairings.json` under your config directory (`$XDG_CONFIG_HOME`, else `~/Library/Application
 Support` on macOS, `%APPDATA%` on Windows, `~/.config` elsewhere).
 
+zaku-mcp listens on the first free port from 7337 to 7346, or on `ZAKU_PORT` when it is set. Figma lets
+the plugin reach only the ports its manifest lists, so a `ZAKU_PORT` outside that range stops zaku-mcp at
+startup. The panel dials the port it last connected on, then tries the rest of the range once. If it
+says Not connected, ask your agent which port zaku-mcp is on (`get_state` and `pair` report it), enter it
+in the panel's Port field and press Connect. With two agent sessions open, a code can reach the other
+session's zaku-mcp and be refused as wrong; press Use another port under the code, enter the port the
+agent reports, and type the code again.
+
 ## Workspace
 
 An nx workspace. `AGENTS.md` lists the projects; `pnpm nx run-many -t lint typecheck build test e2e`
