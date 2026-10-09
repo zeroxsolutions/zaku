@@ -1,6 +1,7 @@
 export { BridgePortOutOfRange } from './bridge-port-out-of-range.js';
 export { CssRequired } from './css-required.js';
 export { DesignFileInvalid } from './design-file-invalid.js';
+export { FigmaFileKeyMissing } from './figma-file-key-missing.js';
 export { FigmaTokenMissing } from './figma-token-missing.js';
 export { PlaywrightMissing } from './playwright-missing.js';
 export { RecipePageFailed } from './recipe-page-failed.js';

@@ -2,6 +2,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createFigmaRest } from '../adapters/figma-rest.js';
+import { FigmaFileKeyMissing } from '../domain/errors/index.js';
 import { saveLibrary } from './save-library.js';
 
 describe('saveLibrary', () => {
@@ -44,5 +45,26 @@ describe('saveLibrary', () => {
       b: 0.3333,
       a: 1,
     });
+  });
+
+  it('refuses, naming figma.library, when zaku.yaml names no library file, and reads nothing', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'zaku-'));
+    await writeFile(
+      join(root, 'zaku.yaml'),
+      'product: acme\ndesignSystem: { shadcn: { preset: x } }\ntargets:\n  - { id: web-desktop, family: web, name: Desktop }\n',
+    );
+    const urls: string[] = [];
+    const rest = createFigmaRest({
+      token: 't',
+      fetch: async (url) => {
+        urls.push(String(url));
+        return new Response('{}');
+      },
+    });
+    const part = { exportedAt: '2026-10-07T00:00:00.000Z', variables: {}, textStyles: [], tokens: [] };
+    const saving = saveLibrary({ root, part, rest });
+    await expect(saving).rejects.toBeInstanceOf(FigmaFileKeyMissing);
+    await expect(saving).rejects.toThrow('figma.library');
+    expect(urls).toEqual([]);
   });
 });

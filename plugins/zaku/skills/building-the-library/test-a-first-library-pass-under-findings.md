@@ -131,7 +131,18 @@ The recorded run, on a live file, against the skill before this change. The user
 
 ## GREEN
 
-Not run on Figma.
+One run on a live file, the library's address given in the prompt, against the skill with the checker and spacing changes in.
+
+- 1 passed: the key went into `zaku.yaml` from the address. But the schema required `figma.product`
+  too, and the run, having no product file, created one in the user's team with the Figma MCP
+  server's `create_new_file`, a file nobody asked for. The schema and step 0 are fixed since.
+- 2, 3 and 4 passed: seven `execute` calls, none in report mode; no variable or style made for
+  documentation; it stopped on a misread and named it: "naming "Component keeps a default name" on
+  node 2:215. That node is a FRAME named "Component": the Component section the zaku reference
+  requires in every component view". The checker read any layer named `Component` as a default name;
+  it now reads a name as a default only on the node type Figma gives it to.
+- 5, 6 and 7 not reached: the Tag entry waited on the checker fix, and everything after it.
+- 8 passed: the five lines, the misread finding with its node id and what waits on it.
 
 ### Description runs, the skill after this change
 

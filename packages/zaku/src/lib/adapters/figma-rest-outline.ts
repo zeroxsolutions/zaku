@@ -7,7 +7,7 @@ import type {
   TextOutline,
 } from '../domain/outline.js';
 import type { RestComponentMeta, RestNode, RestNodeEntry, RestPaint } from './figma-rest-types.js';
-import { DEFAULT_LAYER_NAME } from '../domain/layer-names.js';
+import { isDefaultLayerName } from '../domain/layer-names.js';
 
 export interface OutlineContext {
   components: Record<string, RestComponentMeta>;
@@ -150,7 +150,7 @@ export function outlineFrame(frame: RestNode, where: FramePlace, ctx: OutlineCon
       instances.push(instanceOf(node));
       return;
     }
-    if (DEFAULT_LAYER_NAME.test(node.name)) defaultNames.push({ nodeId: node.id, name: node.name });
+    if (isDefaultLayerName(node.type, node.name)) defaultNames.push({ nodeId: node.id, name: node.name });
     const rawEntry = (reason: string): RawOutline => ({
       nodeId: node.id,
       name: node.name,

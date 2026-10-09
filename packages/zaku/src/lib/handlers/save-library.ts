@@ -9,6 +9,7 @@ import { designPaths } from '../repositories/design-paths.js';
 import type { FigmaRest } from '../adapters/figma-rest.js';
 import { librarySnapshotSchema, type LibrarySnapshot, type VariablePart } from '../domain/library.js';
 import { readLibrary } from '../adapters/figma-rest-library.js';
+import { FigmaFileKeyMissing } from '../domain/errors/index.js';
 
 export async function saveLibrary(options: {
   root: string;
@@ -17,9 +18,9 @@ export async function saveLibrary(options: {
 }): Promise<LibrarySnapshot> {
   const paths = designPaths(options.root);
   const config = await readDesignFile(paths.config, zakuConfigSchema);
-  const snapshot = librarySnapshotSchema.parse(
-    await readLibrary({ rest: options.rest, fileKey: config.figma.library, part: options.part }),
-  );
+  const fileKey = config.figma.library;
+  if (fileKey === undefined) throw new FigmaFileKeyMissing('figma.library');
+  const snapshot = librarySnapshotSchema.parse(await readLibrary({ rest: options.rest, fileKey, part: options.part }));
   await writeFile(paths.library, `${JSON.stringify(snapshot, null, 2)}\n`);
   return snapshot;
 }

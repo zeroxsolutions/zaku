@@ -33017,7 +33017,10 @@ var budgetSchema = external_exports
   })
   .strict();
 var files = external_exports
-  .object({ library: external_exports.string().min(1), product: external_exports.string().min(1) })
+  .object({
+    library: external_exports.string().min(1).optional(),
+    product: external_exports.string().min(1).optional(),
+  })
   .strict();
 var shadcnSystem = external_exports.object({ preset: external_exports.string().min(1) }).strict();
 var tokenFiles = external_exports.array(external_exports.string().min(1)).min(1);
@@ -33093,7 +33096,7 @@ var zakuConfigSchema = external_exports
   .object({
     product: external_exports.string().min(1),
     designSystem: designSystemSchema,
-    figma: files,
+    figma: files.default({}),
     targets: external_exports.array(targetSchema).min(1),
     modes: external_exports.record(external_exports.string(), external_exports.string()).default({}),
     interactive: external_exports.array(external_exports.string().min(1)).default([...DEFAULT_INTERACTIVE]),
@@ -35419,6 +35422,18 @@ var CssRequired = class extends Error {
   }
 };
 
+// packages/zaku/dist/lib/domain/errors/figma-file-key-missing.js
+var FigmaFileKeyMissing = class extends Error {
+  field;
+  constructor(field) {
+    super(
+      `${field} is not set in zaku.yaml: put the key from the file's address (figma.com/design/<key>/...) there; zaku never creates the file`,
+    );
+    this.field = field;
+    this.name = 'FigmaFileKeyMissing';
+  }
+};
+
 // packages/zaku/dist/lib/domain/errors/figma-token-missing.js
 var FigmaTokenMissing = class extends Error {
   constructor(command) {
@@ -36079,9 +36094,9 @@ async function readLibrary(options) {
 async function saveLibrary(options) {
   const paths = designPaths(options.root);
   const config2 = await readDesignFile(paths.config, zakuConfigSchema);
-  const snapshot = librarySnapshotSchema.parse(
-    await readLibrary({ rest: options.rest, fileKey: config2.figma.library, part: options.part }),
-  );
+  const fileKey = config2.figma.library;
+  if (fileKey === void 0) throw new FigmaFileKeyMissing('figma.library');
+  const snapshot = librarySnapshotSchema.parse(await readLibrary({ rest: options.rest, fileKey, part: options.part }));
   await writeFile3(
     paths.library,
     `${JSON.stringify(snapshot, null, 2)}
@@ -36114,8 +36129,25 @@ import { mkdir as mkdir2, rm, writeFile as writeFile4 } from 'node:fs/promises';
 import { dirname as dirname3 } from 'node:path';
 
 // packages/zaku/dist/lib/domain/layer-names.js
-var DEFAULT_LAYER_NAME =
-  /^(Frame|Group|Rectangle|Ellipse|Line|Vector|Polygon|Star|Section|Slice|Image|Component|Instance|Arrow|Shape)( \d+)?$/;
+var DEFAULT_NAMES = {
+  FRAME: ['Frame'],
+  GROUP: ['Group'],
+  SECTION: ['Section'],
+  COMPONENT: ['Component'],
+  COMPONENT_SET: ['Component'],
+  RECTANGLE: ['Rectangle'],
+  ELLIPSE: ['Ellipse'],
+  LINE: ['Line'],
+  POLYGON: ['Polygon'],
+  STAR: ['Star'],
+  VECTOR: ['Vector'],
+  SLICE: ['Slice'],
+  BOOLEAN_OPERATION: ['Union', 'Subtract', 'Intersect', 'Exclude'],
+};
+function isDefaultLayerName(type, name) {
+  const match = /^(.+?)(?: \d+)?$/.exec(name);
+  return match !== null && (DEFAULT_NAMES[type] ?? []).includes(match[1] ?? '');
+}
 
 // packages/zaku/dist/lib/adapters/figma-rest-outline.js
 var CONTAINERS = /* @__PURE__ */ new Set(['FRAME', 'GROUP', 'SECTION']);
@@ -36230,7 +36262,7 @@ function outlineFrame(frame, where, ctx) {
       instances.push(instanceOf(node2));
       return;
     }
-    if (DEFAULT_LAYER_NAME.test(node2.name)) defaultNames.push({ nodeId: node2.id, name: node2.name });
+    if (isDefaultLayerName(node2.type, node2.name)) defaultNames.push({ nodeId: node2.id, name: node2.name });
     const rawEntry = (reason) => ({
       nodeId: node2.id,
       name: node2.name,
@@ -36313,6 +36345,7 @@ async function runOutline(options) {
   const paths = designPaths(options.root);
   const config2 = await readDesignFile(paths.config, zakuConfigSchema);
   const fileKey = config2.figma.product;
+  if (fileKey === void 0) throw new FigmaFileKeyMissing('figma.product');
   const { maps, errors } = await loadMaps(paths.maps);
   if (errors[0]) throw errors[0];
   const digests = new Map(maps.map((loaded) => [loaded.map.feature, loaded.digest]));
@@ -36630,8 +36663,7 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
         }
       }
     }
-    if (node2.type !== 'TEXT' && DEFAULT_LAYER_NAME.test(node2.name))
-      finding('naming', void 0, `${node2.name} keeps a default name`);
+    if (isDefaultLayerName(node2.type, node2.name)) finding('naming', void 0, `${node2.name} keeps a default name`);
   }
   return findings;
 }
@@ -36818,6 +36850,7 @@ function refusalOf(error62) {
   if (error62 instanceof CssRequired || error62 instanceof RecipeUrlRequired || error62 instanceof PlaywrightMissing) {
     return { code: 3, line: error62.message };
   }
+  if (error62 instanceof FigmaFileKeyMissing) return { code: 3, line: error62.message };
   if (error62 instanceof FigmaTokenMissing) return { code: 3, line: error62.message };
   if (error62 instanceof RecipePageFailed) return { code: 2, line: `zaku recipe: ${error62.message}` };
   return null;

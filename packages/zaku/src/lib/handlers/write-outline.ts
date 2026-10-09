@@ -10,6 +10,7 @@ import { readDesignFile, readOptionalDesignFile } from '../repositories/design-f
 import { designPaths } from '../repositories/design-paths.js';
 import type { FigmaRest } from '../adapters/figma-rest.js';
 import { librarySnapshotSchema } from '../domain/library.js';
+import { FigmaFileKeyMissing } from '../domain/errors/index.js';
 import { indexScreens, loadMaps, type LoadedMap, type ScreenRef } from '../repositories/feature-maps.js';
 import { parseFrameName, type ParsedFrameName } from '../domain/feature-map.js';
 import { outlineFrame } from '../adapters/figma-rest-outline.js';
@@ -89,6 +90,7 @@ export async function runOutline(options: {
   const paths = designPaths(options.root);
   const config = await readDesignFile(paths.config, zakuConfigSchema);
   const fileKey = config.figma.product;
+  if (fileKey === undefined) throw new FigmaFileKeyMissing('figma.product');
   const { maps, errors } = await loadMaps(paths.maps);
   if (errors[0]) throw errors[0];
   const digests = new Map(maps.map((loaded) => [loaded.map.feature, loaded.digest]));
