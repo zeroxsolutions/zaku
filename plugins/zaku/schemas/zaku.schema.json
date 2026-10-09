@@ -275,6 +275,31 @@
         }
       },
       "additionalProperties": false
+    },
+    "copy": {
+      "default": {
+        "locales": ["en"],
+        "currencies": []
+      },
+      "type": "object",
+      "properties": {
+        "locales": {
+          "default": ["en"],
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "currencies": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": ["product", "designSystem", "figma", "targets"],

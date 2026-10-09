@@ -125,6 +125,35 @@ const recipeSchema = z
   })
   .strict();
 
+/** Whether a tag names a language whose script the locale data knows, which is what the copy check reads. */
+function writtenInAScript(tag: string): boolean {
+  try {
+    return new Intl.Locale(tag).maximize().script !== undefined;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The languages screens are written in and the currencies a price is shown in: their letters and their
+ * symbols are what authored copy may hold beside printable ASCII.
+ */
+export const copySchema = z
+  .object({
+    locales: z
+      .array(z.string().refine(writtenInAScript, 'a BCP 47 language tag, such as en or vi'))
+      .min(1)
+      .default(['en']),
+    currencies: z
+      .array(
+        z
+          .string()
+          .refine((code) => Intl.supportedValuesOf('currency').includes(code), 'an ISO 4217 code, such as VND or USD'),
+      )
+      .default([]),
+  })
+  .strict();
+
 export const zakuConfigSchema = z
   .object({
     product: z.string().min(1),
@@ -136,6 +165,7 @@ export const zakuConfigSchema = z
     systemBars: z.record(z.enum(PLATFORM_FAMILIES), z.array(z.array(z.string().min(1)).min(1))).optional(),
     budget: budgetSchema.default({ mcpPerDay: 200, mcpPerRun: 30, reserve: 0.2 }),
     recipe: recipeSchema.optional(),
+    copy: copySchema.default({ locales: ['en'], currencies: [] }),
   })
   .strict()
   .superRefine((config, ctx) => {
@@ -157,5 +187,6 @@ export const zakuConfigSchema = z
 export type ZakuConfig = z.output<typeof zakuConfigSchema>;
 export type Target = ZakuConfig['targets'][number];
 export type Budget = ZakuConfig['budget'];
+export type CopyConfig = ZakuConfig['copy'];
 export type DesignSystem = ZakuConfig['designSystem'];
 export type DtcgSystem = Extract<DesignSystem, { dtcg: unknown }>['dtcg'];

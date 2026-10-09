@@ -1,4 +1,12 @@
-import { loadedMap, testFrame, testInput, testInstance, testMap, testOutline } from '../../../test/fixtures.fixture.js';
+import {
+  loadedMap,
+  testConfig,
+  testFrame,
+  testInput,
+  testInstance,
+  testMap,
+  testOutline,
+} from '../../../test/fixtures.fixture.js';
 import { copy } from './copy.js';
 
 const map = testMap('trips', { trips: { title: 'Trips', root: true, states: ['Default'] } });
@@ -110,6 +118,46 @@ describe('copy, around system bars and real words', () => {
     });
     expect(copy(testInput({ maps: [loadedMap(map)], outlines: [testOutline({ frames: [frame] })] }))).toEqual({
       findings: [],
+    });
+  });
+});
+
+describe('copy, on the characters and the tone of authored content', () => {
+  const where = { check: 'copy', feature: 'trips', screen: 'trips', frame: 'Trips / Default / Desktop' };
+
+  it('holds text outside instances and a characters override to the rules, and never a library default', () => {
+    const frame = testFrame({
+      texts: [{ nodeId: '5:1', characters: 'Hoi An \u2014 tickets', styleKey: 's' }],
+      instances: [
+        testInstance({ texts: [{ nodeId: '10:2', path: 'Label', characters: "Let's go \u2192" }] }),
+        testInstance({
+          nodeId: '11:1',
+          overrides: [{ nodeId: '11:2', fields: ['characters'] }],
+          texts: [{ nodeId: '11:2', path: 'Label', characters: 'Unlock booking \u2192' }],
+        }),
+      ],
+    });
+    expect(copy(testInput({ maps: [loadedMap(map)], outlines: [testOutline({ frames: [frame] })] }))).toEqual({
+      findings: [
+        { ...where, nodeId: '5:1', field: 'characters', message: 'U+2014 em dash: write "-", or two sentences' },
+        { ...where, nodeId: '11:2', field: 'tone', message: '"Unlock": write "get" or "open"' },
+      ],
+    });
+  });
+
+  it('allows the letters and currency symbols of the locales and currencies the config names', () => {
+    const frame = testFrame({
+      texts: [{ nodeId: '5:1', characters: 'V\u00e9 v\u00e0o c\u1eeda 120.000 \u20ab', styleKey: 's' }],
+    });
+    const input = (copySection: unknown): Parameters<typeof copy>[0] =>
+      testInput({
+        config: testConfig({ copy: copySection }),
+        maps: [loadedMap(map)],
+        outlines: [testOutline({ frames: [frame] })],
+      });
+    expect(copy(input({ locales: ['en', 'vi'], currencies: ['VND'] }))).toEqual({ findings: [] });
+    expect(copy(input(undefined))).toMatchObject({
+      findings: [{ nodeId: '5:1', field: 'characters', message: expect.stringMatching(/^U\+20AB /) }],
     });
   });
 });
