@@ -40,4 +40,21 @@ describe('PortForm', () => {
     await page.getByRole('button', { name: 'Connect' }).click();
     await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
   });
+
+  it('asks for a port, empty, when the user chose to pick one', async () => {
+    await render(<PortForm port={null} ports={PORTS} onConnect={() => undefined} />);
+    await expect
+      .element(page.getByText('Ask your agent which port zaku-mcp is on. The code goes to that port only.'))
+      .toBeVisible();
+    await expect.element(page.getByRole('textbox', { name: 'Port' })).toHaveValue('');
+  });
+
+  it('offers the way back to the code only when the panel hands it one', async () => {
+    let back = 0;
+    const { rerender } = await render(<PortForm port={7337} ports={PORTS} onConnect={() => undefined} />);
+    await expect.element(page.getByRole('button', { name: 'Back to the code' })).not.toBeInTheDocument();
+    await rerender(<PortForm port={null} ports={PORTS} onConnect={() => undefined} onBack={() => back++} />);
+    await page.getByRole('button', { name: 'Back to the code' }).click();
+    expect(back).toBe(1);
+  });
 });

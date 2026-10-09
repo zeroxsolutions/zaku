@@ -5,15 +5,20 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 type PortFormProps = {
-  /** The port the panel keeps dialing and nothing answers on; the field starts with it. */
-  port: number;
+  /**
+   * The port the panel keeps dialing and nothing answers on, which the field starts with; null when the user
+   * chose to pick a port for the code, and the field starts empty.
+   */
+  port: number | null;
   /** The ports the manifest lets the panel reach; any other is refused with a message naming them. */
   ports: readonly [number, ...number[]];
   /** Called with a port inside `ports`. */
   onConnect: (port: number) => void;
+  /** Offers "Back to the code" when given. */
+  onBack?: () => void;
 } & Omit<React.ComponentProps<'form'>, 'onSubmit'>;
 
-function PortForm({ port, ports, onConnect, className, ...props }: PortFormProps): React.JSX.Element {
+function PortForm({ port, ports, onConnect, onBack, className, ...props }: PortFormProps): React.JSX.Element {
   const id = useId();
   const [invalid, setInvalid] = useState(false);
   return (
@@ -37,10 +42,14 @@ function PortForm({ port, ports, onConnect, className, ...props }: PortFormProps
             name="port"
             inputMode="numeric"
             autoComplete="off"
-            defaultValue={port}
+            defaultValue={port ?? ''}
             aria-invalid={invalid || undefined}
           />
-          <FieldDescription>No zaku-mcp answers on port {port}. Ask your agent for its port.</FieldDescription>
+          <FieldDescription>
+            {port === null
+              ? 'Ask your agent which port zaku-mcp is on. The code goes to that port only.'
+              : `No zaku-mcp answers on port ${port}. Ask your agent for its port.`}
+          </FieldDescription>
           {invalid && (
             <FieldError>
               Enter a port from {ports[0]} to {ports[ports.length - 1]}.
@@ -49,6 +58,11 @@ function PortForm({ port, ports, onConnect, className, ...props }: PortFormProps
         </Field>
         <Field orientation="horizontal">
           <Button type="submit">Connect</Button>
+          {onBack !== undefined && (
+            <Button type="button" variant="ghost" onClick={onBack}>
+              Back to the code
+            </Button>
+          )}
         </Field>
       </FieldGroup>
     </form>

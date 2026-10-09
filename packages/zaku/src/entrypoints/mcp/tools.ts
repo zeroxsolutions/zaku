@@ -138,7 +138,9 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
         const minutes = CODE_LIFETIME_MS / 60_000;
         const { port } = seams.listening();
         const where =
-          port === null ? '' : ` If the panel then says Not connected, enter port ${port} in it and press Connect.`;
+          port === null
+            ? ''
+            : ` zaku-mcp is on port ${port}. If the panel says Not connected, or refuses the code as wrong, the user enters that port in the panel (Use another port) and types the code again.`;
         const next = `Type the code into the zaku panel in Figma (Plugins > zaku). It works once, for ${minutes} minutes.${where}`;
         const expires = new Date(expiresAt).toISOString();
         // A dialog shows the code to the user as it is; in a tool result the model would have to repeat it.

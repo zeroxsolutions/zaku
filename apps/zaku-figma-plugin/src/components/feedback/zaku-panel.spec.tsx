@@ -35,6 +35,7 @@ describe('ZakuPanel', () => {
     await expect.element(page.getByText('Not connected', { exact: true })).toBeVisible();
     await expect.element(page.getByRole('textbox', { name: 'Port' })).toBeVisible();
     await expect.element(page.getByRole('textbox', { name: 'Pairing code' })).not.toBeInTheDocument();
+    await expect.element(page.getByRole('button', { name: 'Unpair' })).not.toBeInTheDocument();
   });
 
   it('connects on the port the user enters', async () => {
@@ -56,5 +57,33 @@ describe('ZakuPanel', () => {
     await expect.element(page.getByText('Connected on port 7340')).toBeVisible();
     await expect.element(page.getByRole('button', { name: 'Unpair' })).toBeVisible();
     await expect.element(page.getByRole('textbox', { name: 'Port' })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['not paired', null],
+    ['refused', 'wrong-code'],
+  ] as const)('switches from the code to the Port field and back, %s', async (_, refusal) => {
+    await panelOver({ pairing: { phase: 'unpaired', refusal } });
+    await page.getByRole('button', { name: 'Use another port' }).click();
+    await expect.element(page.getByRole('textbox', { name: 'Port' })).toBeVisible();
+    await expect.element(page.getByRole('textbox', { name: 'Pairing code' })).not.toBeInTheDocument();
+    await page.getByRole('button', { name: 'Back to the code' }).click();
+    await expect.element(page.getByRole('textbox', { name: 'Pairing code' })).toBeVisible();
+    await expect.element(page.getByRole('textbox', { name: 'Port' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the port the user picks for the code, and goes back to the code', async () => {
+    const calls = await panelOver({ pairing: { phase: 'unpaired', refusal: 'wrong-code' } });
+    await page.getByRole('button', { name: 'Use another port' }).click();
+    await page.getByRole('textbox', { name: 'Port' }).fill('7341');
+    await page.getByRole('button', { name: 'Connect' }).click();
+    expect(calls).toEqual([['connect', 7341]]);
+    await expect.element(page.getByRole('textbox', { name: 'Pairing code' })).toBeVisible();
+  });
+
+  it('hides Unpair while paired and reconnecting', async () => {
+    await panelOver({ pairing: { phase: 'paired' }, connection: { state: 'reconnecting', port: 7340 } });
+    await expect.element(page.getByText('Reconnecting', { exact: true })).toBeVisible();
+    await expect.element(page.getByRole('button', { name: 'Unpair' })).not.toBeInTheDocument();
   });
 });

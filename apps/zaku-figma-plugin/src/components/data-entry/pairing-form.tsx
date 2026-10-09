@@ -1,7 +1,8 @@
 import type { RefusalReason } from '@zeroxsolutions/zaku/schema';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { useId, useState } from 'react';
-import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
+import { Button } from '@/components/ui/button';
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
 import { cn } from '@/lib/utils';
 
@@ -20,9 +21,11 @@ type PairingFormProps = {
   refusal: RefusalReason | null;
   /** Called with the eight digits once the last one is typed or pasted. */
   onPair: (code: string) => void;
+  /** Offers "Use another port" when given, for a code that went to, or would go to, the wrong zaku-mcp. */
+  onUseAnotherPort?: () => void;
 } & Omit<React.ComponentProps<'form'>, 'onSubmit'>;
 
-function PairingForm({ refusal, onPair, className, ...props }: PairingFormProps): React.JSX.Element {
+function PairingForm({ refusal, onPair, onUseAnotherPort, className, ...props }: PairingFormProps): React.JSX.Element {
   const id = useId();
   const [code, setCode] = useState('');
   const [shownRefusal, setShownRefusal] = useState(refusal);
@@ -39,37 +42,46 @@ function PairingForm({ refusal, onPair, className, ...props }: PairingFormProps)
       onSubmit={(event) => event.preventDefault()}
       {...props}
     >
-      <Field data-invalid={invalid || undefined}>
-        <FieldLabel htmlFor={id}>Pairing code</FieldLabel>
-        <InputOTP
-          id={id}
-          name="code"
-          maxLength={PAIRING_CODE_LENGTH}
-          pattern={REGEXP_ONLY_DIGITS}
-          // The agent shows the code as `1234 5678`; the digits pattern refuses a paste that keeps the space.
-          pasteTransformer={(pasted) => pasted.replace(/[\s-]/g, '')}
-          value={code}
-          onChange={setCode}
-          onComplete={onPair}
-          aria-invalid={invalid || undefined}
-        >
-          <InputOTPGroup>
-            <InputOTPSlot index={0} aria-invalid={invalid || undefined} />
-            <InputOTPSlot index={1} aria-invalid={invalid || undefined} />
-            <InputOTPSlot index={2} aria-invalid={invalid || undefined} />
-            <InputOTPSlot index={3} aria-invalid={invalid || undefined} />
-          </InputOTPGroup>
-          <InputOTPSeparator />
-          <InputOTPGroup>
-            <InputOTPSlot index={4} aria-invalid={invalid || undefined} />
-            <InputOTPSlot index={5} aria-invalid={invalid || undefined} />
-            <InputOTPSlot index={6} aria-invalid={invalid || undefined} />
-            <InputOTPSlot index={7} aria-invalid={invalid || undefined} />
-          </InputOTPGroup>
-        </InputOTP>
-        <FieldDescription>Not paired. Ask your agent to pair with zaku, then type the code here.</FieldDescription>
-        {invalid && <FieldError>{PAIRING_FORM_REFUSALS[refusal]}</FieldError>}
-      </Field>
+      <FieldGroup>
+        <Field data-invalid={invalid || undefined}>
+          <FieldLabel htmlFor={id}>Pairing code</FieldLabel>
+          <InputOTP
+            id={id}
+            name="code"
+            maxLength={PAIRING_CODE_LENGTH}
+            pattern={REGEXP_ONLY_DIGITS}
+            // The agent shows the code as `1234 5678`; the digits pattern refuses a paste that keeps the space.
+            pasteTransformer={(pasted) => pasted.replace(/[\s-]/g, '')}
+            value={code}
+            onChange={setCode}
+            onComplete={onPair}
+            aria-invalid={invalid || undefined}
+          >
+            <InputOTPGroup>
+              <InputOTPSlot index={0} aria-invalid={invalid || undefined} />
+              <InputOTPSlot index={1} aria-invalid={invalid || undefined} />
+              <InputOTPSlot index={2} aria-invalid={invalid || undefined} />
+              <InputOTPSlot index={3} aria-invalid={invalid || undefined} />
+            </InputOTPGroup>
+            <InputOTPSeparator />
+            <InputOTPGroup>
+              <InputOTPSlot index={4} aria-invalid={invalid || undefined} />
+              <InputOTPSlot index={5} aria-invalid={invalid || undefined} />
+              <InputOTPSlot index={6} aria-invalid={invalid || undefined} />
+              <InputOTPSlot index={7} aria-invalid={invalid || undefined} />
+            </InputOTPGroup>
+          </InputOTP>
+          <FieldDescription>Ask your agent to pair with zaku, then type the code here.</FieldDescription>
+          {invalid && <FieldError>{PAIRING_FORM_REFUSALS[refusal]}</FieldError>}
+        </Field>
+        {onUseAnotherPort !== undefined && (
+          <Field orientation="horizontal">
+            <Button type="button" variant="ghost" onClick={onUseAnotherPort}>
+              Use another port
+            </Button>
+          </Field>
+        )}
+      </FieldGroup>
     </form>
   );
 }

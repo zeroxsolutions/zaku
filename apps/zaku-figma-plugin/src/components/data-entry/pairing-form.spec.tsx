@@ -17,7 +17,7 @@ describe('PairingForm', () => {
   it('says the panel is not paired, and asks for the code', async () => {
     await render(<PairingForm refusal={null} onPair={() => undefined} />);
     await expect
-      .element(page.getByText('Not paired. Ask your agent to pair with zaku, then type the code here.'))
+      .element(page.getByText('Ask your agent to pair with zaku, then type the code here.', { exact: true }))
       .toBeVisible();
     await expect.element(page.getByRole('textbox', { name: 'Pairing code' })).toBeVisible();
     await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
@@ -67,5 +67,12 @@ describe('PairingForm', () => {
     await userEvent.keyboard('00000000');
     await rerender(<PairingForm refusal="wrong-code" onPair={() => undefined} />);
     await expect.element(page.getByRole('textbox', { name: 'Pairing code' })).toHaveValue('');
+  });
+
+  it('offers another port, when the panel hands it the switch', async () => {
+    let asked = 0;
+    await render(<PairingForm refusal="wrong-code" onPair={() => undefined} onUseAnotherPort={() => asked++} />);
+    await page.getByRole('button', { name: 'Use another port' }).click();
+    expect(asked).toBe(1);
   });
 });

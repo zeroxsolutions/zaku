@@ -36,7 +36,10 @@ export interface Relay {
   pair(code: string): void;
   /** Asks the server to revoke the token, closes the socket, and dials no more until the next pair. */
   unpair(): void;
-  /** Dials `port` at once and redials it from then on; while it holds no credential, only remembers it. */
+  /**
+   * Dials `port` at once and redials it from then on, with no scan of the other ports; while it holds no
+   * credential, it only keeps the port for the next code.
+   */
   connect(port: number): void;
 }
 
@@ -61,8 +64,8 @@ function storedPort(message: unknown): number | null {
 /**
  * Carries messages between the sandbox and zaku-mcp, and redials after a drop. It dials only while it holds
  * a credential, and puts that credential on the sandbox's hello, which is the first message the server reads.
- * The first dial for a credential tries the preferred port, then every other port once; a redial tries the
- * preferred port alone.
+ * The first dial for a credential tries the preferred port, then every other port once, unless the user chose
+ * the port; a redial tries the preferred port alone.
  */
 export function startRelay(options: RelayOptions): Relay {
   let socket: SocketLike | null = null;
@@ -73,6 +76,8 @@ export function startRelay(options: RelayOptions): Relay {
   let preferred = options.ports[0];
   /** The ports the first dial for a credential still has to try before it reports nothing answered. */
   let scan: number[] = [];
+  /** The user picked `preferred`, so a code goes there alone; another zaku-mcp would refuse it as wrong. */
+  let chosen = false;
   const send = (message: unknown): void => {
     if (socket?.readyState === OPEN) socket.send(JSON.stringify(message));
   };
@@ -145,7 +150,7 @@ export function startRelay(options: RelayOptions): Relay {
     credential = next;
     hangUp();
     delay = FIRST_DELAY;
-    scan = options.ports.filter((port) => port !== preferred);
+    scan = chosen ? [] : options.ports.filter((port) => port !== preferred);
     dial(preferred);
   };
   options.onConnection({ state: 'idle' });
@@ -160,6 +165,7 @@ export function startRelay(options: RelayOptions): Relay {
     },
     connect: (port): void => {
       preferred = port;
+      chosen = true;
       if (credential === null) return;
       hangUp();
       delay = FIRST_DELAY;

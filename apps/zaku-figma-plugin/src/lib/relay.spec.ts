@@ -256,4 +256,15 @@ describe('the relay', () => {
     relay.connect(7339);
     expect(sockets).toEqual([]);
   });
+
+  it('sends the next code to the port the user chose alone, with no scan', () => {
+    const { relay, sockets, due, urls } = relayed();
+    relay.connect(7339);
+    relay.pair('12345678');
+    expect(urls()).toEqual(['ws://localhost:7339']);
+    sockets[0]?.drop();
+    expect(urls()).toEqual(['ws://localhost:7339']);
+    due.shift()?.();
+    expect(urls()).toEqual(['ws://localhost:7339', 'ws://localhost:7339']);
+  });
 });

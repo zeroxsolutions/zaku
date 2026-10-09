@@ -1,4 +1,5 @@
 import { BRIDGE_PORT_RANGE, BRIDGE_PORTS } from '@zeroxsolutions/zaku/schema';
+import { useState } from 'react';
 import { FindingsEmpty } from '@/components/data-display/findings-empty';
 import { FindingsList } from '@/components/data-display/findings-list';
 import { PairingForm } from '@/components/data-entry/pairing-form';
@@ -15,7 +16,7 @@ type ZakuPanelProps = Panel & Omit<React.ComponentProps<'div'>, 'onSelect' | 'on
 
 /**
  * The whole panel over its state: the status bar, then the Port field while nothing answers, the pairing code
- * while unpaired, or the findings.
+ * while unpaired (or the Port field, when the user asks to pick the port the code goes to), or the findings.
  */
 function ZakuPanel({
   state,
@@ -29,13 +30,15 @@ function ZakuPanel({
   className,
   ...props
 }: ZakuPanelProps): React.JSX.Element {
+  const [pickingPort, setPickingPort] = useState(false);
   const status = panelStatus(state);
   const connected = status.state === 'connected';
   const canCheck = connected && state.file !== null && state.running === null;
   return (
     <div data-slot="zaku-panel" className={cn('flex h-screen flex-col', className)} {...props}>
       <StatusBar status={status} file={state.file} running={state.running} now={now}>
-        {state.pairing.phase === 'paired' && (
+        {/* Unpair revokes through zaku-mcp, so it means nothing while the panel cannot reach it. */}
+        {state.pairing.phase === 'paired' && connected && (
           <Button variant="ghost" size="xs" onClick={unpair}>
             Unpair
           </Button>
@@ -49,8 +52,18 @@ function ZakuPanel({
       <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {state.connection.state === 'disconnected' ? (
           <PortForm key={state.connection.port} port={state.connection.port} ports={BRIDGE_PORTS} onConnect={connect} />
+        ) : state.pairing.phase === 'unpaired' && pickingPort ? (
+          <PortForm
+            port={null}
+            ports={BRIDGE_PORTS}
+            onConnect={(port) => {
+              connect(port);
+              setPickingPort(false);
+            }}
+            onBack={() => setPickingPort(false)}
+          />
         ) : state.pairing.phase === 'unpaired' ? (
-          <PairingForm refusal={state.pairing.refusal} onPair={pair} />
+          <PairingForm refusal={state.pairing.refusal} onPair={pair} onUseAnotherPort={() => setPickingPort(true)} />
         ) : connected && state.findings !== null && state.findings.length > 0 ? (
           <FindingsList findings={state.findings} onSelectNode={select} />
         ) : (

@@ -27,7 +27,9 @@ zaku-mcp listens on the first free port from 7337 to 7346, or on `ZAKU_PORT` whe
 the plugin reach only the ports its manifest lists, so a `ZAKU_PORT` outside that range stops zaku-mcp at
 startup. The panel dials the port it last connected on, then tries the rest of the range once. If it
 says Not connected, ask your agent which port zaku-mcp is on (`get_state` and `pair` report it), enter it
-in the panel's Port field and press Connect.
+in the panel's Port field and press Connect. With two agent sessions open, a code can reach the other
+session's zaku-mcp and be refused as wrong; press Use another port under the code, enter the port the
+agent reports, and type the code again.
 
 ## Workspace
 
