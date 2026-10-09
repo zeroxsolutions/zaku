@@ -122,17 +122,6 @@
           "command": "cp apps/zaku-cli/dist/zaku.mjs plugins/zaku/bin/zaku.mjs && chmod +x plugins/zaku/bin/zaku.mjs",
           "cwd": "{workspaceRoot}"
         }
-      },
-      "e2e": {
-        "executor": "nx:run-commands",
-        "dependsOn": [
-          "build"
-        ],
-        "cache": false,
-        "options": {
-          "command": "node --test apps/zaku-cli/e2e/bundle.test.ts",
-          "cwd": "{workspaceRoot}"
-        }
       }
     }
   }

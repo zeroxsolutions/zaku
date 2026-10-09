@@ -1,0 +1,26 @@
+{
+  "name": "@zeroxsolutions/zaku-cli-e2e",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "nx": {
+    "tags": [
+      "type:e2e"
+    ],
+    "targets": {
+      "e2e": {
+        "executor": "@nx/vitest:test",
+        "options": {
+          "configFile": "{projectRoot}/vitest.config.mts"
+        },
+        "dependsOn": [
+          "^build"
+        ],
+        "parallelism": false
+      }
+    }
+  },
+  "devDependencies": {
+    "@zeroxsolutions/zaku-cli": "workspace:*"
+  }
+}

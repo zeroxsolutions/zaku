@@ -143,17 +143,6 @@
           "command": "cp apps/zaku-mcp/dist/zaku-mcp plugins/zaku/bin/zaku-mcp-$(node -p 'process.platform+\"-\"+process.arch')",
           "cwd": "{workspaceRoot}"
         }
-      },
-      "e2e": {
-        "executor": "nx:run-commands",
-        "dependsOn": [
-          "compile"
-        ],
-        "cache": false,
-        "options": {
-          "command": "node --test apps/zaku-mcp/e2e/binary.test.ts",
-          "cwd": "{workspaceRoot}"
-        }
       }
     }
   },

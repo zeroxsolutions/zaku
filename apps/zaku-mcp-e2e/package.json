@@ -1,0 +1,26 @@
+{
+  "name": "@zeroxsolutions/zaku-mcp-e2e",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "nx": {
+    "tags": [
+      "type:e2e"
+    ],
+    "targets": {
+      "e2e": {
+        "executor": "@nx/vitest:test",
+        "options": {
+          "configFile": "{projectRoot}/vitest.config.mts"
+        },
+        "dependsOn": [
+          "^compile"
+        ],
+        "parallelism": false
+      }
+    }
+  },
+  "devDependencies": {
+    "@zeroxsolutions/zaku-mcp": "workspace:*"
+  }
+}

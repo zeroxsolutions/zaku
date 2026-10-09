@@ -53,6 +53,9 @@
     },
     {
       "plugin": "@nx/vitest",
+      // The e2e projects run their suite through their own e2e target, after the app's build. Without
+      // this the plugin also infers a test target there that runs the same suite with no build first.
+      "exclude": ["apps/*-e2e/**"],
       "options": {
         "testTargetName": "test",
         "ciTargetName": "test-ci",

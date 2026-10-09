@@ -33,18 +33,6 @@
           "build-sandbox",
           "^build"
         ]
-      },
-      "e2e": {
-        "executor": "nx:run-commands",
-        "dependsOn": [
-          "build-sandbox",
-          "build"
-        ],
-        "cache": false,
-        "options": {
-          "command": "node --test apps/zaku-figma-plugin/e2e/sandbox-bundle.test.ts apps/zaku-figma-plugin/e2e/ui-bundle.test.ts",
-          "cwd": "{workspaceRoot}"
-        }
       }
     }
   },
