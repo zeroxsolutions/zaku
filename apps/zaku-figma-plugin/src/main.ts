@@ -1,11 +1,14 @@
-import { PLUGIN_VERSION, serverMessageSchema, type PluginMessage } from '@zeroxsolutions/zaku/schema';
+import { PLUGIN_VERSION, serverMessageSchema, type FileHello, type PluginMessage } from '@zeroxsolutions/zaku/schema';
 import { findByPath } from './sandbox/find.js';
 import { outlineNode } from './sandbox/outline.js';
 import { createRunner } from './sandbox/runner.js';
 import { snapshotNode } from './sandbox/snapshot.js';
 
 figma.showUI(__html__, { width: 320, height: 480, themeColors: true });
-const post = (message: PluginMessage): void => figma.ui.postMessage(message);
+const post = (message: PluginMessage | FileHello): void => figma.ui.postMessage(message);
+
+/** The clientStorage key of the token zaku-mcp issued when the user paired this plugin. */
+const TOKEN_KEY = 'zaku-token';
 
 const resolveVariable = async (id: string): Promise<string | null> =>
   (await figma.variables.getVariableByIdAsync(id))?.name ?? null;
@@ -79,7 +82,15 @@ figma.ui.onmessage = async (raw: unknown): Promise<void> => {
 const MIN_PANEL_SIZE = 240;
 
 async function receive(raw: unknown): Promise<void> {
-  if (raw && typeof raw === 'object' && (raw as { type?: string }).type === 'connected') return sayHello();
+  const type = raw && typeof raw === 'object' ? (raw as { type?: unknown }).type : undefined;
+  if (type === 'connected') return sayHello();
+  // The panel cannot reach clientStorage, and its own localStorage is blocked in Figma's sandboxed iframe.
+  if (type === 'read-token') {
+    const token: unknown = await figma.clientStorage.getAsync(TOKEN_KEY);
+    figma.ui.postMessage({ type: 'stored-token', token: typeof token === 'string' ? token : null });
+    return;
+  }
+  if (type === 'forget-token') return figma.clientStorage.deleteAsync(TOKEN_KEY);
   if (raw && typeof raw === 'object' && (raw as { type?: string }).type === 'resize') {
     const { width, height } = raw as { width: number; height: number };
     return figma.ui.resize(Math.max(MIN_PANEL_SIZE, width), Math.max(MIN_PANEL_SIZE, height));
@@ -87,6 +98,9 @@ async function receive(raw: unknown): Promise<void> {
   const parsed = serverMessageSchema.safeParse(raw);
   if (!parsed.success) return;
   const message = parsed.data;
+  if (message.type === 'paired') return figma.clientStorage.setAsync(TOKEN_KEY, message.token);
+  if (message.type === 'refused' && message.reason === 'unknown-token')
+    return figma.clientStorage.deleteAsync(TOKEN_KEY);
   if (message.type === 'run' || message.type === 'decide') return runner.receive(message);
   if (message.type === 'select') {
     const node = await figma.getNodeByIdAsync(message.nodeId);

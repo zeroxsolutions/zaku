@@ -3,16 +3,19 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { FigmaBridge } from '../../lib/adapters/figma-bridge.js';
 import { ExecuteScript } from '../../lib/commands/index.js';
+import { CODE_LIFETIME_MS, displayCode } from '../../lib/domain/pairing-codes.js';
 import { UnknownTopic } from '../../lib/domain/errors/index.js';
 import type { IDesignConfigRepository } from '../../lib/repositories/design-config-repository.js';
 import type { IGuideRepository } from '../../lib/repositories/guide-repository.js';
 import { runCheck } from './check.js';
 import { refusalText } from './error-map.js';
+import type { Pairings } from './pairings.js';
 
 export interface ToolSeams {
   bus: MessageBus;
   bridge: FigmaBridge;
   guides: IGuideRepository;
+  pairings: Pairings;
   config: IDesignConfigRepository;
   designRoot: string;
   listening: () => { port: number | null; portError: string | null };
@@ -53,7 +56,13 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
         } catch (error) {
           config = { loaded: false, error: error instanceof Error ? error.message : String(error) };
         }
-        return { files: seams.bridge.sessions(), ...seams.listening(), designRoot: seams.designRoot, config };
+        return {
+          files: seams.bridge.sessions(),
+          ...seams.listening(),
+          pairing: seams.pairings.codeReport(),
+          designRoot: seams.designRoot,
+          config,
+        };
       }),
   );
 
@@ -113,5 +122,50 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
           scope === 'node' ? { nodeId: nodeId ?? '' } : scope === 'all' ? { all: true } : { page: true },
         ),
       ),
+  );
+
+  server.registerTool(
+    'pair',
+    {
+      description:
+        'Show the user a code to type into the zaku panel in Figma, so the plugin can connect. Replaces any code shown before',
+      inputSchema: {},
+    },
+    () =>
+      answer(async () => {
+        const { code, expiresAt } = seams.pairings.issueCode();
+        const minutes = CODE_LIFETIME_MS / 60_000;
+        const next = `Type the code into the zaku panel in Figma (Plugins > zaku). It works once, for ${minutes} minutes.`;
+        const expires = new Date(expiresAt).toISOString();
+        // A dialog shows the code to the user as it is; in a tool result the model would have to repeat it.
+        if (server.server.getClientCapabilities()?.elicitation?.form) {
+          try {
+            await server.server.elicitInput({
+              mode: 'form',
+              message: `Your zaku pairing code is ${displayCode(code)}. ${next}`,
+              requestedSchema: { type: 'object', properties: {} },
+            });
+            return { shown: 'The code is in a dialog the user saw.', expiresAt: expires, next };
+          } catch {
+            // The client declared the capability and still failed the request; the code goes in the result.
+          }
+        }
+        return { code: displayCode(code), expiresAt: expires, next };
+      }),
+  );
+
+  server.registerTool(
+    'pairings',
+    { description: 'The Figma plugins paired with this machine, and the state of the pairing code', inputSchema: {} },
+    () => answer(async () => ({ pairings: await seams.pairings.list(), code: seams.pairings.codeReport() })),
+  );
+
+  server.registerTool(
+    'unpair',
+    {
+      description: 'Revoke a pairing, closing its connection; the plugin has to pair again',
+      inputSchema: { id: z.string().describe('A pairing id from pairings, or all') },
+    },
+    ({ id }) => answer(async () => ({ revoked: await seams.pairings.revoke(id) })),
   );
 }

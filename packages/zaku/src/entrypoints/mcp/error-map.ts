@@ -1,6 +1,7 @@
 import {
   FileNotConnected,
   FileRequired,
+  PairingNotFound,
   PluginNotConnected,
   ScriptRefused,
   UnknownTopic,
@@ -17,6 +18,7 @@ export function refusalText(error: unknown, portError: string | null): string | 
     error instanceof PluginNotConnected ||
     error instanceof FileRequired ||
     error instanceof FileNotConnected ||
+    error instanceof PairingNotFound ||
     error instanceof ScriptRefused ||
     error instanceof UnknownTopic
   )

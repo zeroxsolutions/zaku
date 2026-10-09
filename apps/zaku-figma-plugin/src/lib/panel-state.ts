@@ -1,10 +1,12 @@
 import {
+  fileHelloSchema,
   pluginMessageSchema,
   serverMessageSchema,
   type PluginMessage,
+  type RefusalReason,
   type ServerMessage,
 } from '@zeroxsolutions/zaku/schema';
-import type { RelayStatus } from './relay.js';
+import { storedToken, type RelayStatus } from './relay.js';
 
 export type Finding = Extract<ServerMessage, { type: 'findings' }>['findings'][number];
 
@@ -14,8 +16,18 @@ export interface Running {
   since: number;
 }
 
+/** Whether zaku-mcp knows this plugin; checking until the sandbox says whether it kept a token. */
+export type Pairing =
+  | { phase: 'checking' }
+  | { phase: 'unpaired'; refusal: RefusalReason | null }
+  | { phase: 'paired' };
+
+/** What the status bar names: not paired outranks whatever the socket is doing. */
+export type PanelStatus = RelayStatus | 'unpaired';
+
 export interface PanelState {
   status: RelayStatus;
+  pairing: Pairing;
   file: string | null;
   running: Running | null;
   /** Null until the first check reports, so a clean page reads apart from one never checked. */
@@ -27,10 +39,14 @@ export interface PanelState {
 export type PanelEvent =
   | { kind: 'status'; status: RelayStatus }
   | { kind: 'to-sandbox'; message: unknown; now: number }
-  | { kind: 'from-sandbox'; message: unknown };
+  | { kind: 'from-sandbox'; message: unknown }
+  /** The user sent a pairing code. */
+  | { kind: 'pair' }
+  | { kind: 'unpair' };
 
 export const INITIAL_PANEL_STATE: PanelState = {
   status: 'disconnected',
+  pairing: { phase: 'checking' },
   file: null,
   running: null,
   findings: null,
@@ -43,13 +59,14 @@ function toSandbox(state: PanelState, message: ServerMessage, now: number): Pane
   if (message.type === 'snapshot')
     return { ...state, running: { command: 'check', id: message.requestId, since: now } };
   if (message.type === 'findings') return { ...state, findings: message.findings };
+  if (message.type === 'paired') return { ...state, pairing: { phase: 'paired' } };
+  if (message.type === 'refused') return { ...state, pairing: { phase: 'unpaired', refusal: message.reason } };
   // The decision ends the execute here: after a timeout the sandbox may never answer it.
   if (message.type === 'decide' && state.running?.id === message.runId) return { ...state, running: null };
   return state;
 }
 
 function fromSandbox(state: PanelState, message: PluginMessage): PanelState {
-  if (message.type === 'hello') return { ...state, file: message.file, error: null };
   const answered =
     message.type === 'settled' || message.type === 'threw'
       ? message.runId
@@ -67,6 +84,9 @@ function sandboxError(message: unknown): string | null {
 }
 
 export function panelReducer(state: PanelState, event: PanelEvent): PanelState {
+  if (event.kind === 'pair') return { ...state, pairing: { phase: 'unpaired', refusal: null } };
+  if (event.kind === 'unpair')
+    return { ...state, pairing: { phase: 'unpaired', refusal: null }, file: null, findings: null, running: null };
   if (event.kind === 'status')
     return { ...state, status: event.status, running: event.status === 'connected' ? state.running : null };
   if (event.kind === 'to-sandbox') {
@@ -75,6 +95,16 @@ export function panelReducer(state: PanelState, event: PanelEvent): PanelState {
   }
   const error = sandboxError(event.message);
   if (error !== null) return { ...state, error };
+  const token = storedToken(event.message);
+  if (token !== undefined)
+    return { ...state, pairing: token === null ? { phase: 'unpaired', refusal: null } : { phase: 'paired' } };
+  // The sandbox's hello carries no credential; the relay adds it on the way to the server.
+  const hello = fileHelloSchema.safeParse(event.message);
+  if (hello.success) return { ...state, file: hello.data.file, error: null };
   const parsed = pluginMessageSchema.safeParse(event.message);
   return parsed.success ? fromSandbox(state, parsed.data) : state;
+}
+
+export function panelStatus(state: PanelState): PanelStatus {
+  return state.pairing.phase === 'unpaired' ? 'unpaired' : state.status;
 }

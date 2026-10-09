@@ -8,6 +8,7 @@ const hello = {
   selection: [],
   pluginVersion: '0.1.0',
   user: 'Tu',
+  credential: { code: '12345678' },
 };
 
 describe('the bridge messages', () => {
@@ -42,6 +43,19 @@ describe('the bridge messages', () => {
     expect(pluginMessageSchema.parse(ran)).toEqual(ran);
   });
 
+  it('reads a hello that presents a token', () => {
+    const later = { ...hello, credential: { token: 'abc' } };
+    expect(pluginMessageSchema.parse(later)).toEqual(later);
+  });
+
+  it('refuses a hello that presents no credential', () => {
+    expect(pluginMessageSchema.safeParse({ ...hello, credential: undefined }).success).toBe(false);
+  });
+
+  it('reads the panel asking to unpair', () => {
+    expect(pluginMessageSchema.parse({ type: 'unpair' })).toEqual({ type: 'unpair' });
+  });
+
   it('refuses a message of a type it does not know', () => {
     expect(pluginMessageSchema.safeParse({ type: 'hi' }).success).toBe(false);
   });
@@ -54,6 +68,11 @@ describe('the bridge messages', () => {
       { type: 'snapshot', requestId: 'q2', scope: { page: true } },
       { type: 'findings', findings: [{ check: 'binding', message: 'x', nodeId: '1:2' }] },
       { type: 'select', nodeId: '1:2' },
+      { type: 'paired', token: 'abc' },
+      { type: 'refused', reason: 'wrong-code' },
+      { type: 'refused', reason: 'expired-code' },
+      { type: 'refused', reason: 'used-up-code' },
+      { type: 'refused', reason: 'unknown-token' },
     ]) {
       expect(serverMessageSchema.parse(message)).toEqual(message);
     }

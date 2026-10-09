@@ -1,4 +1,4 @@
-import { INITIAL_PANEL_STATE, panelReducer, type PanelEvent, type PanelState } from './panel-state.js';
+import { INITIAL_PANEL_STATE, panelReducer, panelStatus, type PanelEvent, type PanelState } from './panel-state.js';
 
 const run = (...events: PanelEvent[]): PanelState => events.reduce(panelReducer, INITIAL_PANEL_STATE);
 const connected: PanelEvent = { kind: 'status', status: 'connected' };
@@ -9,14 +9,55 @@ const execute: PanelEvent = {
 };
 
 describe('panelReducer', () => {
-  it('starts disconnected, with no file, nothing running and nothing checked yet', () => {
+  it('starts disconnected, with no file, nothing running, nothing checked, and no word on pairing yet', () => {
     expect(INITIAL_PANEL_STATE).toEqual({
       status: 'disconnected',
+      pairing: { phase: 'checking' },
       file: null,
       running: null,
       findings: null,
       error: null,
     });
+  });
+
+  it('reads paired or not from the token the sandbox kept', () => {
+    expect(run({ kind: 'from-sandbox', message: { type: 'stored-token', token: 't' } }).pairing).toEqual({
+      phase: 'paired',
+    });
+    expect(run({ kind: 'from-sandbox', message: { type: 'stored-token', token: null } }).pairing).toEqual({
+      phase: 'unpaired',
+      refusal: null,
+    });
+  });
+
+  it('turns paired when the server pairs the code', () => {
+    const state = run({ kind: 'to-sandbox', now: 1, message: { type: 'paired', token: 't' } });
+    expect(state.pairing).toEqual({ phase: 'paired' });
+  });
+
+  it('turns unpaired with the reason when the server refuses', () => {
+    const state = run(
+      { kind: 'from-sandbox', message: { type: 'stored-token', token: 't' } },
+      { kind: 'to-sandbox', now: 1, message: { type: 'refused', reason: 'unknown-token' } },
+    );
+    expect(state.pairing).toEqual({ phase: 'unpaired', refusal: 'unknown-token' });
+  });
+
+  it('clears the last refusal when the user tries another code', () => {
+    const state = run(
+      { kind: 'to-sandbox', now: 1, message: { type: 'refused', reason: 'wrong-code' } },
+      { kind: 'pair' },
+    );
+    expect(state.pairing).toEqual({ phase: 'unpaired', refusal: null });
+  });
+
+  it('forgets the file and its findings on unpair', () => {
+    const state = run(
+      { kind: 'from-sandbox', message: { type: 'stored-token', token: 't' } },
+      { kind: 'to-sandbox', now: 1, message: { type: 'findings', findings: [] } },
+      { kind: 'unpair' },
+    );
+    expect(state).toMatchObject({ pairing: { phase: 'unpaired', refusal: null }, file: null, findings: null });
   });
 
   it('shows an execute as running from its run until it settles', () => {
@@ -139,5 +180,13 @@ describe('panelReducer', () => {
       },
     );
     expect(state.error).toBeNull();
+  });
+
+  it('shows not paired over the socket state, and the socket state otherwise', () => {
+    const unpaired = run(connected, { kind: 'from-sandbox', message: { type: 'stored-token', token: null } });
+    expect(panelStatus(unpaired)).toBe('unpaired');
+    const paired = run(connected, { kind: 'from-sandbox', message: { type: 'stored-token', token: 't' } });
+    expect(panelStatus(paired)).toBe('connected');
+    expect(panelStatus(run())).toBe('disconnected');
   });
 });

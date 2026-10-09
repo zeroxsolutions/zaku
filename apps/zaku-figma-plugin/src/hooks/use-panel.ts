@@ -8,6 +8,10 @@ interface Panel {
   /** The clock the running command's time is read against; ticks only while something runs. */
   now: number;
   checkAgain(): void;
+  /** Sends the digits of a pairing code to zaku-mcp. */
+  pair(code: string): void;
+  /** Revokes this plugin's pairing and forgets its token. */
+  unpair(): void;
   select(nodeId: string): void;
   resize(width: number, height: number): void;
 }
@@ -40,6 +44,7 @@ export function usePanel(): Panel {
       schedule: (fn, ms) => window.setTimeout(fn, ms),
       onStatus: (status) => dispatch({ kind: 'status', status }),
     });
+    toSandbox({ type: 'read-token' });
   }, []);
 
   useEffect(() => {
@@ -53,6 +58,15 @@ export function usePanel(): Panel {
     state,
     now,
     checkAgain: () => relay.current?.send({ type: 'check', scope: { page: true } }),
+    pair: (code): void => {
+      dispatch({ kind: 'pair' });
+      relay.current?.pair(code);
+    },
+    unpair: (): void => {
+      relay.current?.unpair();
+      toSandbox({ type: 'forget-token' });
+      dispatch({ kind: 'unpair' });
+    },
     select: (nodeId) => toSandbox({ type: 'select', nodeId }),
     resize: (width, height) => toSandbox({ type: 'resize', width, height }),
   };

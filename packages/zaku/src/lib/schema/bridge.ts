@@ -101,7 +101,8 @@ const findingSchema = z
   })
   .strict();
 
-export const helloSchema = z
+/** What the sandbox reports about its file; the panel adds the credential before it goes on the socket. */
+export const fileHelloSchema = z
   .object({
     type: z.literal('hello'),
     file: z.string(),
@@ -113,8 +114,21 @@ export const helloSchema = z
   })
   .strict();
 
+/** A connection is attached only once its first message carries one of these. */
+export const credentialSchema = z.union([
+  z.object({ code: z.string().max(32) }).strict(),
+  z.object({ token: z.string().max(128) }).strict(),
+]);
+
+export const helloSchema = fileHelloSchema.extend({ credential: credentialSchema }).strict();
+
+/** Why the server refused a connection's credential; it closes the connection after saying so. */
+export const REFUSAL_REASONS = ['wrong-code', 'expired-code', 'used-up-code', 'unknown-token'] as const;
+
 export const pluginMessageSchema = z.discriminatedUnion('type', [
   helloSchema,
+  /** The panel's Unpair: the server forgets the token this connection presented, and closes it. */
+  z.object({ type: z.literal('unpair') }).strict(),
   /** The panel's Check again: the server checks the scope and pushes the findings back. */
   z.object({ type: z.literal('check'), scope: checkScopeSchema }).strict(),
   z.object({ type: z.literal('state'), currentPage: z.string(), selection: z.array(z.string()) }).strict(),
@@ -180,10 +194,16 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('snapshot'), requestId: z.string(), scope: checkScopeSchema }).strict(),
   z.object({ type: z.literal('findings'), findings: z.array(findingSchema) }).strict(),
   z.object({ type: z.literal('select'), nodeId: z.string() }).strict(),
+  /** The answer to a valid code: the token the plugin presents from then on. */
+  z.object({ type: z.literal('paired'), token: z.string() }).strict(),
+  z.object({ type: z.literal('refused'), reason: z.enum(REFUSAL_REASONS) }).strict(),
 ]);
 
 export type NodeSnapshot = z.output<typeof nodeSnapshotSchema>;
+export type FileHello = z.output<typeof fileHelloSchema>;
+export type Credential = z.output<typeof credentialSchema>;
 export type Hello = z.output<typeof helloSchema>;
+export type RefusalReason = (typeof REFUSAL_REASONS)[number];
 export type ReadTarget = z.output<typeof readTargetSchema>;
 export type CheckScope = z.output<typeof checkScopeSchema>;
 export type PluginMessage = z.output<typeof pluginMessageSchema>;

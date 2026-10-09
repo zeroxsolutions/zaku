@@ -6,6 +6,7 @@ export { RecipePageFailed } from './recipe-page-failed.js';
 export { RecipeUrlRequired } from './recipe-url-required.js';
 export { FileNotConnected } from './file-not-connected.js';
 export { FileRequired } from './file-required.js';
+export { PairingNotFound } from './pairing-not-found.js';
 export { PluginNotConnected } from './plugin-not-connected.js';
 export { ScriptRefused } from './script-refused.js';
 export { UnknownTopic } from './unknown-topic.js';

@@ -1,14 +1,14 @@
 import logo from '@/assets/images/zaku-logo.png';
 import { Spinner } from '@/components/ui/spinner';
-import type { Running } from '@/lib/panel-state';
-import type { RelayStatus } from '@/lib/relay';
+import type { PanelStatus, Running } from '@/lib/panel-state';
 import { cn } from '@/lib/utils';
 
-const STATUS_BAR_LABELS: Record<RelayStatus, string> = {
+const STATUS_BAR_LABELS = {
   connected: 'Connected',
   reconnecting: 'Reconnecting',
   disconnected: 'Not connected',
-};
+  unpaired: 'Not paired',
+} as const satisfies Record<PanelStatus, string>;
 
 const STATUS_BAR_VERBS: Record<Running['command'], string> = {
   execute: 'Running',
@@ -17,14 +17,15 @@ const STATUS_BAR_VERBS: Record<Running['command'], string> = {
 };
 
 type StatusBarProps = {
-  status: RelayStatus;
+  status: PanelStatus;
   file: string | null;
   running: Running | null;
   /** The clock the running time is read against, in milliseconds. */
   now: number;
 } & React.ComponentProps<'header'>;
 
-function StatusBar({ status, file, running, now, className, ...props }: StatusBarProps): React.JSX.Element {
+/** The file, the connection, and what runs; an action for the connection goes in as children, at the end. */
+function StatusBar({ status, file, running, now, className, children, ...props }: StatusBarProps): React.JSX.Element {
   return (
     <header
       data-slot="status-bar"
@@ -54,6 +55,7 @@ function StatusBar({ status, file, running, now, className, ...props }: StatusBa
           {STATUS_BAR_VERBS[running.command]} {Math.floor((now - running.since) / 1000)}s
         </span>
       )}
+      {children}
     </header>
   );
 }
