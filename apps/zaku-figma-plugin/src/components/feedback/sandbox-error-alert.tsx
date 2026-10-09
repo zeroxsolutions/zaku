@@ -12,7 +12,7 @@ type SandboxErrorAlertProps = {
 /** A throw in Figma's sandbox that no command answered; the error's own text arrives as children. */
 function SandboxErrorAlert({ onDismiss, onRetry, children, ...props }: SandboxErrorAlertProps): React.JSX.Element {
   return (
-    <Alert variant="destructive" data-slot="sandbox-error-alert" {...props}>
+    <Alert variant="destructive" {...props}>
       <CircleAlertIcon />
       <AlertTitle>The plugin hit an error in Figma</AlertTitle>
       <AlertDescription>
