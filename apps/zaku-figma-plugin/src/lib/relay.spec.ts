@@ -116,7 +116,7 @@ describe('the relay', () => {
     expect(statuses.at(-1)).toBe('disconnected');
   });
 
-  it('sends the panel’s own message to the server only while connected', () => {
+  it('sends the own message of the panel to the server only while connected', () => {
     const sockets: FakeSocket[] = [];
     const relay = startRelay({
       url: 'ws://localhost:7337',

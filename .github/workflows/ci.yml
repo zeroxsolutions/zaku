@@ -50,6 +50,16 @@ jobs:
       - uses: ./.github/actions/nx-setup
       - run: pnpm nx format:check --all
 
+  # Every tracked text file is plain ASCII. The pre-commit hook checks only what it is given, and a
+  # commit made with --no-verify or before the install runs no hook at all, so this sweep is the gate.
+  # zaku is public, and a contributor has none of the internal skills that state the rule.
+  plain-ascii:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: git ls-files -z | sh .husky/plain-ascii
+
   # Separate from `gate` so its cost is visible and its failure is legible on its
   # own. `affected` runs it only for changes that can reach it, from the base
   # `nx-gate` resolves out of the event payload.

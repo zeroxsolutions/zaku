@@ -1,0 +1,2 @@
+# The message is text like any file: plain ASCII. Comment lines are git's own and never committed.
+grep -v '^#' "$1" | perl -ne 'if (/[^\t\n\r\x20-\x7E]/) { print "commit message: not plain ASCII: $_"; $bad = 1 } END { exit($bad ? 1 : 0) }'

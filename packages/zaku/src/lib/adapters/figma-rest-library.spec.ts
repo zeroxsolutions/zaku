@@ -127,7 +127,7 @@ function fakeFetch(): typeof fetch {
                 key: 'ks-badge',
                 name: 'Badge',
                 description: 'code: components/ui/badge.tsx\nprops: Variant=variant',
-                containing_frame: { pageName: '❖ Badge' },
+                containing_frame: { pageName: '\u2756 Badge' },
               },
             ],
           },

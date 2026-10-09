@@ -2,3 +2,4 @@
 # is what lets a staged list holding only ignored or unknown files through.
 git diff --cached --name-only --diff-filter=ACMR -z | xargs -0 -r pnpm exec oxfmt --write --no-error-on-unmatched-pattern
 git diff --cached --name-only --diff-filter=ACMR -z | xargs -0 -r git add
+git diff --cached --name-only --diff-filter=ACMR -z | sh .husky/plain-ascii

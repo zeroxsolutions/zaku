@@ -1,0 +1,9 @@
+# Fails on any character outside printable ASCII, tab and newline, in the text files named on stdin
+# (NUL-separated). A C0 byte is caught too: one makes git treat the file as binary and hide its diff.
+# Binary files are skipped, and so is plugins/zaku/bin, which bundles third-party code as published.
+# A non-ASCII character that is content, such as a page name a fixture quotes, is written as an escape.
+grep -zv '^plugins/zaku/bin/' | xargs -0 -r perl -ne '
+  if ($. == 1 && -B $ARGV) { close ARGV; next }
+  if (/[^\t\n\r\x20-\x7E]/) { print "$ARGV:$.: not plain ASCII: $_"; $bad = 1 }
+  close ARGV if eof;
+  END { exit($bad ? 1 : 0) }'

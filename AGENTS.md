@@ -13,3 +13,13 @@ its checker, MCP server and Figma plugin enforce it on every change an agent dra
 - `plugins/zaku` - the plugin payload: skills, hooks, schemas, the launchers and `.mcp.json`.
 - `docs/brand` - the logo, mascot, banner and favicon, their prompts and `export.py`.
 - `iac/` - Terraform, outside the nx graph.
+
+## Text
+
+- Every character written into this repository is plain ASCII: code, comments, docs, skills, UI
+  strings and commit messages. Write `-` or ` - ` for a dash, straight quotes, `...`, `->`, `x`.
+  Typography belongs to rendering, never to the stored text.
+- A character that is content, such as a Figma page name a fixture quotes, is written as an escape:
+  `'\u2756 Badge'`.
+- `.husky/plain-ascii` is the check; the pre-commit hook, the commit-msg hook and the `plain-ascii`
+  CI job run it.
