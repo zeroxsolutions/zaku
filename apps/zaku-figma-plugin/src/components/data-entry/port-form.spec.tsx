@@ -2,11 +2,9 @@ import { page } from 'vitest/browser';
 import { render } from 'vitest-browser-react';
 import { PortForm } from './port-form';
 
-const PORTS = [7337, 7338, 7339, 7340, 7341, 7342, 7343, 7344, 7345, 7346] as const;
-
 describe('PortForm', () => {
   it('names the port nothing answers on under its own heading, and offers it to change', async () => {
-    await render(<PortForm port={7337} ports={PORTS} onConnect={() => undefined} />);
+    await render(<PortForm port={7337} onConnect={() => undefined} />);
     await expect.element(page.getByRole('heading', { name: 'Connect to zaku-mcp' })).toBeVisible();
     await expect
       .element(page.getByText('No zaku-mcp answers on port 7337. Ask your agent for its port.'))
@@ -17,7 +15,7 @@ describe('PortForm', () => {
 
   it('connects on a port inside the range', async () => {
     const ports: number[] = [];
-    await render(<PortForm port={7337} ports={PORTS} onConnect={(port) => ports.push(port)} />);
+    await render(<PortForm port={7337} onConnect={(port) => ports.push(port)} />);
     await page.getByRole('textbox', { name: 'Port' }).fill('7340');
     await page.getByRole('button', { name: 'Connect' }).click();
     expect(ports).toEqual([7340]);
@@ -25,7 +23,7 @@ describe('PortForm', () => {
 
   it.each(['80', '9000', '', 'abc'])('refuses %j, naming the range', async (typed) => {
     const ports: number[] = [];
-    await render(<PortForm port={7337} ports={PORTS} onConnect={(port) => ports.push(port)} />);
+    await render(<PortForm port={7337} onConnect={(port) => ports.push(port)} />);
     await page.getByRole('textbox', { name: 'Port' }).fill(typed);
     await page.getByRole('button', { name: 'Connect' }).click();
     await expect.element(page.getByRole('alert')).toHaveTextContent('Enter a port from 7337 to 7346.');
@@ -34,7 +32,7 @@ describe('PortForm', () => {
   });
 
   it('drops the range message once a port inside it connects', async () => {
-    await render(<PortForm port={7337} ports={PORTS} onConnect={() => undefined} />);
+    await render(<PortForm port={7337} onConnect={() => undefined} />);
     await page.getByRole('textbox', { name: 'Port' }).fill('80');
     await page.getByRole('button', { name: 'Connect' }).click();
     await page.getByRole('textbox', { name: 'Port' }).fill('7341');
@@ -43,7 +41,7 @@ describe('PortForm', () => {
   });
 
   it('asks for a port, empty, when the user chose to pick one', async () => {
-    await render(<PortForm port={null} ports={PORTS} onConnect={() => undefined} />);
+    await render(<PortForm port={null} onConnect={() => undefined} />);
     await expect
       .element(page.getByText('Ask your agent which port zaku-mcp is on. The code goes to that port only.'))
       .toBeVisible();
@@ -52,10 +50,18 @@ describe('PortForm', () => {
 
   it('offers the way back to the code only when the panel hands it one', async () => {
     let back = 0;
-    const { rerender } = await render(<PortForm port={7337} ports={PORTS} onConnect={() => undefined} />);
+    const { rerender } = await render(<PortForm port={7337} onConnect={() => undefined} />);
     await expect.element(page.getByRole('button', { name: 'Back to the code' })).not.toBeInTheDocument();
-    await rerender(<PortForm port={null} ports={PORTS} onConnect={() => undefined} onBack={() => back++} />);
+    await rerender(<PortForm port={null} onConnect={() => undefined} onBack={() => back++} />);
     await page.getByRole('button', { name: 'Back to the code' }).click();
     expect(back).toBe(1);
+  });
+
+  it('says nothing about the range while the user types, only once Connect is pressed', async () => {
+    await render(<PortForm port={7337} onConnect={() => undefined} />);
+    await page.getByRole('textbox', { name: 'Port' }).fill('80');
+    await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
+    await page.getByRole('button', { name: 'Connect' }).click();
+    await expect.element(page.getByRole('alert')).toHaveTextContent('Enter a port from 7337 to 7346.');
   });
 });

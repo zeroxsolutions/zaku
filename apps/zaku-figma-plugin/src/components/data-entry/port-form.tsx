@@ -1,9 +1,8 @@
 import { PlugIcon } from 'lucide-react';
-import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
+import { usePortFormSchema } from '@/hooks/use-port-form-schema';
+import { useAppForm } from '@/lib/app-form';
 
 type PortFormProps = {
   /**
@@ -11,17 +10,19 @@ type PortFormProps = {
    * chose to pick a port for the code, and the field starts empty.
    */
   port: number | null;
-  /** The ports the manifest lets the panel reach; any other is refused with a message naming them. */
-  ports: readonly [number, ...number[]];
-  /** Called with a port inside `ports`. */
+  /** Called with a port the plugin's manifest admits. */
   onConnect: (port: number) => void;
   /** Offers "Back to the code" when given. */
   onBack?: () => void;
 } & React.ComponentProps<typeof Empty>;
 
-function PortForm({ port, ports, onConnect, onBack, ...props }: PortFormProps): React.JSX.Element {
-  const id = useId();
-  const [invalid, setInvalid] = useState(false);
+function PortForm({ port, onConnect, onBack, ...props }: PortFormProps): React.JSX.Element {
+  const schema = usePortFormSchema();
+  const form = useAppForm({
+    defaultValues: { port: port === null ? '' : String(port) },
+    validators: { onChange: schema },
+    onSubmit: ({ value }) => onConnect(Number(value.port)),
+  });
   return (
     <Empty {...props}>
       <EmptyHeader>
@@ -43,32 +44,13 @@ function PortForm({ port, ports, onConnect, onBack, ...props }: PortFormProps): 
           className="flex w-full flex-col items-center gap-3"
           onSubmit={(event) => {
             event.preventDefault();
-            const typed = String(new FormData(event.currentTarget).get('port') ?? '').trim();
-            const asked = ports.find((admitted) => String(admitted) === typed);
-            setInvalid(asked === undefined);
-            if (asked !== undefined) onConnect(asked);
+            void form.handleSubmit();
           }}
         >
-          <Field data-invalid={invalid || undefined}>
-            {/* The title above is the visible heading; the label names the field for assistive tech. */}
-            <FieldLabel htmlFor={id} className="sr-only">
-              Port
-            </FieldLabel>
-            <Input
-              id={id}
-              name="port"
-              inputMode="numeric"
-              autoComplete="off"
-              defaultValue={port ?? ''}
-              aria-invalid={invalid || undefined}
-            />
-            {invalid && (
-              <FieldError>
-                Enter a port from {ports[0]} to {ports[ports.length - 1]}.
-              </FieldError>
-            )}
-          </Field>
-          <Button type="submit">Connect</Button>
+          <form.AppField name="port">{(field) => <field.PortField label="Port" />}</form.AppField>
+          <form.AppForm>
+            <form.SubmitButton label="Connect" />
+          </form.AppForm>
         </form>
         {onBack !== undefined && (
           <Button type="button" variant="link" onClick={onBack}>

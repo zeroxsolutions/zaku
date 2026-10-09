@@ -1,11 +1,11 @@
 import type { RefusalReason } from '@zeroxsolutions/zaku/schema';
-import { REGEXP_ONLY_DIGITS } from 'input-otp';
-import { useId, useState } from 'react';
 import { KeyRoundIcon } from 'lucide-react';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
-import { Field, FieldError, FieldLabel } from '@/components/ui/field';
-import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
+import { FieldError } from '@/components/ui/field';
+import { usePairingFormSchema } from '@/hooks/use-pairing-form-schema';
+import { useAppForm } from '@/lib/app-form';
 
 const PAIRING_FORM_REFUSALS = {
   'wrong-code': 'That code is not right. Check it and try again.',
@@ -13,9 +13,6 @@ const PAIRING_FORM_REFUSALS = {
   'used-up-code': 'This code was used up by wrong attempts. Ask your agent for a new one.',
   'unknown-token': 'zaku-mcp no longer knows this plugin. Ask your agent to pair with zaku again.',
 } as const satisfies Record<RefusalReason, string>;
-
-/** The digits a pairing code has; zaku-mcp shows them as two groups of four. */
-const PAIRING_CODE_LENGTH = 8;
 
 type PairingFormProps = {
   /** Why the server refused the last credential; null before any refusal and once the user tries again. */
@@ -27,14 +24,16 @@ type PairingFormProps = {
 } & React.ComponentProps<typeof Empty>;
 
 function PairingForm({ refusal, onPair, onUseAnotherPort, ...props }: PairingFormProps): React.JSX.Element {
-  const id = useId();
-  const [code, setCode] = useState('');
-  const [shownRefusal, setShownRefusal] = useState(refusal);
+  const schema = usePairingFormSchema();
+  const form = useAppForm({
+    defaultValues: { code: '' },
+    validators: { onChange: schema },
+    onSubmit: ({ value }) => onPair(value.code),
+  });
   // A refused code is spent, so the field empties for the next one; the digits stay while one is in flight.
-  if (refusal !== shownRefusal) {
-    setShownRefusal(refusal);
-    if (refusal !== null) setCode('');
-  }
+  useEffect(() => {
+    if (refusal !== null) form.reset();
+  }, [form, refusal]);
   const invalid = refusal !== null;
   return (
     <Empty {...props}>
@@ -48,42 +47,21 @@ function PairingForm({ refusal, onPair, onUseAnotherPort, ...props }: PairingFor
         <EmptyDescription>Ask your agent to pair with zaku, then type the code here.</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
-        <form data-slot="pairing-form" className="w-full" onSubmit={(event) => event.preventDefault()}>
-          <Field data-invalid={invalid || undefined}>
-            {/* The title above is the visible heading; the label names the field for assistive tech. */}
-            <FieldLabel htmlFor={id} className="sr-only">
-              Pairing code
-            </FieldLabel>
-            <div className="flex justify-center">
-              <InputOTP
-                id={id}
-                name="code"
-                maxLength={PAIRING_CODE_LENGTH}
-                pattern={REGEXP_ONLY_DIGITS}
-                // The agent shows the code as `1234 5678`; the digits pattern refuses a paste that keeps the space.
-                pasteTransformer={(pasted) => pasted.replace(/[\s-]/g, '')}
-                value={code}
-                onChange={setCode}
-                onComplete={onPair}
-                aria-invalid={invalid || undefined}
-              >
-                <InputOTPGroup>
-                  <InputOTPSlot index={0} aria-invalid={invalid || undefined} />
-                  <InputOTPSlot index={1} aria-invalid={invalid || undefined} />
-                  <InputOTPSlot index={2} aria-invalid={invalid || undefined} />
-                  <InputOTPSlot index={3} aria-invalid={invalid || undefined} />
-                </InputOTPGroup>
-                <InputOTPSeparator />
-                <InputOTPGroup>
-                  <InputOTPSlot index={4} aria-invalid={invalid || undefined} />
-                  <InputOTPSlot index={5} aria-invalid={invalid || undefined} />
-                  <InputOTPSlot index={6} aria-invalid={invalid || undefined} />
-                  <InputOTPSlot index={7} aria-invalid={invalid || undefined} />
-                </InputOTPGroup>
-              </InputOTP>
-            </div>
-            {invalid && <FieldError>{PAIRING_FORM_REFUSALS[refusal]}</FieldError>}
-          </Field>
+        <form
+          data-slot="pairing-form"
+          className="w-full"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void form.handleSubmit();
+          }}
+        >
+          <form.AppField name="code">
+            {(field) => (
+              <field.OtpField label="Pairing code" aria-invalid={invalid || undefined}>
+                {invalid && <FieldError>{PAIRING_FORM_REFUSALS[refusal]}</FieldError>}
+              </field.OtpField>
+            )}
+          </form.AppField>
         </form>
         {onUseAnotherPort !== undefined && (
           <Button type="button" variant="link" onClick={onUseAnotherPort}>
