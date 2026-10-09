@@ -18,7 +18,8 @@ export interface PanelState {
   status: RelayStatus;
   file: string | null;
   running: Running | null;
-  findings: Finding[];
+  /** Null until the first check reports, so a clean page reads apart from one never checked. */
+  findings: Finding[] | null;
   error: string | null;
 }
 
@@ -32,7 +33,7 @@ export const INITIAL_PANEL_STATE: PanelState = {
   status: 'disconnected',
   file: null,
   running: null,
-  findings: [],
+  findings: null,
   error: null,
 };
 

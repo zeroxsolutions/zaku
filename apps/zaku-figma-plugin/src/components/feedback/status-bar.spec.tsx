@@ -6,28 +6,23 @@ describe('StatusBar', () => {
   it.each([
     ['connected', 'Connected'],
     ['reconnecting', 'Reconnecting'],
-    ['disconnected', 'Disconnected'],
-  ] as const)('names the %s state for a screen reader', async (status, label) => {
-    await render(<StatusBar status={status} port={7337} file={null} running={null} now={0} />);
-    await expect.element(page.getByText(label, { exact: true })).toBeInTheDocument();
+    ['disconnected', 'Not connected'],
+  ] as const)('names the %s state', async (status, label) => {
+    await render(<StatusBar status={status} file={null} running={null} now={0} />);
+    await expect.element(page.getByText(label, { exact: true })).toBeVisible();
   });
 
-  it('shows the port and the file', async () => {
-    await render(<StatusBar status="connected" port={7337} file="Acme" running={null} now={0} />);
-    await expect.element(page.getByText(':7337')).toBeVisible();
+  it('shows the file, and zaku before one says hello', async () => {
+    const { rerender } = await render(<StatusBar status="connected" file={null} running={null} now={0} />);
+    await expect.element(page.getByText('zaku', { exact: true })).toBeVisible();
+    await rerender(<StatusBar status="connected" file="Acme" running={null} now={0} />);
     await expect.element(page.getByText('Acme')).toBeVisible();
   });
 
   it('shows the running command and how long it has run', async () => {
     await render(
-      <StatusBar
-        status="connected"
-        port={7337}
-        file="Acme"
-        running={{ command: 'execute', id: 'r', since: 1000 }}
-        now={4200}
-      />,
+      <StatusBar status="connected" file="Acme" running={{ command: 'check', id: 'r', since: 1000 }} now={4200} />,
     );
-    await expect.element(page.getByText('execute 3s')).toBeVisible();
+    await expect.element(page.getByText('Checking 3s')).toBeVisible();
   });
 });
