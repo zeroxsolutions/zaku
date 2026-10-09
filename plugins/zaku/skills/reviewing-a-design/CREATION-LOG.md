@@ -29,6 +29,9 @@ Pending the RED runs.
 
 - The system bars row's desktop clause: no run; it follows the checker's desktop defaults.
 - The Windows, GNOME and KDE target sizes: no run; only macOS was scored.
+- The way out row: no review run. It holds the drawing to `mapping-a-feature`'s way out rule, which a
+  recorded session licensed: a plugin panel shipped with a "Not connected" state that offered no
+  action, and nothing in the review asked what a person does in each state.
 
 ## Tests
 
@@ -49,3 +52,5 @@ Pending the RED runs.
    check a second tool. The body stays tool-neutral; Figma is its only reference.
 4. The target size row names a size for macOS, Windows, GNOME and KDE, and the system bars row a
    desktop window's bar, after `test-reviewing-target-size-on-a-mac-frame.md` RED.
+5. A way out row, decided from the images and graded High beside way back, after `mapping-a-feature`
+   gained its way out rule.
