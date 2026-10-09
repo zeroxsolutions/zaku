@@ -10,7 +10,7 @@
     {
       "name": "zaku",
       "source": "./plugins/zaku",
-      "description": "This organization's design doctrine, carried as skills: where a product's design lives as data, how a screen is mapped before it is drawn, how a frame is drawn from the library, how the library follows the code's preset, and how a design change is reviewed with evidence. Figma is the drawing tool; its spellings live in each skill's references/figma.md. Ships the zaku MCP server, which drives the zaku Figma plugin and checks every script it runs.",
+      "description": "This organization's design doctrine, carried as skills: where a product's design lives as data, how a screen is mapped before it is drawn, how a frame is drawn from the library, how the library follows the code's preset, how a design change is reviewed with evidence, and how an outside fact a decision rests on is researched. Figma is the drawing tool; its spellings live in each skill's references/figma.md. Ships the zaku MCP server, which drives the zaku Figma plugin and checks every script it runs.",
       "keywords": ["zaku", "skills", "design", "figma", "design-system", "shadcn", "review"]
     }
   ]
