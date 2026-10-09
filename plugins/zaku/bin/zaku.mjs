@@ -32957,7 +32957,7 @@ function date4(params) {
 }
 
 // packages/zaku/dist/lib/schema/zaku-config.js
-var PLATFORM_FAMILIES = ['web', 'ios', 'android'];
+var PLATFORM_FAMILIES = ['web', 'ios', 'android', 'macos', 'windows', 'gnome', 'kde'];
 var DEFAULT_INTERACTIVE = [
   'Button',
   'Button Group',
@@ -33000,6 +33000,10 @@ var DEFAULT_SYSTEM_BARS = {
   web: [],
   ios: [['Status Bar'], ['Home Indicator']],
   android: [['Status Bar'], ['Navigation Bar', 'Gesture Handle']],
+  macos: [['Window Controls']],
+  windows: [['Title Bar']],
+  gnome: [['Header Bar']],
+  kde: [['Title Bar']],
 };
 function systemBarNames(config2) {
   const bars = { ...DEFAULT_SYSTEM_BARS, ...config2.systemBars };
@@ -33093,8 +33097,9 @@ var zakuConfigSchema = external_exports
     targets: external_exports.array(targetSchema).min(1),
     modes: external_exports.record(external_exports.string(), external_exports.string()).default({}),
     interactive: external_exports.array(external_exports.string().min(1)).default([...DEFAULT_INTERACTIVE]),
+    /** The bars of the families whose kit names them its own way; every family left out keeps its default. */
     systemBars: external_exports
-      .record(
+      .partialRecord(
         external_exports.enum(PLATFORM_FAMILIES),
         external_exports.array(external_exports.array(external_exports.string().min(1)).min(1)),
       )
@@ -33225,7 +33230,15 @@ var screenSchema = external_exports
       .array(external_exports.object({ to: screenRef, via: external_exports.string().min(1) }).strict())
       .default([]),
     back: external_exports
-      .object({ web: external_exports.string(), ios: external_exports.string(), android: external_exports.string() })
+      .object({
+        web: external_exports.string(),
+        ios: external_exports.string(),
+        android: external_exports.string(),
+        macos: external_exports.string(),
+        windows: external_exports.string(),
+        gnome: external_exports.string(),
+        kde: external_exports.string(),
+      })
       .partial()
       .strict()
       .default({}),
@@ -34298,7 +34311,15 @@ var recipe = ({ config: config2, library, recipe: doc }) => {
 };
 
 // packages/zaku/dist/lib/domain/checks/size.js
-var MIN_TARGET = { ios: 44, android: 48, web: 24 };
+var MIN_TARGET = {
+  ios: 44,
+  android: 48,
+  web: 24,
+  macos: 28,
+  windows: 40,
+  gnome: 24,
+  kde: 24,
+};
 function controlsOf(frame) {
   return frame.instances.flatMap((instance) =>
     [instance, ...instance.nested].flatMap((control) =>

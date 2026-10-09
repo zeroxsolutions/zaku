@@ -2,8 +2,22 @@ import type { PlatformFamily } from '../../schema/zaku-config.js';
 import type { FrameOutline, InstanceOutline } from '../outline.js';
 import type { Check, Finding } from '../findings.js';
 
-/** Apple HIG 44x44 pt, Material 3 48x48 dp, WCAG 2.2 SC 2.5.8 24x24 CSS px. */
-export const MIN_TARGET: Record<PlatformFamily, number> = { ios: 44, android: 48, web: 24 };
+/**
+ * The smallest control each platform's guideline asks for, in its own unit: Apple HIG Accessibility's
+ * default control size (44x44 pt on iOS and iPadOS, 28x28 pt on macOS), Android's 48x48 dp touch target,
+ * Windows' 40x40 epx touch target ("Guidelines for touch targets"), and WCAG 2.2 SC 2.5.8's 24x24 CSS px,
+ * which WCAG2ICT applies as written to non-web software and so to GNOME and KDE, whose guidelines state
+ * no size.
+ */
+export const MIN_TARGET: Record<PlatformFamily, number> = {
+  ios: 44,
+  android: 48,
+  web: 24,
+  macos: 28,
+  windows: 40,
+  gnome: 24,
+  kde: 24,
+};
 
 type Bounds = NonNullable<InstanceOutline['bounds']>;
 

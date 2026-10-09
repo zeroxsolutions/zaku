@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
-export const PLATFORM_FAMILIES = ['web', 'ios', 'android'] as const;
+/**
+ * The platforms whose guideline a target is drawn to. A web target is a page in a browser at any width,
+ * never a native desktop app; a Linux app takes the family of the desktop its toolkit follows, because
+ * GNOME and KDE place window controls, menus and settings differently.
+ */
+export const PLATFORM_FAMILIES = ['web', 'ios', 'android', 'macos', 'windows', 'gnome', 'kde'] as const;
 export type PlatformFamily = (typeof PLATFORM_FAMILIES)[number];
 
 /** Library component set names whose instances a person taps or clicks. */
@@ -41,13 +46,19 @@ export const targetSchema = z
   .strict();
 
 /**
- * The instances a native frame holds for its platform's system bars: one entry per bar, each the
- * component names that may stand for it.
+ * The instances a native frame holds for the bars its platform keeps: one entry per bar, each the
+ * component names that may stand for it. A phone keeps its status and home or navigation bars; a desktop
+ * window keeps the bar its window controls sit in. Each default is the guideline's own term for the bar,
+ * and a kit that names it otherwise is listed under `systemBars`.
  */
 export const DEFAULT_SYSTEM_BARS: Record<PlatformFamily, string[][]> = {
   web: [],
   ios: [['Status Bar'], ['Home Indicator']],
   android: [['Status Bar'], ['Navigation Bar', 'Gesture Handle']],
+  macos: [['Window Controls']],
+  windows: [['Title Bar']],
+  gnome: [['Header Bar']],
+  kde: [['Title Bar']],
 };
 
 /** Every component name that draws a system bar, on any platform the config knows. */
@@ -165,7 +176,8 @@ export const zakuConfigSchema = z
     targets: z.array(targetSchema).min(1),
     modes: z.record(z.string(), z.string()).default({}),
     interactive: z.array(z.string().min(1)).default([...DEFAULT_INTERACTIVE]),
-    systemBars: z.record(z.enum(PLATFORM_FAMILIES), z.array(z.array(z.string().min(1)).min(1))).optional(),
+    /** The bars of the families whose kit names them its own way; every family left out keeps its default. */
+    systemBars: z.partialRecord(z.enum(PLATFORM_FAMILIES), z.array(z.array(z.string().min(1)).min(1))).optional(),
     budget: budgetSchema.default({ mcpPerDay: 200, mcpPerRun: 30, reserve: 0.2 }),
     recipe: recipeSchema.optional(),
     copy: copySchema.default(DEFAULT_COPY),

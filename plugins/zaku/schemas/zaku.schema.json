@@ -145,7 +145,7 @@
           },
           "family": {
             "type": "string",
-            "enum": ["web", "ios", "android"]
+            "enum": ["web", "ios", "android", "macos", "windows", "gnome", "kde"]
           },
           "name": {
             "type": "string",
@@ -212,7 +212,7 @@
       "type": "object",
       "propertyNames": {
         "type": "string",
-        "enum": ["web", "ios", "android"]
+        "enum": ["web", "ios", "android", "macos", "windows", "gnome", "kde"]
       },
       "additionalProperties": {
         "type": "array",
@@ -224,8 +224,7 @@
             "minLength": 1
           }
         }
-      },
-      "required": ["web", "ios", "android"]
+      }
     },
     "budget": {
       "default": {

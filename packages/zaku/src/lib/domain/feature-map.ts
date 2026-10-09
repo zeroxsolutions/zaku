@@ -37,7 +37,19 @@ export const screenSchema = z
       )
       .default([]),
     exits: z.array(z.object({ to: screenRef, via: z.string().min(1) }).strict()).default([]),
-    back: z.object({ web: z.string(), ios: z.string(), android: z.string() }).partial().strict().default({}),
+    back: z
+      .object({
+        web: z.string(),
+        ios: z.string(),
+        android: z.string(),
+        macos: z.string(),
+        windows: z.string(),
+        gnome: z.string(),
+        kde: z.string(),
+      })
+      .partial()
+      .strict()
+      .default({}),
     components: z.array(z.string().min(1)).default([]),
     a11y: z.record(z.string(), z.unknown()).default({}),
   })
