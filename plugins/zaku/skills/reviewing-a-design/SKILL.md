@@ -62,6 +62,9 @@ What the checker cannot decide, the review decides from images and says what it 
   clipped text, or a state that drew a different component from its siblings shows there.
 - Whether each target behaves as its platform does, by the map's `back` and the patterns in
   `mapping-a-feature`.
+- The way out, a row of its own in the report: every state's frame shows a control the map names
+  for that state in `exits` or `back`, as `mapping-a-feature` writes it. A frame that shows none
+  fails, named, because a person who meets that state can only close the product.
 
 The images are evidence for the reviewer and for a person, never the gate: an agent's count of its own
 screenshots says nothing about whether the drawing is right.
@@ -71,11 +74,12 @@ screenshots says nothing about whether the drawing is right.
 One table per screen, every criterion a row, and every row its evidence:
 
 ```md
-| Criterion | Result | Evidence                                                             |
-| --------- | ------ | -------------------------------------------------------------------- |
-| coverage  | fail   | `Sign in / Error / iPad landscape` has no frame                      |
-| overrides | fail   | 120:44 fills, inside `Button` on `Sign in / Default / Android phone` |
-| copy      | pass   | `zaku check` copy: 0 findings                                        |
+| Criterion | Result | Evidence                                                                    |
+| --------- | ------ | --------------------------------------------------------------------------- |
+| coverage  | fail   | `Sign in / Error / iPad landscape` has no frame                             |
+| overrides | fail   | 120:44 fills, inside `Button` on `Sign in / Default / Android phone`        |
+| copy      | pass   | `zaku check` copy: 0 findings                                               |
+| way out   | fail   | `Connect / Not connected / Panel` shows no control; the map names Try again |
 ```
 
 Every finding is graded by its criterion, never by how small it looks:
@@ -83,7 +87,7 @@ Every finding is graded by its criterion, never by how small it looks:
 | Grade   | Criteria                                                                                                                                                                                                                                            |
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Blocker | overrides; library (a raw node, or a local component that copies one the library publishes); a change to the library made by the drawing (the library file's version has moved past the snapshot's while the change made no library edit); coverage |
-| High    | component; images; system bars; way back; target size; prototype                                                                                                                                                                                    |
+| High    | component; images; system bars; way back; way out; target size; prototype                                                                                                                                                                           |
 | Medium  | copy; naming and placement                                                                                                                                                                                                                          |
 | Nit     | what a person could reasonably choose otherwise, with the reason                                                                                                                                                                                    |
 

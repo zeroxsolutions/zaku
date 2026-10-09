@@ -34,6 +34,7 @@ follows it; it never leads it.
     - { url: /<path>/, { <param> } }
   exits:
     - { to: <screen-id or feature/screen-id>, via: <the control> }
+    - { to: <this screen-id>, via: <the control> } # <the states that show it>
   back: # one line per family the screen's targets have
     <family>: <the control and the screen it returns to>
   components: [<library or product component>]
@@ -57,6 +58,18 @@ follows it; it never leads it.
    and the review find it.
 4. **Every screen that is not a root has a `back` for each platform family it targets.** It names the
    control and the screen it returns to.
+5. **Every state names its way out: a control that state shows which takes the person out of it.**
+   Default's are the screen's `exits` and `back`. Every other state's is one of these: try again,
+   the value that failed shown editable, cancel, back, or a way to reach someone who can help. A way out
+   that keeps the person on the screen (try again, a field to correct) is an `exits` row whose `to` is
+   the screen itself, and a comment on that row names the states that show it, because a row belongs
+   to the screen and the review holds each state's frame to it. When the cause of a failure is a value
+   the person or the product chose (an address, a port, a code), the state shows that value editable,
+   or a control that gets a new one, beside try again, because trying again with the same value fails
+   the same way. A state with no way out is a gap, because a person who meets it can only close the product.
+   Nielsen's heuristics ("10 Usability Heuristics for User Interface Design", NN/g) ask for this: #9,
+   error messages "constructively suggest a solution", and #3, "a clearly marked 'emergency exit'" so
+   people "avoid getting stuck".
 
 ## A way back, per platform
 
@@ -91,10 +104,11 @@ kept apart from the drawing's commits, before a frame changes.
 
 ## Common Mistakes
 
-| Mistake                                            | Instead                                            |
-| -------------------------------------------------- | -------------------------------------------------- |
-| Drawing first and updating the map after           | The map entry first, then the frames it names      |
-| A state per target ("share sheet", "share dialog") | One state; the drawing chooses its form per target |
-| `back.web` only, on a screen that targets all      | A `back` for every family it targets               |
-| A native frame with a breadcrumb                   | The platform's own way back                        |
-| The web desktop target standing for a desktop app  | A target with the desktop platform's family        |
+| Mistake                                              | Instead                                                  |
+| ---------------------------------------------------- | -------------------------------------------------------- |
+| Drawing first and updating the map after             | The map entry first, then the frames it names            |
+| A state per target ("share sheet", "share dialog")   | One state; the drawing chooses its form per target       |
+| `back.web` only, on a screen that targets all        | A `back` for every family it targets                     |
+| An Error state named, and nothing it shows to act on | A control in `exits` or `back`, the state in its comment |
+| A native frame with a breadcrumb                     | The platform's own way back                              |
+| The web desktop target standing for a desktop app    | A target with the desktop platform's family              |
