@@ -17,6 +17,7 @@ import {
   WorkflowIcon,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from '@/components/ui/item';
 import type { Finding } from '@/lib/panel-state';
 import { cn } from '@/lib/utils';
@@ -109,38 +110,27 @@ type FindingsListRowProps = { finding: Finding; onSelectNode: (nodeId: string) =
 function FindingsListRow({ finding, onSelectNode, className, ...props }: FindingsListRowProps): React.JSX.Element {
   const { check, nodeId, frame, field, message } = finding;
   const Icon = FINDINGS_LIST_CHECK_ICONS[check] ?? CircleAlertIcon;
-  const content = (
-    <>
-      <ItemMedia variant="icon" className="text-muted-foreground">
-        <Icon />
-      </ItemMedia>
-      <ItemContent>
-        <ItemTitle className="text-xs">{message}</ItemTitle>
-        {(frame !== undefined || field !== undefined) && (
-          <ItemDescription className="flex items-center gap-1.5 text-xs">
-            {frame !== undefined && <span className="truncate">{frame}</span>}
-            {field !== undefined && <Badge variant="outline">{field}</Badge>}
-          </ItemDescription>
-        )}
-      </ItemContent>
-    </>
-  );
   return (
     <li data-slot="findings-list-row" className={className} {...props}>
-      {nodeId === undefined ? (
-        <Item size="xs">{content}</Item>
-      ) : (
-        <Item
-          size="xs"
-          render={<button type="button" onClick={() => onSelectNode(nodeId)} />}
-          className="hover:bg-muted text-start"
-        >
-          {content}
+      <Item size="xs">
+        <ItemMedia variant="icon">
+          <Icon />
+        </ItemMedia>
+        <ItemContent>
+          <ItemTitle>{message}</ItemTitle>
+          {frame !== undefined && <ItemDescription>{frame}</ItemDescription>}
+        </ItemContent>
+        {(field !== undefined || nodeId !== undefined) && (
           <ItemActions>
-            <ChevronRightIcon className="text-muted-foreground size-4 opacity-0 group-hover/item:opacity-100 group-focus-visible/item:opacity-100" />
+            {field !== undefined && <Badge variant="outline">{field}</Badge>}
+            {nodeId !== undefined && (
+              <Button variant="ghost" size="icon-sm" aria-label="Select layer" onClick={() => onSelectNode(nodeId)}>
+                <ChevronRightIcon />
+              </Button>
+            )}
           </ItemActions>
-        </Item>
-      )}
+        )}
+      </Item>
     </li>
   );
 }

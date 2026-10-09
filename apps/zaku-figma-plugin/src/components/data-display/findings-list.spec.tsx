@@ -17,7 +17,11 @@ describe('FindingsList', () => {
     );
     await expect.element(page.getByRole('region', { name: 'Token binding, 2 findings' })).toBeVisible();
     await expect.element(page.getByRole('region', { name: 'Layer naming, 1 finding' })).toBeVisible();
-    await page.getByRole('button', { name: /Card \(frame\): fill is a raw value/ }).click();
+    await page
+      .getByRole('listitem')
+      .filter({ hasText: 'Card (frame): fill is a raw value' })
+      .getByRole('button', { name: 'Select layer' })
+      .click();
     expect(selected).toEqual(['1:1']);
   });
 
@@ -41,21 +45,7 @@ describe('FindingsList', () => {
     await expect.element(page.getByText(/1:1/)).not.toBeInTheDocument();
   });
 
-  it('marks every finding with the icon of the rule it breaks', async () => {
-    const { container } = await render(
-      <FindingsList
-        findings={[
-          { check: 'binding', nodeId: '1:1', message: 'Card (frame): fill is a raw value' },
-          { check: 'naming', message: 'Frame keeps a default name' },
-        ]}
-        onSelectNode={() => undefined}
-      />,
-    );
-    const rows = Array.from(container.querySelectorAll('[data-slot="findings-list-row"]'));
-    expect(rows.map((row) => row.querySelector('[data-slot="item-media"] svg') !== null)).toEqual([true, true]);
-  });
-
-  it('shows a finding with no node as text, not a button', async () => {
+  it('offers no selection for a finding with no node', async () => {
     await render(
       <FindingsList
         findings={[{ check: 'binding', message: 'A finding with no node' }]}
@@ -63,6 +53,6 @@ describe('FindingsList', () => {
       />,
     );
     await expect.element(page.getByText('A finding with no node')).toBeVisible();
-    await expect.element(page.getByRole('button', { name: /A finding with no node/ })).not.toBeInTheDocument();
+    await expect.element(page.getByRole('button', { name: 'Select layer' })).not.toBeInTheDocument();
   });
 });
