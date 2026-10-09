@@ -1,6 +1,6 @@
 {
   "name": "zaku",
-  "description": "This organization's design doctrine, carried as skills, and the zaku checker that enforces it: where a product's design lives as data, how a screen is mapped before it is drawn, how a frame is drawn from the library, how the library follows the code's design system (shadcn or DTCG tokens), how a design change is reviewed with evidence, and how an outside fact a decision rests on is researched. Figma is the drawing tool; each skill's reference spells it. It ships the zaku MCP server, which drives the zaku Figma plugin and checks every script it runs; Figma's own MCP server is added by the user.",
+  "description": "This organization's design doctrine, carried as skills, and the zaku checker that enforces it: where a product's design lives as data, who a product is for before a design decision, how a screen is mapped before it is drawn, how a frame is drawn from the library, how the library follows the code's design system (shadcn or DTCG tokens), how a design change is reviewed with evidence, and how an outside fact a decision rests on is researched. Figma is the drawing tool; each skill's reference spells it. It ships the zaku MCP server, which drives the zaku Figma plugin and checks every script it runs; Figma's own MCP server is added by the user.",
   "author": {
     "name": "zeroxsolutions"
   },
