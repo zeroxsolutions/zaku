@@ -107,3 +107,9 @@ below.
 7. The `spacing/<step>` token, one per step the code's classes use, and its spellings in the Figma,
    shadcn and DTCG references: zaku's checks refuse a raw padding, and the token table had no spacing
    row, so each description run invented a different shape for it.
+8. From a GREEN run on a live file: with no product file, the run created a new Figma file in the
+   user's team because `zaku.yaml`'s schema required `figma.product` beside `figma.library`. Both keys
+   are optional now, each command that reads one refuses naming the field, and the step before the
+   first drawing says no Figma file is created; a missing one is asked for. The same run stopped on a
+   `naming` finding against the `Component` section frame the reference prescribes, which the checker
+   now reads by node type.

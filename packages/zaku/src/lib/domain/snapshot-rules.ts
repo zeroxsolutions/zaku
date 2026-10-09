@@ -3,7 +3,7 @@ import { DEFAULT_COPY, type CopyConfig } from '../schema/zaku-config.js';
 import { ALLOWED_OVERRIDES } from './checks/overrides.js';
 import { copyIssues, copyPolicy } from './copy-rules.js';
 import type { Finding } from './findings.js';
-import { DEFAULT_LAYER_NAME } from './layer-names.js';
+import { isDefaultLayerName } from './layer-names.js';
 
 /** A library page holding one entry opens with U+2756 and a space, as building-the-library's Figma reference names it. */
 const ENTRY_PAGE_PREFIX = '\u2756 ';
@@ -122,8 +122,7 @@ export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfi
         }
       }
     }
-    if (node.type !== 'TEXT' && DEFAULT_LAYER_NAME.test(node.name))
-      finding('naming', undefined, `${node.name} keeps a default name`);
+    if (isDefaultLayerName(node.type, node.name)) finding('naming', undefined, `${node.name} keeps a default name`);
   }
   return findings;
 }

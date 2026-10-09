@@ -119,6 +119,7 @@
       ]
     },
     "figma": {
+      "default": {},
       "type": "object",
       "properties": {
         "library": {
@@ -130,7 +131,6 @@
           "minLength": 1
         }
       },
-      "required": ["library", "product"],
       "additionalProperties": false
     },
     "targets": {
@@ -301,6 +301,6 @@
       "additionalProperties": false
     }
   },
-  "required": ["product", "designSystem", "figma", "targets"],
+  "required": ["product", "designSystem", "targets"],
   "additionalProperties": false
 }

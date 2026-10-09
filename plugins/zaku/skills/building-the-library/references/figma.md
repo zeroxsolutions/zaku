@@ -173,4 +173,5 @@ Professional plan: the variables. `zaku library script` prints that export; run 
 the library file and save the reply as a JSON file. `zaku library save --input <file>`, with
 `FIGMA_TOKEN` set, then reads the published components over REST, which names each paint's bound
 variable, and resolves every item in every mode from the export. The library has to be published for
-REST to list its components.
+REST to list its components. Without `figma.library` in `zaku.yaml` it exits 3, naming the field, and
+reads nothing.

@@ -183,6 +183,22 @@ describe('outlineFrame', () => {
     expect(outline.defaultNames).toEqual([{ nodeId: '4:1', name: 'Rectangle 4' }]);
   });
 
+  it("lists a name only where it is the default Figma gives that node's type", () => {
+    const view: RestNode = {
+      id: '7:1',
+      name: 'Nova / Card',
+      type: 'FRAME',
+      fills: [],
+      children: [
+        { id: '7:2', name: 'Component', type: 'FRAME', fills: [], children: [] },
+        { id: '7:3', name: 'Frame 2', type: 'FRAME', fills: [], children: [] },
+        { id: '7:4', name: 'Rectangle', type: 'TEXT', characters: 'Rectangle', styles: { text: 'S:1' } },
+      ],
+    };
+    const place = { target: 'web-desktop', state: 'Default', containers: [], start: false };
+    expect(outlineFrame(view, place, ctx).defaultNames).toEqual([{ nodeId: '7:3', name: 'Frame 2' }]);
+  });
+
   it('lists each prototype connection, a Back action included', () => {
     expect(outline.links).toEqual([
       { nodeId: '3:1', to: { nodeId: '9:9' } },

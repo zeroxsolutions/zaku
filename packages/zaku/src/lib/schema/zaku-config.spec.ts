@@ -16,6 +16,12 @@ describe('zakuConfigSchema', () => {
     expect(config.interactive).toEqual([...DEFAULT_INTERACTIVE]);
   });
 
+  it('reads a zaku.yaml with no Figma file, or with the library and no product file', () => {
+    expect(zakuConfigSchema.parse(toolless).figma).toEqual({});
+    expect(zakuConfigSchema.parse({ ...toolless, figma: { library: 'LIBKEY' } }).figma).toEqual({ library: 'LIBKEY' });
+    expect(zakuConfigSchema.safeParse({ ...toolless, figma: { library: '' } }).success).toBe(false);
+  });
+
   it('reads the recipe page, the dark class by default', () => {
     const config = zakuConfigSchema.parse({
       ...minimal,
@@ -72,10 +78,6 @@ describe('zakuConfigSchema', () => {
       targets: [{ id: 'tv', family: 'tvos', name: 'TV' }],
     });
     expect(result.success).toBe(false);
-  });
-
-  it('refuses a config with no Figma files', () => {
-    expect(zakuConfigSchema.safeParse(toolless).success).toBe(false);
   });
 
   it('takes a design system that ships DTCG tokens, by a resolver or by files per scheme', () => {

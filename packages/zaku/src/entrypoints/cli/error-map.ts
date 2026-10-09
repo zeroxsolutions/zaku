@@ -1,5 +1,6 @@
 import {
   CssRequired,
+  FigmaFileKeyMissing,
   FigmaTokenMissing,
   PlaywrightMissing,
   RecipePageFailed,
@@ -11,6 +12,7 @@ export function refusalOf(error: unknown): { code: number; line: string } | null
   if (error instanceof CssRequired || error instanceof RecipeUrlRequired || error instanceof PlaywrightMissing) {
     return { code: 3, line: error.message };
   }
+  if (error instanceof FigmaFileKeyMissing) return { code: 3, line: error.message };
   if (error instanceof FigmaTokenMissing) return { code: 3, line: error.message };
   if (error instanceof RecipePageFailed) return { code: 2, line: `zaku recipe: ${error.message}` };
   return null;

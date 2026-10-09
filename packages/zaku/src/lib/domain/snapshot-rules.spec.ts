@@ -80,6 +80,40 @@ describe('snapshotFindings', () => {
     expect(snapshotFindings([node({ type: 'TEXT', name: 'Rectangle', textStyleId: 's' })])).toEqual([]);
   });
 
+  it("finds a name only where it is the default Figma gives that node's type", () => {
+    const named = (type: string, name: string): NodeSnapshot => node({ type, name, textStyleId: 's' });
+    expect(
+      snapshotFindings([
+        named('COMPONENT', 'Component'),
+        named('COMPONENT_SET', 'Component 1'),
+        named('BOOLEAN_OPERATION', 'Union'),
+        named('SECTION', 'Section 3'),
+      ]).map((f) => f.message),
+    ).toEqual([
+      'Component keeps a default name',
+      'Component 1 keeps a default name',
+      'Union keeps a default name',
+      'Section 3 keeps a default name',
+    ]);
+  });
+
+  it("passes every frame name the documentation prescribes, the Component section's included", () => {
+    const prescribed = [
+      'Component',
+      'Body',
+      'Preview',
+      'Matrix',
+      'Heading',
+      'Table',
+      'List',
+      'Cards',
+      'Guidance',
+      'Section',
+      'Image',
+    ];
+    expect(snapshotFindings(prescribed.map((name) => node({ type: 'FRAME', name })))).toEqual([]);
+  });
+
   it('lets a picture be placed in an instance, as zaku check does', () => {
     const instance = {
       overrides: [{ nodeId: '1:1;2:9', fields: ['fills'], picture: true }],

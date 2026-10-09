@@ -43,6 +43,12 @@ note to replace it later), draw nothing: the reply says the file has to be saved
 for its address. The tool's reference says where the key is read. Code-side work that needs no
 drawing (exporting the tokens, writing the recipe page) goes on.
 
+No Figma file is created to fill a gap, not the library file and not a product file: a file made in
+someone's team is an action nobody asked for, and the person who has to save and publish the library
+cannot find it. A missing file is asked for, by its address. Building the library needs no product
+file, so `zaku.yaml` may name none; `figma.product` is set when a product file exists, and the
+commands that read it say so when it is missing.
+
 ## The Iron Law
 
 ```
@@ -81,6 +87,7 @@ hidden from the pickers still ships, and the finding it silenced is still true.
 - A variable, text style or component whose reason is a finding, or that the code does not have
 - The words "false positive" with no node id and no statement of what the node is
 - A placeholder, or anything but the file's key, in `zaku.yaml`'s `figma.library`
+- A Figma file created to satisfy a field, a schema or a step
 - A component or set created on the page the person happens to have open, or left at a page's top level
 - A second entry started while the last one has no views
 

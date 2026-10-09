@@ -75,7 +75,11 @@ export const budgetSchema = z
   })
   .strict();
 
-const files = z.object({ library: z.string().min(1), product: z.string().min(1) }).strict();
+/**
+ * The Figma files, by key. Each is optional here, because building the library needs no product file; a command that
+ * reads one refuses, naming the field, when it is missing.
+ */
+const files = z.object({ library: z.string().min(1).optional(), product: z.string().min(1).optional() }).strict();
 
 const shadcnSystem = z.object({ preset: z.string().min(1) }).strict();
 
@@ -172,7 +176,7 @@ export const zakuConfigSchema = z
   .object({
     product: z.string().min(1),
     designSystem: designSystemSchema,
-    figma: files,
+    figma: files.default({}),
     targets: z.array(targetSchema).min(1),
     modes: z.record(z.string(), z.string()).default({}),
     interactive: z.array(z.string().min(1)).default([...DEFAULT_INTERACTIVE]),

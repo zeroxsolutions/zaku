@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { createFigmaRest } from '../adapters/figma-rest.js';
+import { FigmaFileKeyMissing } from '../domain/errors/index.js';
 import { runOutline } from './write-outline.js';
 
 const FRAME = 'Trips / Default / Desktop';
@@ -84,6 +85,19 @@ function fakeFetch(log: string[]): typeof fetch {
 }
 
 describe('runOutline', () => {
+  it('refuses, naming figma.product, when zaku.yaml names no product file, and reads nothing', async () => {
+    const root = await design();
+    await writeFile(
+      join(root, 'zaku.yaml'),
+      'product: acme\ndesignSystem: { shadcn: { preset: x } }\nfigma: { library: LIB }\ntargets:\n  - { id: web-desktop, family: web, name: Desktop }\n',
+    );
+    const log: string[] = [];
+    const outlining = runOutline({ root, rest: createFigmaRest({ token: 't', fetch: fakeFetch(log) }), frames: null });
+    await expect(outlining).rejects.toBeInstanceOf(FigmaFileKeyMissing);
+    await expect(outlining).rejects.toThrow('figma.product');
+    expect(log).toEqual([]);
+  });
+
   it('writes the outline of every mapped frame and lists a frame whose title no map knows', async () => {
     const root = await design();
     const log: string[] = [];

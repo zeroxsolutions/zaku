@@ -30,6 +30,7 @@ builds. Walking a page with `get_metadata` reads every frame on it.
 A Professional Full seat has 200 MCP calls a day, and REST allows 10 to 20 file reads a minute (Figma
 plan limits). `zaku budget status` refuses once 80% of the day's MCP calls are spent or a run has used
 30, and a REST answer of 429 is waited out once. `zaku outline` reads over REST, so it needs
-`FIGMA_TOKEN`, a personal access token with file read access; without it the command exits 3 and the
-answer comes from the outlines already committed. When it refuses, the answer comes from the map and
+`FIGMA_TOKEN`, a personal access token with file read access, and the product file's key in
+`zaku.yaml` (`figma.product`); without either the command exits 3, naming what is missing, and the
+answer comes from the outlines already committed. A missing product file is asked for, never created. When it refuses, the answer comes from the map and
 the outline, and the reply says the drawing was not read.
