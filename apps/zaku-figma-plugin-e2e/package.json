@@ -1,0 +1,27 @@
+{
+  "name": "@zeroxsolutions/zaku-figma-plugin-e2e",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "nx": {
+    "tags": [
+      "type:e2e"
+    ],
+    "targets": {
+      "e2e": {
+        "executor": "@nx/vitest:test",
+        "options": {
+          "configFile": "{projectRoot}/vitest.config.mts"
+        },
+        "dependsOn": [
+          "^build-sandbox",
+          "^build"
+        ],
+        "parallelism": false
+      }
+    }
+  },
+  "devDependencies": {
+    "@zeroxsolutions/zaku-figma-plugin": "workspace:*"
+  }
+}

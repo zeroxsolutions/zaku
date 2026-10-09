@@ -5,10 +5,10 @@ import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import { fileURLToPath } from 'node:url';
 
-const bundle = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist', 'zaku.mjs');
+const bundle = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'zaku-cli', 'dist', 'zaku.mjs');
 
 function product(): string {
   const root = mkdtempSync(join(tmpdir(), 'zaku-bundle-'));
