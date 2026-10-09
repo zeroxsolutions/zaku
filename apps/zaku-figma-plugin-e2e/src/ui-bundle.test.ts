@@ -17,4 +17,5 @@ test("the panel takes its colours from Figma's theme", () => {
 
 test("the panel's error text takes Figma's danger text colour, not its danger fill", () => {
   assert.ok(html.includes('--figma-color-text-danger'));
+  assert.equal(html.match(/var\(--figma-color-bg-danger\)/)?.[0], undefined);
 });

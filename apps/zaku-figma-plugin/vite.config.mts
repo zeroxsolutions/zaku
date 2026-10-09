@@ -57,6 +57,7 @@ export default defineConfig(() => ({
             'react-dom/client',
             '@base-ui/react/button',
             '@base-ui/react/input',
+            '@base-ui/react/alert-dialog',
             'class-variance-authority',
             'input-otp',
             '@tanstack/react-form',

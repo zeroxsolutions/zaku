@@ -15,7 +15,6 @@
   --color-destructive: var(--destructive);
   --color-success: var(--success);
   --color-warning: var(--warning);
-  --color-error: var(--error);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -56,14 +55,13 @@
   --muted-foreground: var(--figma-color-text-secondary);
   --accent: var(--figma-color-bg-hover);
   --accent-foreground: var(--figma-color-text);
-  --destructive: var(--figma-color-bg-danger);
+  /* Figma's text-grade danger: the recipes write destructive text with it and fill with it at 10-20%. */
+  --destructive: var(--figma-color-text-danger);
   --border: var(--figma-color-border);
   --input: var(--figma-color-border);
   --ring: var(--figma-color-border-selected);
   --success: var(--figma-color-bg-success);
   --warning: var(--figma-color-bg-warning);
-  /* Text on the panel's own background; --destructive is a fill. */
-  --error: var(--figma-color-text-danger);
 }
 
 @layer base {

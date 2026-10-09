@@ -71,12 +71,20 @@ async function scopeNodes(scope: { page: true } | { nodeId: string } | { all: tr
   return figma.currentPage.findAll();
 }
 
+/** The panel's own commands; one that threw goes back with the error, so the panel can send it again. */
+const PANEL_COMMANDS: readonly unknown[] = ['select', 'resize', 'read-token', 'forget-token'];
+
 figma.ui.onmessage = async (raw: unknown): Promise<void> => {
   try {
     await receive(raw);
   } catch (error) {
     // A throw here is otherwise silent; the panel shows it, and the server ignores a type it does not know.
-    figma.ui.postMessage({ type: 'sandbox-error', error: String(error) });
+    const type = raw && typeof raw === 'object' ? (raw as { type?: unknown }).type : undefined;
+    figma.ui.postMessage({
+      type: 'sandbox-error',
+      error: String(error),
+      ...(PANEL_COMMANDS.includes(type) ? { retry: raw } : {}),
+    });
   }
 };
 

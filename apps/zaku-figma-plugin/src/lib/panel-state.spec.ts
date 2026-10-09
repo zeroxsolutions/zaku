@@ -142,9 +142,26 @@ describe('panelReducer', () => {
     expect(cleared.findings).toEqual([]);
   });
 
-  it('shows a sandbox error', () => {
+  it('shows a sandbox error, with no retry when no panel command threw it', () => {
     const state = run(connected, { kind: 'from-sandbox', message: { type: 'sandbox-error', error: 'TypeError' } });
-    expect(state.error).toBe('TypeError');
+    expect(state.error).toEqual({ message: 'TypeError', retry: null });
+  });
+
+  it('keeps the panel command that threw, to send again', () => {
+    const state = run(connected, {
+      kind: 'from-sandbox',
+      message: { type: 'sandbox-error', error: 'TypeError', retry: { type: 'select', nodeId: '1:1' } },
+    });
+    expect(state.error).toEqual({ message: 'TypeError', retry: { type: 'select', nodeId: '1:1' } });
+  });
+
+  it('drops a sandbox error the user dismisses', () => {
+    const state = run(
+      connected,
+      { kind: 'from-sandbox', message: { type: 'sandbox-error', error: 'TypeError' } },
+      { kind: 'dismiss-error' },
+    );
+    expect(state.error).toBeNull();
   });
 
   it('ignores a message it cannot parse', () => {
