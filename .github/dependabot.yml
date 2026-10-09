@@ -20,7 +20,11 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    directory: /
+    # The composite action under `.github/actions/` pins its own action refs, which the root
+    # directory alone does not reach.
+    directories:
+      - /
+      - /.github/actions/nx-setup
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
@@ -30,15 +34,6 @@ updates:
       actions:
         patterns:
           - '*'
-    ignore:
-      # The reusable workflows come from the private github-actions repository,
-      # which dependabot cannot reach: it fails the whole run with
-      # `git_dependencies_not_reachable`, taking the public action bumps down
-      # with it. Ignoring them is also the right answer on the merits - they are
-      # pinned to a moving major tag (`@v1`), so the only bump the bot could ever
-      # propose is a major, which is a promotion to review rather than a pull
-      # request to merge. Same reasoning as the terraform `?ref=` note below.
-      - dependency-name: zeroxsolutions/*
 
   - package-ecosystem: npm
     directory: /

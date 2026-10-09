@@ -1,0 +1,23 @@
+# Get a checked-out nx workspace ready to run targets: its toolchain, then its dependencies. Every
+# job in this repository's workflows composes it after its own checkout, because an action in the
+# repository cannot run before the repository is checked out.
+#
+# mise reads `.tool-versions`, and exports PATH through GITHUB_PATH, which the runner prepends.
+# Its own cache keeps the toolchain between runs; the nx cache is not kept, because a key that
+# changes with every commit is never read back.
+#
+# Third-party actions are pinned by commit SHA, with the tag beside it.
+name: nx-setup
+description: Install an nx workspace's toolchain and dependencies.
+
+runs:
+  using: composite
+  steps:
+    - name: Install the toolchain
+      uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+      with:
+        version: 2026.8.9
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile

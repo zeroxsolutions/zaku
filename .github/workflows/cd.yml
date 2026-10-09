@@ -1,25 +1,23 @@
-# Deploy the pushed branch to the environment of the same name. Only `development`
-# and `production` deploy; the integration branch runs the gate only. Promotion is a
-# fast-forward, which carries the validated SHA:
+# Deploy a push to `production`, the one environment this repository has. Promotion is a
+# fast-forward, which carries the SHA the master gate validated:
 #
-#   git push origin master:development
-#   git push origin development:production
+#   git push origin master:production
 #
-# There is no approval gate on the production job: a free-plan private repo cannot
-# enforce a required reviewer (422) or branch protection (403), so
-# `environment: production` would gate nothing while looking gated. Switch back when
-# the plan allows. Record the choice in AGENTS.md.
+# The `production` environment sets no required reviewer, so the push is the approval.
 #
-# CI decides when code ships and nothing else - no identity, binding,
-# `terraform apply` or secret.
+# CI decides when code ships and nothing else: it creates no identity or binding, runs no
+# `terraform apply`, and provisions no secret.
 name: cd
 
 on:
   push:
-    branches: [development, production]
+    branches: [production]
 
 # One deploy at a time per branch, and an in-flight run is left to finish: killing a
 # deploy mid-sweep leaves some workers new and some old.
+permissions:
+  contents: read
+
 concurrency:
   group: cd-${{ github.ref }}
   cancel-in-progress: false
@@ -28,7 +26,7 @@ jobs:
   # Re-run the gate on the pushed commit. The pull-request gate ran on the merge
   # preview, which is not the commit that ships.
   gate:
-    uses: zeroxsolutions/github-actions/.github/workflows/nx-gate.yml@v1
+    uses: ./.github/workflows/nx-gate.yml
     with:
       targets: lint typecheck build test
 
@@ -36,7 +34,7 @@ jobs:
   # an empty `secrets` context otherwise; the environment scopes which value wins.
   deploy:
     needs: [gate]
-    uses: zeroxsolutions/github-actions/.github/workflows/nx-deploy.yml@v1
+    uses: ./.github/workflows/nx-deploy.yml
     secrets: inherit
     with:
       targets: wrangler:deploy

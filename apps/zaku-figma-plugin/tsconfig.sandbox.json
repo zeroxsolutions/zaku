@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "out-tsc/sandbox",
+    "tsBuildInfoFile": "out-tsc/sandbox/tsconfig.sandbox.tsbuildinfo",
+    "rootDir": "src",
+    "lib": ["es2022"],
+    "types": [],
+    "module": "esnext",
+    "moduleResolution": "bundler"
+  },
+  "include": ["src/main.ts", "src/sandbox/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts", "src/**/*.testing.ts"]
+}

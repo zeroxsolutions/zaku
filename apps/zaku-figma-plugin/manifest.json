@@ -1,0 +1,14 @@
+{
+  "name": "zaku",
+  "id": "zaku-development",
+  "api": "1.0.0",
+  "main": "dist-sandbox/main.js",
+  "ui": "dist/index.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["ws://localhost:7337"],
+    "reasoning": "zaku talks to the zaku-mcp server the agent runs on this machine, on a fixed local port."
+  },
+  "permissions": ["currentuser"]
+}

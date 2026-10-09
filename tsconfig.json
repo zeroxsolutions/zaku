@@ -2,5 +2,18 @@
   "extends": "./tsconfig.base.json",
   "compileOnSave": false,
   "files": [],
-  "references": []
+  "references": [
+    {
+      "path": "./packages/zaku"
+    },
+    {
+      "path": "./apps/zaku-cli"
+    },
+    {
+      "path": "./apps/zaku-mcp"
+    },
+    {
+      "path": "./apps/zaku-figma-plugin"
+    }
+  ]
 }
