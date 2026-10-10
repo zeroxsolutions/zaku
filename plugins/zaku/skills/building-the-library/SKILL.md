@@ -55,7 +55,7 @@ commands that read it say so when it is missing.
 EVERY LIBRARY CHANGE RUNS IN STRICT MODE. A FINDING IS FIXED IN THE DRAWING, OR IT STOPS THAT CHANGE AND THE REPLY NAMES IT.
 ```
 
-zaku's `execute` checks every node a script touched and, in strict mode, rolls the change back on a
+zaku's `run_script` checks every node a script touched and, in strict mode, rolls the change back on a
 finding. It is the only reader that looks at every item, so a change it did not pass is a change
 nobody checked. Report mode keeps the whole change with every finding in it, not only the one you
 judged wrong, and nothing later records that it was kept. Strict mode returns the same findings, so a
@@ -321,7 +321,7 @@ Before the first step, read the tool's reference: it names the page, the frames 
    of one: the page's mode switch shows it.
 5. **The Matrix section**, for a set with more than one axis, as the component view says.
 6. **The guidance view's sections**, in the order of its table.
-7. **The entry's check**: zaku's `check` over the entry's page returns no finding.
+7. **The entry's check**: zaku's `check_rules` over the entry's page returns no finding.
 8. **The entry's review**: zaku's `get_screenshot` on each of the entry's views, and on the cover once
    it is drawn, and each image held to this list. A fail is fixed, checked and rendered again before
    the next entry starts:
@@ -341,7 +341,7 @@ Every reply on library work carries these lines, each REQUIRED, `none` where the
 Library file: <the key zaku.yaml names>
 Logo: <the path or URL the mark's SVG came from, or `none found` and the placeholder left>
 Entries: <entry> - page <page>, views <component view> and <guidance view>, sets <set names>   (one line per entry)
-Check: <what zaku's check over every page returned: the count, then each finding>
+Check: <what zaku's `check_rules` over every page returned: the count, then each finding>
 Misread findings: <finding, node id, what the node really is, the change that waits>
 Left out: <each part not drawn, and why>
 ```

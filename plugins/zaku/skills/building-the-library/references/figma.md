@@ -13,23 +13,23 @@ file saved in the team. `figma.library` in `zaku.yaml` holds it before the first
 
 ## Drawing an entry
 
-- zaku's `execute` gives a script 30 s. Past that it gives the script up, removes what it made, and
+- zaku's `run_script` gives a script 30 s. Past that it gives the script up, removes what it made, and
   names what it could not remove (`partly-rolled-back`, `left`), so a script draws one part: a
   documentation component, a view's frame, a set, a section. A script that loads fonts, pages or
   styles does it once at its top, and awaits each async call before the next.
 - Helpers (a text, a frame, a bound paint) are written at the top of each script that uses them.
-  `execute` refuses code built from a string at run time (`new Function`, `eval`, a function
+  `run_script` refuses code built from a string at run time (`new Function`, `eval`, a function
   constructor), which its checks cannot read, so a helper kept in `pluginData` or `clientStorage` and
   evaluated is refused.
 - The plugin reads the file page by page, and Figma's API makes a style id read-only then: a text
   takes its style with `await text.setTextStyleIdAsync(style.id)`, a fill with
-  `setFillStyleIdAsync`; `execute` refuses the assignment.
+  `setFillStyleIdAsync`; `run_script` refuses the assignment.
 - Every `figma.create*()` call puts its node on `figma.currentPage`, and the current page follows the
   page the person opens while a script runs. A script that draws an entry looks the entry's page up by
   name and appends each node it makes to its parent there, before it returns.
 - `get_screenshot` renders one node, a view's frame or the cover, as a PNG whose longer side is
   `maxDimension` (1568 by default). A view taller than that comes back small; render its sections
-  one by one, by their ids from `read`, when a detail has to be read. A render it refuses as too large
+  one by one, by their ids from `read_nodes`, when a detail has to be read. A render it refuses as too large
   names the `maxDimension` that fits.
 - The views are two frames appended to the entry's page; the set is made with
   `figma.combineAsVariants(components, demoCard)`, its parent the Component section's `Preview`,

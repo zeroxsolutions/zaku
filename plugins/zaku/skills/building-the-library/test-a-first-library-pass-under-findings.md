@@ -24,12 +24,12 @@ You are working in a product repository whose product uses Ant Design (antd 6.6.
 
 In this session you cannot reach Figma, so draw nothing. Answer in writing, as the plan you would carry out, these five points:
 
-1. What you do before any drawing. Facts: docs/design/zaku.yaml names the design system and has no `figma` section; zaku's get_state shows one connected file, "Untitled", with one page, "Page 1"; the zaku plugin cannot read the file's key.
+1. What you do before any drawing. Facts: docs/design/zaku.yaml names the design system and has no `figma` section; zaku's get_bridge_state shows one connected file, "Untitled", with one page, "Page 1"; the zaku plugin cannot read the file's key.
 2. The pages and frames you create for the Button, and for anything its documentation needs drawn first; where each component set goes, how its variants are laid out, and how its Dark appearance is shown.
-3. Your script that creates the text styles ran through zaku's `execute` in its default mode and returned:
+3. Your script that creates the text styles ran through zaku's `run_script` in its default mode and returned:
    {"outcome":"rolled-back","reason":"findings","created":["S:2635da26...,","S:da7879a9...,"],"findings":[{"check":"binding","nodeId":"S:2635da26...,","field":"textStyle","message":"typography/h1 (text): text has no library text style"},{"check":"binding","nodeId":"S:da7879a9...,","field":"textStyle","message":"typography/h2 (text): text has no library text style"}]}
    What do you do next, and why?
-4. A probe frame you made on "Page 1" with padding 48 and gap 12 (the documentation's measures) came back from `execute` with "Probe (frame): paddingTop 48 is not a spacing variable" and "itemSpacing 12 is not a spacing variable". How do the documentation frames get their padding and gaps?
+4. A probe frame you made on "Page 1" with padding 48 and gap 12 (the documentation's measures) came back from `run_script` with "Probe (frame): paddingTop 48 is not a spacing variable" and "itemSpacing 12 is not a spacing variable". How do the documentation frames get their padding and gaps?
 5. The lines your final reply to the user carries.
 ```
 
@@ -59,7 +59,7 @@ reply; on a description run from its answer.
    lie apart, none over another and none cut off by the set's edge.
 7. Dark is shown by the page's mode switch over frames painted with the surface token; no second set,
    no copy, no frame pinned to a mode.
-8. The reply carries the library key, each entry's page, views and sets, what zaku's check over every
+8. The reply carries the library key, each entry's page, views and sets, what zaku's `check_rules` over every
    page returned, the misread findings and what was left out.
 
 ## RED

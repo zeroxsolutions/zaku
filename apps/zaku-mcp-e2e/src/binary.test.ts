@@ -167,13 +167,13 @@ async function firstFree(): Promise<number> {
 }
 
 test(
-  'the compiled zaku-mcp answers get_state over stdio, naming the first free port in the range it took',
+  'the compiled zaku-mcp answers get_bridge_state over stdio, naming the first free port in the range it took',
   async () => {
     const expected = await firstFree();
     const binary = new Binary(configHome(), null);
     try {
       await binary.start();
-      const state = (await binary.call('get_state')) as {
+      const state = (await binary.call('get_bridge_state')) as {
         files: unknown[];
         config: { loaded: boolean };
         port: number | null;
@@ -207,14 +207,14 @@ test(
     let token: string | undefined;
     try {
       await first.start();
-      const pair = (await first.call('pair')) as { code: string; port: number };
+      const pair = (await first.call('issue_pairing_code')) as { code: string; port: number };
       assert.equal(pair.port, port);
       const paired = await dial(port, hello({ code: pair.code.replace(/\s/g, '') }));
       assert.equal(paired.messages[0]?.type, 'paired');
       token = paired.messages[0]?.token;
       assert.ok(token);
       assert.deepEqual(
-        ((await first.call('get_state')) as { files: { file: string }[] }).files.map((f) => f.file),
+        ((await first.call('get_bridge_state')) as { files: { file: string }[] }).files.map((f) => f.file),
         ['e2e'],
       );
       paired.socket.close();
@@ -227,7 +227,7 @@ test(
       const again = await dial(port, hello({ token }));
       assert.deepEqual(again.messages, []);
       assert.equal(again.closed, false);
-      assert.equal(((await second.call('get_state')) as { files: unknown[] }).files.length, 1);
+      assert.equal(((await second.call('get_bridge_state')) as { files: unknown[] }).files.length, 1);
       again.socket.close();
     } finally {
       await second.stop();
@@ -252,7 +252,7 @@ test(
       const forged = await dial(port, hello({ token: 'forged' }), REPLY_MS);
       assert.deepEqual(forged.messages, [{ type: 'refused', reason: 'unknown-token' }]);
       assert.equal(forged.closed, true);
-      assert.deepEqual(((await binary.call('get_state')) as { files: unknown[] }).files, []);
+      assert.deepEqual(((await binary.call('get_bridge_state')) as { files: unknown[] }).files, []);
     } finally {
       await binary.stop();
     }

@@ -8,7 +8,7 @@ export class NodeNotRendered extends Error {
           ? `NodeNotRendered: ${nodeId} is a page or the document, which has no image of its own.`
           : `NodeNotRendered: Figma could not render ${nodeId}${detail ? `: ${detail}` : ''}.`;
     super(
-      `${what} Nothing was rendered. Call read with the frame's path (Page/Frame) for the id of a frame or a layer, and call get_screenshot with that id.`,
+      `${what} Nothing was rendered. Call read_nodes with the frame's path (Page/Frame) for the id of a frame or a layer, and call get_screenshot with that id.`,
     );
     this.name = 'NodeNotRendered';
   }

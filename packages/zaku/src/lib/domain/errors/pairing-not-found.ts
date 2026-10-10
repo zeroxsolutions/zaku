@@ -1,4 +1,4 @@
-/** `unpair` named an id no stored pairing has. */
+/** `revoke_pairing` named an id no stored pairing has. */
 export class PairingNotFound extends Error {
   constructor(
     readonly id: string,

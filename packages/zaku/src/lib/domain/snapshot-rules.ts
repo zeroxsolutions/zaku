@@ -52,7 +52,7 @@ function outside(box: Box, width: number, height: number): boolean {
 }
 
 /**
- * The rules an `execute` is held to, over what the script touched. `copy` is zaku.yaml's copy section; the
+ * The rules a `run_script` is held to, over what the script touched. `copy` is zaku.yaml's copy section; the
  * library copy the touched instances carry is allowed beside it, as zaku check allows it.
  */
 export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfig = DEFAULT_COPY): Finding[] {

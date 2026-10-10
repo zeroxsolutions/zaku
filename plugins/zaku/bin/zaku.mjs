@@ -37765,7 +37765,7 @@ var lostRunSchema = external_exports
     message: external_exports.string().describe('What to do before retrying'),
   })
   .strict();
-var UNKNOWN = { outcome: 'unknown', message: 'read before retrying' };
+var UNKNOWN = { outcome: 'unknown', message: 'call read_nodes before running it again' };
 var rolledBack = (left) => (left.length > 0 ? { outcome: 'partly-rolled-back', left } : { outcome: 'rolled-back' });
 var ExecuteScriptHandler = class ExecuteScriptHandler2 {
   bridge;
@@ -37798,7 +37798,7 @@ var ExecuteScriptHandler = class ExecuteScriptHandler2 {
           return {
             outcome: 'unknown',
             reason: 'timeout',
-            message: `the script ran past the ${budget} budget and the plugin did not confirm it gave it up; read before retrying`,
+            message: `the script ran past the ${budget} budget and the plugin did not confirm it gave it up; call read_nodes before running it again`,
           };
         return {
           ...rolledBack(ran.settled.left),

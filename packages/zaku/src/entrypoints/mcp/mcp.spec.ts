@@ -92,7 +92,8 @@ async function setup(
     };
     return { error: result.isError === true, body: JSON.parse(result.content[0]?.text ?? 'null') };
   };
-  const newCode = async (): Promise<string> => String((await call('pair')).body['code']).replace(/\s/g, '');
+  const newCode = async (): Promise<string> =>
+    String((await call('issue_pairing_code')).body['code']).replace(/\s/g, '');
   const plugin = async (...[file, behaviour, origin]: PluginArgs): Promise<WebSocket> => {
     const socket = await fakePlugin(runtime.port as number, file, { code: await newCode() }, behaviour, origin);
     entry.sockets.push(socket);
@@ -151,33 +152,33 @@ describe('zaku-mcp over a real socket', () => {
     await client.connect(clientSide);
     const { tools } = await client.listTools();
     expect(tools.map((tool) => tool.name).sort()).toEqual([
-      'check',
-      'execute',
+      'check_rules',
+      'get_bridge_state',
       'get_screenshot',
-      'get_state',
-      'pair',
-      'pairings',
-      'read',
+      'issue_pairing_code',
+      'list_pairings',
       'read_guide',
-      'unpair',
+      'read_nodes',
+      'revoke_pairing',
+      'run_script',
     ]);
   });
 
   it('answers PluginNotConnected with no plugin open', async () => {
     const { call } = await setup();
-    expect(await call('execute', { script: 'return 1' })).toEqual({
+    expect(await call('run_script', { script: 'return 1' })).toEqual({
       error: true,
       body: {
         error:
-          'PluginNotConnected: open zaku in Figma (Plugins > zaku); if its panel says Not paired, call pair and have the user type the code into it; if it says Not connected, have the user enter the port get_state reports',
+          'PluginNotConnected: open zaku in Figma (Plugins > zaku); if its panel says Not paired, call issue_pairing_code and have the user type the code into it; if it says Not connected, have the user enter the port get_bridge_state reports',
       },
     });
   });
 
-  it('reports the connected file in get_state', async () => {
+  it('reports the connected file in get_bridge_state', async () => {
     const { call, plugin } = await setup();
     await plugin('Ant Design', obedient([]));
-    const { body } = await call('get_state');
+    const { body } = await call('get_bridge_state');
     expect(body).toMatchObject({ files: [{ file: 'Ant Design' }], config: { loaded: false } });
     expect(body.files?.[0]).not.toHaveProperty('credential');
   });
@@ -186,7 +187,7 @@ describe('zaku-mcp over a real socket', () => {
     const { call, plugin } = await setup();
     const log: ServerMessage[] = [];
     await plugin('A', obedient([], log));
-    expect((await call('execute', { script: 'return 1' })).body).toMatchObject({ outcome: 'committed' });
+    expect((await call('run_script', { script: 'return 1' })).body).toMatchObject({ outcome: 'committed' });
     await until(() => log.length === 3);
     expect(log.map((m) => m.type)).toEqual(['run', 'decide', 'findings']);
   });
@@ -194,7 +195,7 @@ describe('zaku-mcp over a real socket', () => {
   it('rolls back a run with a finding', async () => {
     const { call, plugin } = await setup();
     await plugin('A', obedient([unboundCard]));
-    expect((await call('execute', { script: 'return 1' })).body).toMatchObject({
+    expect((await call('run_script', { script: 'return 1' })).body).toMatchObject({
       outcome: 'rolled-back',
       reason: 'findings',
       findings: [{ check: 'binding', field: 'fill' }],
@@ -207,14 +208,17 @@ describe('zaku-mcp over a real socket', () => {
       if (m.type === 'run')
         send({ type: 'threw', runId: m.runId, error: 'TypeError: x is undefined', untouchable: [], left: [] });
     });
-    expect((await call('execute', { script: 'x.y' })).body).toMatchObject({ outcome: 'rolled-back', reason: 'threw' });
+    expect((await call('run_script', { script: 'x.y' })).body).toMatchObject({
+      outcome: 'rolled-back',
+      reason: 'threw',
+    });
   });
 
   it('times out a script the plugin never finishes, and does not call it rolled back unconfirmed', async () => {
     const { call, plugin } = await setup();
     const log: ServerMessage[] = [];
     await plugin('A', (m) => log.push(m));
-    expect((await call('execute', { script: 'for(;;){}' })).body).toMatchObject({
+    expect((await call('run_script', { script: 'for(;;){}' })).body).toMatchObject({
       outcome: 'unknown',
       reason: 'timeout',
     });
@@ -230,13 +234,13 @@ describe('zaku-mcp over a real socket', () => {
         socket.terminate();
       }
     });
-    expect((await call('execute', { script: 'return 1' })).body).toEqual({
+    expect((await call('run_script', { script: 'return 1' })).body).toEqual({
       outcome: 'unknown',
-      message: 'read before retrying',
+      message: 'call read_nodes before running it again',
     });
   });
 
-  it('runs two executes on one file one after the other', async () => {
+  it('runs two scripts on one file one after the other', async () => {
     const { call, plugin } = await setup({ timeoutMs: 1000, holdMs: 2000, readMs: 1000 });
     const order: string[] = [];
     await plugin('A', (m, send) => {
@@ -253,7 +257,7 @@ describe('zaku-mcp over a real socket', () => {
         send({ type: 'settled', runId: m.runId, outcome: 'committed', untouchable: [], left: [] });
       }
     });
-    await Promise.all([call('execute', { script: 'return 1' }), call('execute', { script: 'return 2' })]);
+    await Promise.all([call('run_script', { script: 'return 1' }), call('run_script', { script: 'return 2' })]);
     expect(order.map((line) => line.split(' ')[0])).toEqual(['run', 'decide', 'run', 'decide']);
   });
 
@@ -271,10 +275,10 @@ describe('zaku-mcp over a real socket', () => {
   it('admits the null origin Figma sends', async () => {
     const { call, plugin } = await setup();
     await plugin('A', obedient([]), 'null');
-    expect((await call('get_state')).body.files).toHaveLength(1);
+    expect((await call('get_bridge_state')).body.files).toHaveLength(1);
   });
 
-  it('listens on the first free port of those it tries, and reports it in get_state and pair', async () => {
+  it('listens on the first free port of those it tries, and reports it in get_bridge_state and issue_pairing_code', async () => {
     const taken = await setup();
     const free = await freePort();
     const cwd = await mkdtemp(join(tmpdir(), 'zaku-mcp-'));
@@ -289,11 +293,11 @@ describe('zaku-mcp over a real socket', () => {
     expect(runtime.port).toBe(free);
     expect(runtime.portError).toBeNull();
     const call = await clientOf(runtime);
-    expect(await call('get_state')).toMatchObject({ port: free, portError: null });
-    expect(await call('pair')).toMatchObject({ port: free });
+    expect(await call('get_bridge_state')).toMatchObject({ port: free, portError: null });
+    expect(await call('issue_pairing_code')).toMatchObject({ port: free });
   });
 
-  it('answers get_state when every port it tries is taken, naming the range', async () => {
+  it('answers get_bridge_state when every port it tries is taken, naming the range', async () => {
     const first = await setup();
     const second = await setup();
     const ports = [first.runtime.port as number, second.runtime.port as number].sort((a, b) => a - b);
@@ -308,7 +312,7 @@ describe('zaku-mcp over a real socket', () => {
     open.push({ runtime, sockets: [] });
     expect(runtime.port).toBeNull();
     expect(runtime.portError).toBe(`no free port in ${ports[0]}-${ports[1]} (another zaku-mcp on each?)`);
-    expect(await (await clientOf(runtime))('get_state')).toMatchObject({ port: null });
+    expect(await (await clientOf(runtime))('get_bridge_state')).toMatchObject({ port: null });
   });
 
   it('names the taken port when no plugin is connected, and listens once the port frees up', async () => {
@@ -328,7 +332,7 @@ describe('zaku-mcp over a real socket', () => {
     await second.server.connect(serverSide);
     const client = new Client({ name: 'spec', version: '0' });
     await client.connect(clientSide);
-    const refused = (await client.callTool({ name: 'execute', arguments: { script: 'return 1' } })) as {
+    const refused = (await client.callTool({ name: 'run_script', arguments: { script: 'return 1' } })) as {
       content: { text: string }[];
     };
     expect(JSON.parse(refused.content[0]?.text ?? 'null').error).toContain(`port ${taken} is in use`);
@@ -348,7 +352,7 @@ describe('zaku-mcp over a real socket', () => {
     const { call, plugin } = await setup();
     const log: ServerMessage[] = [];
     await plugin('A', obedient([unboundCard], log));
-    expect((await call('check', { scope: 'page' })).body).toMatchObject({ findings: [{ check: 'binding' }] });
+    expect((await call('check_rules', { scope: 'page' })).body).toMatchObject({ findings: [{ check: 'binding' }] });
     await until(() => log.length === 2);
     expect(log.map((m) => m.type)).toEqual(['snapshot', 'findings']);
   });
@@ -363,7 +367,7 @@ describe('zaku-mcp over a real socket', () => {
     expect(log[1]).toMatchObject({ findings: [{ check: 'binding' }] });
   });
 
-  it('waits for a running execute before a panel check snapshots the page', async () => {
+  it('waits for a running script before a panel check snapshots the page', async () => {
     const { call, plugin } = await setup();
     const log: ServerMessage[] = [];
     const answer = obedient([unboundCard]);
@@ -373,7 +377,7 @@ describe('zaku-mcp over a real socket', () => {
       socket.send(JSON.stringify({ type: 'check', scope: { page: true } }));
       setTimeout(() => answer(message, send, socket), 50);
     });
-    await call('execute', { script: 'return 1', mode: 'report' });
+    await call('run_script', { script: 'return 1', mode: 'report' });
     await until(() => log.length === 5);
     expect(log.map((m) => m.type)).toEqual(['run', 'decide', 'findings', 'snapshot', 'findings']);
   });
@@ -382,7 +386,7 @@ describe('zaku-mcp over a real socket', () => {
     const { call, dial } = await setup();
     expect(await dial(hello(undefined))).toEqual({ messages: [], closed: true });
     expect(await dial({ type: 'check', scope: { page: true } })).toEqual({ messages: [], closed: true });
-    expect((await call('get_state')).body.files).toEqual([]);
+    expect((await call('get_bridge_state')).body.files).toEqual([]);
   });
 
   it('closes a socket that says nothing within the admission window', async () => {
@@ -390,14 +394,14 @@ describe('zaku-mcp over a real socket', () => {
     expect(await dial(undefined, 1000)).toEqual({ messages: [], closed: true });
   });
 
-  it('pairs a socket that presents the code pair showed, and hands it a token', async () => {
+  it('pairs a socket that presents the code issue_pairing_code showed, and hands it a token', async () => {
     const { call, dial, newCode } = await setup();
     const heard = await dial(hello({ code: await newCode() }));
     expect(heard).toEqual({ messages: [{ type: 'paired', token: expect.any(String) }], closed: false });
     const paired = heard.messages[0] as { token: string };
     expect(Buffer.from(paired.token, 'base64url').length).toBeGreaterThanOrEqual(16);
-    expect((await call('get_state')).body.files).toMatchObject([{ file: 'Evil' }]);
-    expect((await call('pairings')).body).toMatchObject({ pairings: [{ id: expect.any(String), file: 'Evil' }] });
+    expect((await call('get_bridge_state')).body.files).toMatchObject([{ file: 'Evil' }]);
+    expect((await call('list_pairings')).body).toMatchObject({ pairings: [{ id: expect.any(String), file: 'Evil' }] });
   });
 
   it('admits a later socket by its token alone, and refuses a token it never issued', async () => {
@@ -405,7 +409,7 @@ describe('zaku-mcp over a real socket', () => {
     const first = await dial(hello({ code: await newCode() }));
     const { token } = first.messages[0] as { token: string };
     expect(await dial(hello({ token }))).toEqual({ messages: [], closed: false });
-    expect((await call('get_state')).body.files).toHaveLength(2);
+    expect((await call('get_bridge_state')).body.files).toHaveLength(2);
     expect(await dial(hello({ token: 'forged' }))).toEqual({
       messages: [{ type: 'refused', reason: 'unknown-token' }],
       closed: true,
@@ -423,7 +427,7 @@ describe('zaku-mcp over a real socket', () => {
       });
     expect((await dial(hello({ code: wrong }))).messages).toEqual([{ type: 'refused', reason: 'used-up-code' }]);
     expect((await dial(hello({ code }))).messages).toEqual([{ type: 'refused', reason: 'used-up-code' }]);
-    expect((await call('get_state')).body).toMatchObject({
+    expect((await call('get_bridge_state')).body).toMatchObject({
       files: [],
       pairing: {
         state: 'used-up',
@@ -435,20 +439,20 @@ describe('zaku-mcp over a real socket', () => {
   it('revokes a pairing by id, closing its socket and refusing its token after', async () => {
     const { call, dial, newCode } = await setup();
     const { token } = (await dial(hello({ code: await newCode() }))).messages[0] as { token: string };
-    const { body } = await call('pairings');
+    const { body } = await call('list_pairings');
     const [{ id }] = body['pairings'] as [{ id: string }];
-    expect((await call('unpair', { id })).body).toEqual({ revoked: 1 });
-    await until(async () => (await call('get_state')).body.files?.length === 0);
+    expect((await call('revoke_pairing', { id })).body).toEqual({ revoked: 1 });
+    await until(async () => (await call('get_bridge_state')).body.files?.length === 0);
     expect((await dial(hello({ token }))).messages).toEqual([{ type: 'refused', reason: 'unknown-token' }]);
-    expect(await call('unpair', { id })).toMatchObject({ error: true });
+    expect(await call('revoke_pairing', { id })).toMatchObject({ error: true });
   });
 
   it('revokes every pairing with all', async () => {
     const { call, dial, newCode } = await setup();
     await dial(hello({ code: await newCode() }));
     await dial(hello({ code: await newCode() }));
-    expect((await call('unpair', { id: 'all' })).body).toEqual({ revoked: 2 });
-    expect((await call('pairings')).body).toMatchObject({ pairings: [] });
+    expect((await call('revoke_pairing', { id: 'all' })).body).toEqual({ revoked: 2 });
+    expect((await call('list_pairings')).body).toMatchObject({ pairings: [] });
   });
 
   it('forgets the token of a panel that asks to unpair, and closes it', async () => {
@@ -458,7 +462,7 @@ describe('zaku-mcp over a real socket', () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     socket.send(JSON.stringify({ type: 'unpair' }));
     await closed;
-    expect((await call('pairings')).body).toMatchObject({ pairings: [] });
+    expect((await call('list_pairings')).body).toMatchObject({ pairings: [] });
   });
 
   it('keeps a pairing across a restart, in the pairings file', async () => {
@@ -470,7 +474,7 @@ describe('zaku-mcp over a real socket', () => {
 
   it('shows the code in the tool result to a client without elicitation', async () => {
     const { call } = await setup();
-    const { body } = await call('pair');
+    const { body } = await call('issue_pairing_code');
     expect(body['code']).toMatch(/^\d{4} \d{4}$/);
     expect(body['expiresAt']).toEqual(expect.any(String));
   });
@@ -482,7 +486,7 @@ describe('zaku-mcp over a real socket', () => {
       shown.push(request.params.message);
       return { action: 'accept', content: {} };
     });
-    const { body } = await call('pair');
+    const { body } = await call('issue_pairing_code');
     expect(body).not.toHaveProperty('code');
     const code = /(\d{4}) (\d{4})/.exec(shown[0] ?? '');
     expect(code).not.toBeNull();
@@ -502,8 +506,10 @@ async function declaredAnswer(
 ): Promise<Record<string, unknown>> {
   const { tools } = await client.listTools();
   const tool = tools.find((listed) => listed.name === name);
-  // The first sentence says what comes back; the limits the call runs under follow it.
-  expect(tool?.description?.length).toBeLessThanOrEqual(400);
+  // One sentence of what it does and returns; a tool that hands out a code adds one on how long the code works.
+  const [first, ...rest] = (tool?.description ?? '').split(/(?<=\.) /);
+  expect(first?.length).toBeLessThanOrEqual(120);
+  expect(rest.length).toBeLessThanOrEqual(name === 'issue_pairing_code' ? 1 : 0);
   const inputs = Object.entries(tool?.inputSchema.properties ?? {}).map(([field, property]) => ({
     field,
     description: (property as { description?: unknown }).description,
@@ -545,10 +551,10 @@ const outline: OutlineNode = {
 };
 
 describe('every tool declares what it takes and answers', () => {
-  it('get_state answers the files, the port, the pairing code and the config', async () => {
+  it('get_bridge_state answers the files, the port, the pairing code and the config', async () => {
     const { client, plugin } = await setup();
     await plugin('A', obedient([]));
-    expect(await declaredAnswer(client, 'get_state')).toMatchObject({ files: [{ file: 'A' }], pairing: {} });
+    expect(await declaredAnswer(client, 'get_bridge_state')).toMatchObject({ files: [{ file: 'A' }], pairing: {} });
   });
 
   it('read_guide answers the topic and its text', async () => {
@@ -556,18 +562,18 @@ describe('every tool declares what it takes and answers', () => {
     expect(await declaredAnswer(client, 'read_guide', { topic: 'binding' })).toMatchObject({ topic: 'binding' });
   });
 
-  it('read answers the outline, children included', async () => {
+  it('read_nodes answers the outline, children included', async () => {
     const { client, plugin } = await setup();
     await plugin('A', (message, send) => {
       if (message.type === 'read') send({ type: 'read-result', requestId: message.requestId, nodes: [outline] });
     });
-    expect(await declaredAnswer(client, 'read', { nodeId: '1:1' })).toEqual({ nodes: [outline] });
+    expect(await declaredAnswer(client, 'read_nodes', { nodeId: '1:1' })).toEqual({ nodes: [outline] });
   });
 
-  it('execute answers a settled run and a run whose outcome is unknown', async () => {
+  it('run_script answers a settled run and a run whose outcome is unknown', async () => {
     const { client, plugin } = await setup();
     await plugin('A', obedient([unboundCard]));
-    expect(await declaredAnswer(client, 'execute', { script: 'return 1' })).toMatchObject({
+    expect(await declaredAnswer(client, 'run_script', { script: 'return 1' })).toMatchObject({
       outcome: 'rolled-back',
       findings: [{ check: 'binding' }],
     });
@@ -577,39 +583,41 @@ describe('every tool declares what it takes and answers', () => {
       send({ type: 'ran', runId: m.runId, ok: true, value: 1, created: [], mutated: [], snapshot: [] });
       socket.terminate();
     });
-    expect(await declaredAnswer(second.client, 'execute', { script: 'return 1' })).toEqual({
+    expect(await declaredAnswer(second.client, 'run_script', { script: 'return 1' })).toEqual({
       outcome: 'unknown',
-      message: 'read before retrying',
+      message: 'call read_nodes before running it again',
     });
   });
 
-  it('check answers the count checked and the findings', async () => {
+  it('check_rules answers the count checked and the findings', async () => {
     const { client, plugin } = await setup();
     await plugin('A', obedient([unboundCard]));
-    expect(await declaredAnswer(client, 'check', { scope: 'page' })).toMatchObject({
+    expect(await declaredAnswer(client, 'check_rules', { scope: 'page' })).toMatchObject({
       checked: 1,
       findings: [{ check: 'binding' }],
     });
   });
 
-  it('pair answers the code, when it expires and where to type it', async () => {
+  it('issue_pairing_code answers the code, when it expires and where to type it', async () => {
     const { client } = await setup();
-    expect(await declaredAnswer(client, 'pair')).toMatchObject({ code: expect.stringMatching(/^\d{4} \d{4}$/) });
+    expect(await declaredAnswer(client, 'issue_pairing_code')).toMatchObject({
+      code: expect.stringMatching(/^\d{4} \d{4}$/),
+    });
   });
 
-  it('pairings answers the stored pairings and the code state', async () => {
+  it('list_pairings answers the stored pairings and the code state', async () => {
     const { client, dial, newCode } = await setup();
     await dial(hello({ code: await newCode() }));
-    expect(await declaredAnswer(client, 'pairings')).toMatchObject({
+    expect(await declaredAnswer(client, 'list_pairings')).toMatchObject({
       pairings: [{ file: 'Evil' }],
       code: { state: 'none' },
     });
   });
 
-  it('unpair answers how many pairings it revoked', async () => {
+  it('revoke_pairing answers how many pairings it revoked', async () => {
     const { client, dial, newCode } = await setup();
     await dial(hello({ code: await newCode() }));
-    expect(await declaredAnswer(client, 'unpair', { id: 'all' })).toEqual({ revoked: 1 });
+    expect(await declaredAnswer(client, 'revoke_pairing', { id: 'all' })).toEqual({ revoked: 1 });
   });
 
   it('get_screenshot answers the PNG as an image, beside the node, its size in pixels and the scale', async () => {

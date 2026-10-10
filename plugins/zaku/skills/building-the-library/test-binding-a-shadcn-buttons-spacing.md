@@ -22,7 +22,7 @@ size: {
 
 src/app/global.css imports tailwindcss and sets no `--spacing` of its own. The library file's key is in docs/design/zaku.yaml, and the library already holds the token collections the skill names, with no spacing variables.
 
-You are drawing the library's Button. Your script that creates its 192 variants ran through zaku's `execute` in its default mode and returned `"outcome": "rolled-back", "reason": "findings"`, with findings such as:
+You are drawing the library's Button. Your script that creates its 192 variants ran through zaku's `run_script` in its default mode and returned `"outcome": "rolled-back", "reason": "findings"`, with findings such as:
 
   "Variant=default, Size=default, State=Default (component): paddingLeft 10 is not a spacing variable"
   "Variant=default, Size=default, State=Default (component): itemSpacing 6 is not a spacing variable"
