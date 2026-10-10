@@ -35726,7 +35726,7 @@ var SCREENSHOT_LIMITS = {
   minScale: 0.1,
   maxScale: 4,
   minDimension: 64,
-  maxDimension: 4096,
+  maxDimension: 2e3,
   defaultDimension: 1568,
   /** A maxDimension never enlarges a node past this scale, so a small node does not come back blurred. */
   maxUpscale: 2,

@@ -122,3 +122,11 @@ below.
    the checker, in the same change: documentation may size the instances it lays out (a table's head
    and cell to its column), and the plugin's rollback no longer removes a node an earlier run made
    when the rolled-back run had moved it into a node of its own.
+10. `get_screenshot`'s limits, read from Claude's vision docs
+    (https://platform.claude.com/docs/en/build-with-claude/vision) on 2026-10-10, after the first cut
+    took them from memory: an image may be 10 MB of base64 on the Claude API and 5 MB on Amazon Bedrock
+    and Google Cloud, and its PNG cap keeps it under 5 MB; a request with more than 20 images refuses a
+    side past 2000 px, so the longest side dropped from 4096 to 2000, since the review step alone sends
+    more than 20 screenshots in a run; the 1568 px default is the standard tier's long edge, and a
+    high-resolution model reads up to 2576 px; the docs' 8000 x 8000 px single-image limit is never
+    reached.
