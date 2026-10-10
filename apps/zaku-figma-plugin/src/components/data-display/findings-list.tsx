@@ -1,4 +1,5 @@
 import {
+  BookOpenIcon,
   ChevronRightIcon,
   CodeXmlIcon,
   ComponentIcon,
@@ -50,6 +51,7 @@ const FINDINGS_LIST_CHECK_LABELS: Record<Finding['check'], string> = {
   frame: 'Frames',
   'system-bars': 'System bars',
   placement: 'Placement',
+  documentation: 'Documentation',
   naming: 'Layer naming',
   component: 'Components',
   prototype: 'Prototype',
@@ -66,6 +68,7 @@ const FINDINGS_LIST_CHECK_ICONS: Record<Finding['check'], LucideIcon> = {
   frame: FrameIcon,
   'system-bars': PanelTopIcon,
   placement: LayoutTemplateIcon,
+  documentation: BookOpenIcon,
   binding: PaintBucketIcon,
   tokens: PaletteIcon,
   naming: TagIcon,

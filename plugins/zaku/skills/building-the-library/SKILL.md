@@ -185,13 +185,15 @@ library, and never the design system's: a library whose body text is 14 still do
 measures the tool's reference gives, or two libraries side by side read as two different products.
 Those measures are written as the reference's numbers, never bound to a variable made for them, and
 zaku's checks do not hold documentation to the spacing and text-style rules where it sits on the
-pages the reference names. Only their colours and their family come from the library:
+pages the reference names; its `documentation` check holds it to the reference's measures instead,
+and reports a library text style that changed a line height. Only their colours and their family come
+from the library:
 
 | Role            | Takes                                                                 | Draws                                                                                                                                       |
 | --------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | page header     | eyebrow, component name, definition (text); whether to show the badge | on the left the eyebrow, the title and a badge; on the right the definition; behind them a glow of two radial gradients in the theme colour |
 | matrix head     | text                                                                  | a Matrix table's column head, naming the property and its value                                                                             |
-| section heading | title, description (text); whether to show the description            | a title in the typography h2 style, with the rule its border draws under it, and a lead line under that                                     |
+| section heading | title, description (text); whether to show the description            | a title at the documentation's own h2 measures, with the rule its border draws under it, and a lead line under that                         |
 | table head      | text                                                                  | a table's column head                                                                                                                       |
 | table cell      | text; primary or muted                                                | a cell: primary for the first column, muted for the rest                                                                                    |
 | list item       | text                                                                  | a bullet line                                                                                                                               |

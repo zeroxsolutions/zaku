@@ -52,5 +52,15 @@
     "playwright": {
       "optional": true
     }
+  },
+  "nx": {
+    "targets": {
+      "test": {
+        "inputs": [
+          "...",
+          "{workspaceRoot}/plugins/zaku/skills/building-the-library/references/figma.md"
+        ]
+      }
+    }
   }
 }

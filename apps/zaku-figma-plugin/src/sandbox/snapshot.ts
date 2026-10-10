@@ -78,6 +78,86 @@ function holdsPicture(layer: unknown): boolean {
   return Array.isArray(fills) && fills.some((paint: { type?: string }) => paint.type === 'IMAGE');
 }
 
+/** The node types that have a box the documentation rule reads. */
+const BOXED = new Set(['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'TEXT']);
+
+const number = (value: unknown): number => (typeof value === 'number' ? value : 0);
+
+/** Its place in its parent, its size and sizing, and its auto layout. */
+function boxOf(any: Record<string, unknown>): NonNullable<NodeSnapshot['box']> {
+  const layout = typeof any['layoutMode'] === 'string' ? (any['layoutMode'] as string) : 'NONE';
+  const grid = layout === 'GRID';
+  return {
+    x: number(any['x']),
+    y: number(any['y']),
+    width: number(any['width']),
+    height: number(any['height']),
+    sizing: {
+      horizontal: String(any['layoutSizingHorizontal'] ?? 'FIXED'),
+      vertical: String(any['layoutSizingVertical'] ?? 'FIXED'),
+    },
+    layout,
+    wrap: any['layoutWrap'] === 'WRAP',
+    padding: [
+      number(any['paddingTop']),
+      number(any['paddingRight']),
+      number(any['paddingBottom']),
+      number(any['paddingLeft']),
+    ],
+    gap: grid ? number(any['gridColumnGap']) : number(any['itemSpacing']),
+    crossGap: grid ? number(any['gridRowGap']) : number(any['counterAxisSpacing']),
+    align: [String(any['primaryAxisAlignItems'] ?? 'MIN'), String(any['counterAxisAlignItems'] ?? 'MIN')],
+  };
+}
+
+/** A text's size, its line height in px, and its font's style name; `mixed` across ranges. */
+function fontOf(any: Record<string, unknown>, mixed: symbol): NonNullable<NodeSnapshot['font']> {
+  const size = any['fontSize'];
+  const line = any['lineHeight'] as { unit?: string; value?: number } | symbol | undefined;
+  const name = any['fontName'] as { style?: string } | symbol | undefined;
+  const px = typeof size === 'number' ? size : 0;
+  return {
+    size: size === mixed ? 'mixed' : px,
+    lineHeight:
+      line === mixed || typeof line !== 'object'
+        ? 'mixed'
+        : line.unit === 'AUTO'
+          ? 'auto'
+          : line.unit === 'PERCENT'
+            ? (px * number(line.value)) / 100
+            : number(line.value),
+    style: name === mixed || typeof name !== 'object' ? 'mixed' : String(name.style ?? ''),
+  };
+}
+
+/** A component's or a set's properties, by the name a designer reads; a variant keeps none of its own. */
+function propertiesOf(
+  node: Record<string, unknown> & { type: string; parent?: Ancestor | null },
+): NodeSnapshot['properties'] {
+  if (node.type !== 'COMPONENT_SET' && (node.type !== 'COMPONENT' || node.parent?.type === 'COMPONENT_SET'))
+    return undefined;
+  const definitions = node['componentPropertyDefinitions'] as
+    | Record<string, { type: string; defaultValue: string | boolean }>
+    | undefined;
+  if (!definitions) return undefined;
+  return Object.entries(definitions).map(([key, { type, defaultValue }]) => ({
+    name: key.split('#')[0] ?? key,
+    type,
+    default: defaultValue,
+  }));
+}
+
+/** The name of an instance's component: the set's, for a variant; null when it has none. */
+async function mainOf(node: Record<string, unknown>): Promise<string | null> {
+  const get = node['getMainComponentAsync'] as
+    | (() => Promise<{ name: string; parent?: { type: string; name: string } | null } | null>)
+    | undefined;
+  if (!get) return null;
+  const main = await get.call(node);
+  if (!main) return null;
+  return main.parent?.type === 'COMPONENT_SET' ? main.parent.name : main.name;
+}
+
 /** What the rules read of one node. `mixed` is `figma.mixed`, passed in so a spec can stand one in. */
 export async function snapshotNode(
   node: SceneNode,
@@ -93,6 +173,7 @@ export async function snapshotNode(
   const texted = new Set(overrides.filter((o) => o.overriddenFields.includes('characters')).map((o) => o.id));
   const carried = node.type === 'INSTANCE' ? carriedTexts(node, texted) : [];
   const auto = typeof any['layoutMode'] === 'string' && any['layoutMode'] !== 'NONE';
+  const properties = propertiesOf(any as Record<string, unknown> & { type: string; parent?: Ancestor | null });
   return {
     id: node.id,
     name: node.name,
@@ -130,6 +211,10 @@ export async function snapshotNode(
       : [],
     page: pageOf(node as unknown as Ancestor),
     componentSource: inComponentSource(node as unknown as Ancestor),
+    ...(BOXED.has(node.type) ? { box: boxOf(any) } : {}),
+    ...(node.type === 'TEXT' ? { font: fontOf(any, mixed) } : {}),
+    ...(properties ? { properties } : {}),
+    ...(node.type === 'INSTANCE' ? { main: await mainOf(any) } : {}),
     ...(node.type === 'COMPONENT_SET' ? { set: setLayout(any) } : {}),
   };
 }

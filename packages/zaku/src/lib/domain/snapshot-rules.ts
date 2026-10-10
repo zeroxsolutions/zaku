@@ -2,6 +2,7 @@ import type { NodeSnapshot } from '../schema/bridge.js';
 import { DEFAULT_COPY, type CopyConfig } from '../schema/zaku-config.js';
 import { ALLOWED_OVERRIDES } from './checks/overrides.js';
 import { copyIssues, copyPolicy } from './copy-rules.js';
+import { documentationFindings } from './documentation-rule.js';
 import type { Finding } from './findings.js';
 import { isDefaultLayerName } from './layer-names.js';
 
@@ -125,6 +126,11 @@ export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfi
       }
     }
     if (isDefaultLayerName(node.type, node.name)) finding('naming', undefined, `${node.name} keeps a default name`);
+  }
+  const frames = new Map(nodes.map((node) => [node.id, node.frame]));
+  for (const { nodeId, field, message } of documentationFindings(nodes)) {
+    const frame = frames.get(nodeId);
+    findings.push({ check: 'documentation', nodeId, field, ...(frame ? { frame } : {}), message });
   }
   return findings;
 }
