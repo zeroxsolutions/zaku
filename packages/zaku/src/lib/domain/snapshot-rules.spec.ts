@@ -66,6 +66,40 @@ describe('snapshotFindings', () => {
     expect(findings).toEqual([expect.objectContaining({ check: 'overrides', nodeId: '1:1;2:3', field: 'fills' })]);
   });
 
+  it("lets a component recolour a nested icon's glyph, as Nova's Button recolours its icon to the label", () => {
+    const icon = (componentSource: boolean): NodeSnapshot =>
+      node({
+        id: '11:1248',
+        type: 'INSTANCE',
+        name: 'Icon',
+        componentSource,
+        instance: {
+          overrides: [{ nodeId: 'I11:1248;11:1245', fields: ['fills', 'strokes'] }],
+          sizing: { horizontal: 'FIXED', vertical: 'FIXED' },
+        },
+      });
+    const overrides = (nodes: NodeSnapshot[]): unknown[] =>
+      snapshotFindings(nodes)
+        .filter((f) => f.check === 'overrides')
+        .map((f) => [f.nodeId, f.field]);
+    expect(overrides([icon(true)])).toEqual([]);
+    expect(overrides([icon(false)])).toEqual([
+      ['I11:1248;11:1245', 'fills'],
+      ['I11:1248;11:1245', 'strokes'],
+    ]);
+  });
+
+  it("holds a component to the paint of an instance's own frame, which its variant does not recolour", () => {
+    const instance = {
+      overrides: [{ nodeId: '11:1248', fields: ['fills'] }],
+      sizing: { horizontal: 'FIXED', vertical: 'FIXED' },
+    };
+    const findings = snapshotFindings([
+      node({ id: '11:1248', type: 'INSTANCE', name: 'Icon', componentSource: true, instance }),
+    ]);
+    expect(findings).toEqual([expect.objectContaining({ check: 'overrides', field: 'fills' })]);
+  });
+
   it('lets an instance be stretched when it is not fixed on that axis', () => {
     const instance = {
       overrides: [{ nodeId: '1:1', fields: ['width', 'height'] }],
@@ -154,6 +188,49 @@ describe('snapshotFindings', () => {
   describe('in the library file', () => {
     const entryPage = { id: '0:7', name: '\u2756 Tag' };
     const rawSpacing = [{ field: 'paddingTop' as const, value: 48, bound: false }];
+    const docsPage = { id: '0:3', name: 'Component for Docs' };
+    const bullet = (patch: Partial<NodeSnapshot>): NodeSnapshot =>
+      node({
+        id: '7:482',
+        type: 'TEXT',
+        name: 'Bullet',
+        page: docsPage,
+        frame: 'DS/List Item',
+        componentSource: true,
+        characters: '\u2022',
+        ...patch,
+      });
+    const copyChecks = (nodes: NodeSnapshot[]): (string | undefined)[] =>
+      snapshotFindings(nodes)
+        .filter((f) => f.check === 'copy')
+        .map((f) => f.nodeId);
+
+    it("accepts the list marker in DS/List Item's Bullet, the text the documentation measures give that layer", () => {
+      expect(copyChecks([bullet({})])).toEqual([]);
+    });
+
+    it('holds a bullet anywhere else to the copy rules', () => {
+      expect(copyChecks([bullet({ name: 'Text' })])).toEqual(['7:482']);
+      expect(copyChecks([bullet({ characters: '\u2022 Item' })])).toEqual(['7:482']);
+      expect(copyChecks([bullet({ frame: 'DS/Table Cell' })])).toEqual(['7:482']);
+      expect(copyChecks([bullet({ page: entryPage, frame: 'antd / Tag' })])).toEqual(['7:482']);
+    });
+
+    it("does not let the marker a list item instance carries into the run's other copy", () => {
+      const li = node({
+        id: '9:1',
+        type: 'INSTANCE',
+        name: 'li',
+        main: 'DS/List Item',
+        instance: {
+          overrides: [],
+          carried: ['\u2022', 'List item text.'],
+          sizing: { horizontal: 'FIXED', vertical: 'HUG' },
+        },
+      });
+      const prose = node({ id: '9:2', type: 'TEXT', name: 'Description', textStyleId: 's', characters: '\u2022 Fast' });
+      expect(copyChecks([li, prose])).toEqual(['9:2']);
+    });
 
     it("leaves a documentation view's measures and its unstyled text to the reference", () => {
       const header = node({ name: 'Body', page: entryPage, componentSource: false, spacing: rawSpacing });

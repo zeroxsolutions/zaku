@@ -52,6 +52,19 @@ export interface DocumentationPart {
   paint?: string;
 }
 
+/**
+ * The library's cover: its page, its one frame and that frame's size; the layer that runs past every edge; and the
+ * x the composition starts at, from which a layer may run past the right edge, as the measured cover's columns do.
+ */
+export const COVER = {
+  page: 'Thumbnail',
+  frame: 'Thumbnail',
+  width: 1200,
+  height: 675,
+  bleeds: 'Glow',
+  composition: 616,
+} as const;
+
 /** The name the views' and the components' page carries. */
 export const DOCUMENTATION_COMPONENTS_PAGE = 'Component for Docs';
 
@@ -330,14 +343,16 @@ export const DOCUMENTATION_PARTS: readonly DocumentationPart[] = [
       where: 'view',
       type: 'FRAME',
       width: 1200,
-      layout: horizontal([40, 40, 40, 40], 24),
+      layout: horizontal([40, 40, 40, 40], 24, ['CENTER', 'CENTER']),
       paint: 'fill color/background, stroke 1 color/border, radius 14',
     },
     {
       path: ['*', 'Body', section, 'Preview', section],
       where: 'view',
       type: 'FRAME',
-      layout: { mode: 'HORIZONTAL', padding: none, gap: 12, wrap: true },
+      sizing: { horizontal: 'HUG', vertical: 'HUG' },
+      layout: { mode: 'HORIZONTAL', padding: none, gap: 12, crossGap: 12, wrap: true, align: ['MIN', 'CENTER'] },
+      paint: 'centred in the preview, hugging its row of instances',
     },
   ]),
   {
@@ -352,7 +367,8 @@ export const DOCUMENTATION_PARTS: readonly DocumentationPart[] = [
     where: 'view',
     type: 'FRAME',
     width: 744,
-    layout: horizontal([24, 24, 24, 24], 24),
+    sizing: { horizontal: 'FILL', vertical: 'FILL' },
+    layout: horizontal([24, 24, 24, 24], 24, ['CENTER', 'CENTER']),
     paint: 'fill color/background, stroke 1 color/border, radius 14',
   },
   {
@@ -360,6 +376,7 @@ export const DOCUMENTATION_PARTS: readonly DocumentationPart[] = [
     where: 'view',
     type: 'FRAME',
     width: 440,
+    sizing: { horizontal: 'FIXED', vertical: 'HUG' },
     layout: { mode: 'GRID', padding: none, gap: 16, crossGap: 16 },
     paint: 'one column, one Card per part',
   },

@@ -2,7 +2,7 @@ import type { NodeSnapshot } from '../schema/bridge.js';
 import { DEFAULT_COPY, type CopyConfig } from '../schema/zaku-config.js';
 import { ALLOWED_OVERRIDES } from './checks/overrides.js';
 import { copyIssues, copyPolicy } from './copy-rules.js';
-import { documentationFindings } from './documentation-rule.js';
+import { DOCUMENTATION_COMPONENT_NAMES, documentationFindings, holdsReferenceText } from './documentation-rule.js';
 import type { Finding } from './findings.js';
 import { isDefaultLayerName } from './layer-names.js';
 
@@ -57,7 +57,10 @@ function outside(box: Box, width: number, height: number): boolean {
 export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfig = DEFAULT_COPY): Finding[] {
   const policy = copyPolicy(
     copy,
-    nodes.flatMap((node) => node.instance?.carried ?? []),
+    // A documentation component's texts are the reference's own, such as DS/List Item's bullet, not library copy.
+    nodes.flatMap((node) =>
+      node.main && DOCUMENTATION_COMPONENT_NAMES.has(node.main) ? [] : (node.instance?.carried ?? []),
+    ),
   );
   const findings: Finding[] = [];
   for (const node of nodes) {
@@ -102,7 +105,7 @@ export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfi
           );
       });
     }
-    if (node.characters !== undefined) {
+    if (node.characters !== undefined && !holdsReferenceText(node)) {
       for (const issue of copyIssues(node.characters, policy))
         finding('copy', issue.field, `${label}: ${issue.message}`);
     }
@@ -117,6 +120,9 @@ export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfi
           // As zaku check: a picture is placed as an image fill, so that fill is content.
           if (field === 'fills' && override.picture) continue;
           const self = override.nodeId === node.id;
+          // A component recolours a nested icon to its label by the glyph's paint, as Nova's Button does; the
+          // binding rule still holds that paint to a variable, and a product frame never recolours an instance.
+          if (!self && (field === 'fills' || field === 'strokes') && node.componentSource === true) continue;
           // Documentation lays out its own components: a table sizes each column's head and cell to the column.
           if (self && (field === 'width' || field === 'height') && documentation) continue;
           if (self && field === 'width' && node.instance.sizing.horizontal !== 'FIXED') continue;
