@@ -8,7 +8,7 @@ import { ExecuteScriptHandler } from './execute-script.js';
 
 function fakeBridge(
   run: RunOutcome,
-  settled: Settled = { kind: 'settled', outcome: 'committed', untouchable: [] },
+  settled: Settled = { kind: 'settled', outcome: 'committed', untouchable: [], left: [] },
 ): { bridge: FigmaBridge; calls: string[]; pushed: unknown[] } {
   const calls: string[] = [];
   const pushed: unknown[] = [];
@@ -97,14 +97,58 @@ describe('ExecuteScriptHandler', () => {
     expect(calls).toEqual([]);
   });
 
+  it('refuses a helper loaded from the file and evaluated, and says to write it into the script', async () => {
+    const { bridge, calls } = fakeBridge(clean);
+    const script = "const H = await new Function('figma', figma.root.getPluginData('H'))(figma);";
+    await expect(handler(bridge).handle(command('strict', script))).rejects.toThrow(
+      /write the helpers into the script/,
+    );
+    expect(calls).toEqual([]);
+  });
+
   it('answers a thrown script and a timeout as rolled back', async () => {
     expect(
-      await handler(fakeBridge({ kind: 'threw', error: 'boom', untouchable: [] }).bridge).handle(command()),
+      await handler(fakeBridge({ kind: 'threw', error: 'boom', untouchable: [], left: [] }).bridge).handle(command()),
     ).toMatchObject({ outcome: 'rolled-back', reason: 'threw', error: 'boom' });
-    expect(await handler(fakeBridge({ kind: 'timeout' }).bridge).handle(command())).toMatchObject({
+    expect(
+      await handler(
+        fakeBridge({ kind: 'timeout', budgetMs: 30_000, settled: { untouchable: [], left: [] } }).bridge,
+      ).handle(command()),
+    ).toMatchObject({
       outcome: 'rolled-back',
       reason: 'timeout',
     });
+  });
+
+  it('names the nodes a rollback left in the file, and does not call that rolled back', async () => {
+    const threw = await handler(
+      fakeBridge({ kind: 'threw', error: 'boom', untouchable: [], left: ['1:2'] }).bridge,
+    ).handle(command());
+    expect(threw).toMatchObject({ outcome: 'partly-rolled-back', reason: 'threw', left: ['1:2'] });
+    const timedOut = await handler(
+      fakeBridge({ kind: 'timeout', budgetMs: 30_000, settled: { untouchable: [], left: ['1:3'] } }).bridge,
+    ).handle(command());
+    expect(timedOut).toMatchObject({ outcome: 'partly-rolled-back', reason: 'timeout', left: ['1:3'] });
+    const refused = await handler(
+      fakeBridge(unbound, { kind: 'settled', outcome: 'rolled-back', untouchable: [], left: ['1:1'] }).bridge,
+    ).handle(command());
+    expect(refused).toMatchObject({ outcome: 'partly-rolled-back', reason: 'findings', left: ['1:1'] });
+  });
+
+  it('answers unknown when the plugin does not confirm it gave a timed-out run up', async () => {
+    expect(
+      await handler(fakeBridge({ kind: 'timeout', budgetMs: 30_000, settled: null }).bridge).handle(command()),
+    ).toMatchObject({
+      outcome: 'unknown',
+      reason: 'timeout',
+    });
+  });
+
+  it('says a timed-out run passed the time budget and how to split it', async () => {
+    const timedOut = await handler(
+      fakeBridge({ kind: 'timeout', budgetMs: 30_000, settled: { untouchable: [], left: [] } }).bridge,
+    ).handle(command());
+    expect((timedOut as { message?: string }).message).toMatch(/30 s/);
   });
 
   it('answers unknown when the connection drops before or during the decision', async () => {
@@ -119,13 +163,15 @@ describe('ExecuteScriptHandler', () => {
   });
 
   it('names the existing nodes a thrown script changed, and warns that a timed-out one may have', async () => {
-    const threw = await handler(fakeBridge({ kind: 'threw', error: 'boom', untouchable: ['9:1'] }).bridge).handle(
-      command(),
-    );
+    const threw = await handler(
+      fakeBridge({ kind: 'threw', error: 'boom', untouchable: ['9:1'], left: [] }).bridge,
+    ).handle(command());
     expect(threw).toMatchObject({ outcome: 'rolled-back', reason: 'threw', untouchable: ['9:1'] });
-    const timedOut = await handler(fakeBridge({ kind: 'timeout' }).bridge).handle(command());
+    const timedOut = await handler(
+      fakeBridge({ kind: 'timeout', budgetMs: 30_000, settled: { untouchable: [], left: [] } }).bridge,
+    ).handle(command());
     expect(timedOut).toMatchObject({ outcome: 'rolled-back', reason: 'timeout' });
-    expect((timedOut as { message?: string }).message).toMatch(/read before retrying/);
+    expect((timedOut as { message?: string }).message).toMatch(/untouchable/);
   });
 
   it('holds a text to the copy locales and currencies zaku.yaml names, and to English without one', async () => {

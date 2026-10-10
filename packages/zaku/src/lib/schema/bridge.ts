@@ -193,6 +193,8 @@ export const pluginMessageSchema = z.discriminatedUnion('type', [
       error: z.string(),
       /** Nodes that existed before the run and were changed; removing created nodes cannot undo them. */
       untouchable: z.array(z.string()),
+      /** Nodes the run made that the plugin could not remove: they are still in the file. */
+      left: z.array(z.string()).default([]),
     })
     .strict(),
   z
@@ -202,6 +204,8 @@ export const pluginMessageSchema = z.discriminatedUnion('type', [
       outcome: z.enum(['committed', 'rolled-back']),
       /** Nodes that existed before the run and were changed; removing created nodes cannot undo them. */
       untouchable: z.array(z.string()),
+      /** Nodes the run made that the plugin could not remove: they are still in the file. */
+      left: z.array(z.string()).default([]),
     })
     .strict(),
   z

@@ -2,6 +2,8 @@ type Listener = (event: { nodeChanges: { type: string; node: { id: string }; pro
 
 export class FakeNode {
   removed = false;
+  /** Figma refuses to remove this node, as it can for a node it holds; remove() throws. */
+  refusesRemoval = false;
   fills: unknown[] = [];
   strokes: unknown[] = [];
   name: string;
@@ -16,6 +18,7 @@ export class FakeNode {
   }
   /** Figma removes a node with everything inside it. */
   remove(): void {
+    if (this.refusesRemoval) throw new Error(`in remove: cannot remove node ${this.id}`);
     for (const child of [...this.children]) child.remove();
     if (this.parent) this.parent.children = this.parent.children.filter((node) => node !== this);
     this.parent = null;

@@ -203,17 +203,17 @@ describe('zaku-mcp over a real socket', () => {
     const { call, plugin } = await setup();
     await plugin('A', (m, send) => {
       if (m.type === 'run')
-        send({ type: 'threw', runId: m.runId, error: 'TypeError: x is undefined', untouchable: [] });
+        send({ type: 'threw', runId: m.runId, error: 'TypeError: x is undefined', untouchable: [], left: [] });
     });
     expect((await call('execute', { script: 'x.y' })).body).toMatchObject({ outcome: 'rolled-back', reason: 'threw' });
   });
 
-  it('times out a script the plugin never finishes', async () => {
+  it('times out a script the plugin never finishes, and does not call it rolled back unconfirmed', async () => {
     const { call, plugin } = await setup();
     const log: ServerMessage[] = [];
     await plugin('A', (m) => log.push(m));
     expect((await call('execute', { script: 'for(;;){}' })).body).toMatchObject({
-      outcome: 'rolled-back',
+      outcome: 'unknown',
       reason: 'timeout',
     });
     await until(() => log.length === 2);
@@ -248,7 +248,7 @@ describe('zaku-mcp over a real socket', () => {
       }
       if (m.type === 'decide') {
         order.push(`decide ${m.runId}`);
-        send({ type: 'settled', runId: m.runId, outcome: 'committed', untouchable: [] });
+        send({ type: 'settled', runId: m.runId, outcome: 'committed', untouchable: [], left: [] });
       }
     });
     await Promise.all([call('execute', { script: 'return 1' }), call('execute', { script: 'return 2' })]);

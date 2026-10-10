@@ -13,6 +13,17 @@ file saved in the team. `figma.library` in `zaku.yaml` holds it before the first
 
 ## Drawing an entry
 
+- zaku's `execute` gives a script 30 s. Past that it gives the script up, removes what it made, and
+  names what it could not remove (`partly-rolled-back`, `left`), so a script draws one part: a
+  documentation component, a view's frame, a set, a section. A script that loads fonts, pages or
+  styles does it once at its top, and awaits each async call before the next.
+- Helpers (a text, a frame, a bound paint) are written at the top of each script that uses them.
+  `execute` refuses code built from a string at run time (`new Function`, `eval`, a function
+  constructor), which its checks cannot read, so a helper kept in `pluginData` or `clientStorage` and
+  evaluated is refused.
+- The plugin reads the file page by page, and Figma's API makes a style id read-only then: a text
+  takes its style with `await text.setTextStyleIdAsync(style.id)`, a fill with
+  `setFillStyleIdAsync`; `execute` refuses the assignment.
 - Every `figma.create*()` call puts its node on `figma.currentPage`, and the current page follows the
   page the person opens while a script runs. A script that draws an entry looks the entry's page up by
   name and appends each node it makes to its parent there, before it returns.

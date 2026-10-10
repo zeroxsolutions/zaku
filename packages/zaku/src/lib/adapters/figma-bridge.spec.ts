@@ -107,8 +107,26 @@ describe('FigmaBridge', () => {
     b.attach(c);
     c.emit(hello('A'));
     const outcome = await b.run(b.session(), 'while (true) {}');
-    expect(outcome).toEqual({ kind: 'timeout' });
+    expect(outcome).toEqual({ kind: 'timeout', budgetMs: 50, settled: null });
     expect(c.sent.at(-1)).toMatchObject({ type: 'decide', decision: 'rollback' });
+  });
+
+  it('reports what the plugin removed and left when it gives a timed-out run up', async () => {
+    const b = bridge();
+    const c = new FakeConnection();
+    b.attach(c);
+    c.emit(hello('A'));
+    c.reply = (m): void => {
+      if (m.type === 'decide')
+        queueMicrotask(() =>
+          c.emit({ type: 'settled', runId: m.runId, outcome: 'rolled-back', untouchable: ['9:1'], left: ['1:2'] }),
+        );
+    };
+    expect(await b.run(b.session(), 'await new Promise(() => undefined)')).toEqual({
+      kind: 'timeout',
+      budgetMs: 50,
+      settled: { untouchable: ['9:1'], left: ['1:2'] },
+    });
   });
 
   it('answers dropped when the connection closes mid-run', async () => {

@@ -12,8 +12,10 @@ import type { IDesignConfigRepository } from '../repositories/design-config-repo
 
 export type ExecuteResult =
   | {
-      outcome: 'committed' | 'rolled-back';
+      /** `partly-rolled-back`: the plugin could not remove every node the run made; `left` names those still in the file. */
+      outcome: 'committed' | 'rolled-back' | 'partly-rolled-back';
       reason?: 'findings' | 'threw' | 'timeout';
+      left?: string[];
       error?: string;
       /** Set when what the file now holds is not certain. */
       message?: string;
@@ -24,9 +26,13 @@ export type ExecuteResult =
       untouchable: string[];
       cut?: true;
     }
-  | { outcome: 'unknown'; message: 'read before retrying' };
+  | { outcome: 'unknown'; reason?: 'timeout'; message: string };
 
 const UNKNOWN = { outcome: 'unknown', message: 'read before retrying' } as const;
+
+/** The outcome of a rollback, true to what the plugin removed: nodes it could not remove are named, not called gone. */
+const rolledBack = (left: string[]): { outcome: 'rolled-back' } | { outcome: 'partly-rolled-back'; left: string[] } =>
+  left.length > 0 ? { outcome: 'partly-rolled-back', left } : { outcome: 'rolled-back' };
 
 /** Handles ExecuteScript: refuse, run, check the snapshot, then commit or roll back, one run per file at a time. */
 @injectable({ token: TOKENS.COMMAND_HANDLER })
@@ -48,15 +54,29 @@ export class ExecuteScriptHandler implements ICommandHandler<ExecuteScript, Exec
       if (ran.kind === 'dropped') return UNKNOWN;
       const empty = { value: null, created: [], mutated: [], findings: [], untouchable: [] };
       if (ran.kind === 'threw')
-        return { outcome: 'rolled-back', reason: 'threw', error: ran.error, ...empty, untouchable: ran.untouchable };
-      if (ran.kind === 'timeout')
         return {
-          outcome: 'rolled-back',
-          reason: 'timeout',
-          // The script may still be running; what it changed on nodes that already existed is not known yet.
-          message: 'the script may have changed nodes that already existed; read before retrying',
+          ...rolledBack(ran.left),
+          reason: 'threw',
+          error: ran.error,
           ...empty,
+          untouchable: ran.untouchable,
         };
+      if (ran.kind === 'timeout') {
+        const budget = `${Math.round(ran.budgetMs / 1000)} s`;
+        if (ran.settled === null)
+          return {
+            outcome: 'unknown',
+            reason: 'timeout',
+            message: `the script ran past the ${budget} budget and the plugin did not confirm it gave it up; read before retrying`,
+          };
+        return {
+          ...rolledBack(ran.settled.left),
+          reason: 'timeout',
+          message: `the script ran past the ${budget} budget and was given up: what it made is removed, and untouchable names the nodes that already existed which it changed. Split the work into scripts that each finish well inside ${budget}, one entry part per script.`,
+          ...empty,
+          untouchable: ran.settled.untouchable,
+        };
+      }
       const findings = snapshotFindings(ran.snapshot, config?.copy);
       const decision = command.mode === 'strict' && findings.length > 0 ? 'rollback' : 'commit';
       const settled = await this.bridge.decide(session, ran.runId, decision);
@@ -64,7 +84,7 @@ export class ExecuteScriptHandler implements ICommandHandler<ExecuteScript, Exec
       this.bridge.push(session, { type: 'findings', findings });
       const parents = Object.fromEntries(ran.snapshot.map((node) => [node.id, node.parentId]));
       return cutReply({
-        outcome: settled.outcome,
+        ...(settled.outcome === 'rolled-back' ? rolledBack(settled.left) : { outcome: settled.outcome }),
         ...(decision === 'rollback' ? { reason: 'findings' as const } : {}),
         value: ran.value,
         created: ran.created,
