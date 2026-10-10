@@ -289,8 +289,17 @@ const view = (name: string, sections: Layer[]): Layer =>
   ]);
 const demo = (name: string): Layer =>
   section(name, [
-    frame('Preview', { width: 1200, ...horizontal([40, 40, 40, 40], 24) }, [
-      frame(name, { layout: 'HORIZONTAL', gap: 12, crossGap: 12, wrap: true }),
+    frame('Preview', { width: 1200, ...horizontal([40, 40, 40, 40], 24), align: ['CENTER', 'CENTER'] }, [
+      frame(name, {
+        x: 350,
+        width: 500,
+        sizing: { horizontal: 'HUG', vertical: 'HUG' },
+        layout: 'HORIZONTAL',
+        gap: 12,
+        crossGap: 12,
+        wrap: true,
+        align: ['MIN', 'CENTER'],
+      }),
     ]),
   ]);
 const cards = (count: number): Layer =>
@@ -311,8 +320,22 @@ export function buttonViews(): Layer[] {
     view('Nova / Button / Guidance', [
       section('Anatomy', [
         frame('Anatomy layout', { width: 1200, ...horizontal(none, 16) }, [
-          frame('Preview', { width: 744, ...horizontal([24, 24, 24, 24], 24) }),
-          frame('Cards', { width: 440, layout: 'GRID', gap: 16, crossGap: 16 }),
+          frame('Preview', {
+            width: 744,
+            height: 474,
+            sizing: { horizontal: 'FILL', vertical: 'FILL' },
+            ...horizontal([24, 24, 24, 24], 24),
+            align: ['CENTER', 'CENTER'],
+          }),
+          frame('Cards', {
+            x: 760,
+            width: 440,
+            height: 474,
+            sizing: { horizontal: 'FIXED', vertical: 'HUG' },
+            layout: 'GRID',
+            gap: 16,
+            crossGap: 16,
+          }),
         ]),
       ]),
       demo('Variants'),
@@ -335,6 +358,26 @@ export function buttonViews(): Layer[] {
         frame('Theme Preview', { width: 1200, ...horizontal(none, 16) }, [
           frame('Preview', vertical([40, 40, 40, 40], 20)),
         ]),
+      ]),
+    ]),
+  ];
+}
+
+/**
+ * The library's cover as the measured library draws it: the Thumbnail frame, its Glow running past the edges, and
+ * a composition whose second column runs past the right edge. `cardHeight` is the height of that column's Card,
+ * at y 320 in the composition.
+ */
+export function cover(cardHeight = 240): Layer[] {
+  return [
+    frame('Thumbnail', { width: 1200, height: 675 }, [
+      frame('Glow', { width: 1200, height: 675 }, [
+        frame('Glow \u00b7 primary', { x: 820, y: -170, width: 900, height: 420 }),
+      ]),
+      frame('Intro', { x: 72, y: 72, width: 464, height: 531, ...vertical(none, 24) }),
+      frame('Composition', { x: 616, y: 72, width: 648, height: 531 }, [
+        instance('Card', 'Card', { x: 0, y: 0, width: 336, height: 283 }),
+        instance('Card', 'Card', { x: 368, y: 320, width: 280, height: cardHeight }),
       ]),
     ]),
   ];

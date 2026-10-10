@@ -220,6 +220,31 @@ describe('the sandbox runner', () => {
     ]);
   });
 
+  it('checks the instance that holds a layer the script changed, which is where its overrides are read', async () => {
+    const { posted, runner, figma } = setup();
+    const tag = figma.existing('Tag', 'INSTANCE');
+    const glyph = figma.sublayer(tag);
+    await runner.receive(run(`(await figma.getNodeByIdAsync('${glyph.id}')).rename('Glyph');`));
+    const ran = posted[0] as Extract<PluginMessage, { type: 'ran' }>;
+    expect(ran.snapshot.map((node) => [node.id, node.created])).toEqual([
+      [glyph.id, false],
+      [tag.id, false],
+    ]);
+  });
+
+  it('checks every layer inside an instance the script made, as check reads them', async () => {
+    const { posted, runner } = setup();
+    await runner.receive(
+      run('const tag = figma.instantiate(); figma.sublayer(figma.sublayer(tag, "INSTANCE"), "TEXT");'),
+    );
+    const ran = posted[0] as Extract<PluginMessage, { type: 'ran' }>;
+    expect(ran.snapshot.map((node) => [node.type, node.created])).toEqual([
+      ['INSTANCE', true],
+      ['INSTANCE', false],
+      ['TEXT', false],
+    ]);
+  });
+
   it('keeps an existing node a rolled-back run moved into a node it made', async () => {
     const { runner, figma } = setup();
     const page = figma.existing('Component for Docs');

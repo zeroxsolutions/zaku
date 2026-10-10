@@ -32,6 +32,10 @@ export class FakeNode {
     this.children.push(child);
     this.world.fire('PROPERTY_CHANGE', child, ['parent']);
   }
+  /** Every node inside this one, as Figma's findAll() with no callback answers. */
+  findAll(): FakeNode[] {
+    return this.children.flatMap((child) => [child, ...child.findAll()]);
+  }
   rename(name: string): void {
     this.name = name;
     this.world.fire('PROPERTY_CHANGE', this, ['name']);
@@ -84,8 +88,8 @@ export class FakeFigma {
     off: (_event: 'nodechange', listener: Listener): Listener[] =>
       (this.listeners = this.listeners.filter((l) => l !== listener)),
   };
-  existing(name: string): FakeNode {
-    const node = new FakeNode(`9:${this.next++}`, 'FRAME', this);
+  existing(name: string, type = 'FRAME'): FakeNode {
+    const node = new FakeNode(`9:${this.next++}`, type, this);
     node.name = name;
     this.nodes.set(node.id, node);
     return node;
@@ -97,6 +101,14 @@ export class FakeFigma {
   instantiate(): FakeNode {
     const node = this.make('INSTANCE');
     this.fire('CREATE', node);
+    return node;
+  }
+  /** An instance's own layer, which Figma makes with the instance and never announces. */
+  sublayer(instance: FakeNode, type = 'RECTANGLE'): FakeNode {
+    const node = new FakeNode(`I${instance.id};${this.next++}`, type, this);
+    node.parent = instance;
+    instance.children.push(node);
+    this.nodes.set(node.id, node);
     return node;
   }
   createFrame(): FakeNode {

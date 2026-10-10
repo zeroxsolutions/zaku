@@ -1,5 +1,6 @@
 import type { NodeSnapshot } from '../schema/bridge.js';
 import {
+  COVER,
   DOCUMENTATION_COMPONENTS_PAGE,
   DOCUMENTATION_PARTS,
   type DocumentationLayout,
@@ -168,5 +169,86 @@ export function documentationFindings(nodes: readonly NodeSnapshot[]): Documenta
         });
     }
   }
+  findings.push(...coverFindings(nodes, byId));
   return findings;
+}
+
+/**
+ * Every layer of the cover that reaches past its frame, which clips it; only the outermost of a run that does. The
+ * glow runs off every edge, and the composition off the right. A layer whose layers above it the snapshot lacks is left.
+ */
+function coverFindings(
+  nodes: readonly NodeSnapshot[],
+  byId: ReadonlyMap<string, NodeSnapshot>,
+): DocumentationFinding[] {
+  const findings: DocumentationFinding[] = [];
+  /** The node's box on the cover, and the names from the cover down; null off the cover or inside the glow. */
+  const onCover = (node: NodeSnapshot): { x: number; y: number; path: string[] } | null => {
+    if (!node.box) return null;
+    let x = node.box.x;
+    let y = node.box.y;
+    const path = [node.name];
+    for (let up = byId.get(node.parentId ?? ''); up; up = byId.get(up.parentId ?? '')) {
+      if (up.parentId === node.page?.id) {
+        if (up.name !== COVER.frame || path[0] === COVER.bleeds) return null;
+        return { x, y, path: [up.name, ...path] };
+      }
+      if (!up.box) return null;
+      x += up.box.x;
+      y += up.box.y;
+      path.unshift(up.name);
+    }
+    return null;
+  };
+  const past = (node: NodeSnapshot): string[] => {
+    const at = node.box ? onCover(node) : null;
+    if (!at || !node.box) return [];
+    const edges: [string, number][] = [
+      ['left', -at.x],
+      ['top', -at.y],
+      ['right', at.x >= COVER.composition ? 0 : at.x + node.box.width - COVER.width],
+      ['bottom', at.y + node.box.height - COVER.height],
+    ];
+    return edges
+      .filter(([, by]) => by > 0.5)
+      .map(([edge, by]) => `reaches ${Math.round(by)} past the cover's ${edge} edge`);
+  };
+  for (const node of nodes) {
+    if (node.page?.name !== COVER.page) continue;
+    const reaches = past(node);
+    if (reaches.length === 0) continue;
+    const parent = byId.get(node.parentId ?? '');
+    if (parent && past(parent).length > 0) continue;
+    const at = onCover(node);
+    findings.push({
+      nodeId: node.id,
+      field: 'bounds',
+      message: `${at?.path.join(' / ') ?? node.name}: ${reaches.join(', ')}, which cuts it off`,
+    });
+  }
+  return findings;
+}
+
+/** The names of the documentation components, whose own texts are the reference's and not the library's copy. */
+export const DOCUMENTATION_COMPONENT_NAMES: ReadonlySet<string> = new Set(
+  DOCUMENTATION_PARTS.filter((part) => part.where === 'components' && part.path.length === 1).map(
+    (part) => part.path[0] ?? '',
+  ),
+);
+
+/**
+ * Whether the node is a documentation component's text layer showing exactly the text the measures give it, such
+ * as DS/List Item's `Bullet` reading U+2022: the reference requires that text there, whatever the copy rules say.
+ */
+export function holdsReferenceText(node: NodeSnapshot): boolean {
+  if (node.type !== 'TEXT' || node.characters === undefined) return false;
+  if (node.page?.name !== DOCUMENTATION_COMPONENTS_PAGE) return false;
+  return DOCUMENTATION_PARTS.some(
+    (part) =>
+      part.where === 'components' &&
+      part.type === 'TEXT' &&
+      part.text === node.characters &&
+      part.path[0] === node.frame &&
+      part.path.at(-1) === node.name,
+  );
 }

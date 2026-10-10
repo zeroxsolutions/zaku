@@ -1,8 +1,9 @@
-import { buttonViews, documentationComponents, pageSnapshot } from '../../test/documentation.fixture.js';
+import { buttonViews, cover, documentationComponents, pageSnapshot } from '../../test/documentation.fixture.js';
 import { snapshotFindings } from './snapshot-rules.js';
 
 const DOCS = { id: '3:16', name: 'Component for Docs' };
 const BUTTON = { id: '0:1', name: '\u2756 Button' };
+const THUMBNAIL = { id: '3:12', name: 'Thumbnail' };
 
 const documentation = (nodes: Parameters<typeof snapshotFindings>[0]): string[] =>
   snapshotFindings(nodes)
@@ -79,6 +80,43 @@ describe('the documentation rule', () => {
       'Nova / Button / Guidance / Body: padding 40 120 96 120, not 48 120 96 120',
       'Nova / Button / Guidance / Body / Usage / List: gap 12, not 8',
     ]);
+  });
+
+  it('finds a demo row stretched across its preview and set at its left, where it hugs and sits centred', () => {
+    const [component, guidance] = buttonViews();
+    const variants = guidance!.children![1]!.children!.find((layer) => layer.name === 'Variants')!;
+    const preview = variants.children![1]!;
+    preview.box = { ...preview.box, align: ['MIN', 'MIN'] };
+    preview.children![0]!.box = {
+      ...preview.children![0]!.box,
+      x: 41,
+      width: 1118,
+      sizing: { horizontal: 'FIXED', vertical: 'HUG' },
+    };
+    expect(documentation(pageSnapshot(BUTTON, [component!, guidance!]))).toEqual([
+      'Nova / Button / Guidance / Body / Variants / Preview: aligns MIN MIN, not CENTER CENTER',
+      'Nova / Button / Guidance / Body / Variants / Preview / Variants: sizes FIXED horizontally, not HUG',
+    ]);
+  });
+
+  it("finds an anatomy preview that stops short of the layout's height, beside cards that run past it", () => {
+    const [component, guidance] = buttonViews();
+    const anatomy = guidance!.children![1]!.children!.find((layer) => layer.name === 'Anatomy')!;
+    const preview = anatomy.children![1]!.children![0]!;
+    preview.box = { ...preview.box, height: 330, sizing: { horizontal: 'FILL', vertical: 'FIXED' } };
+    expect(documentation(pageSnapshot(BUTTON, [component!, guidance!]))).toEqual([
+      'Nova / Button / Guidance / Body / Anatomy / Anatomy layout / Preview: sizes FIXED vertically, not FILL',
+    ]);
+  });
+
+  it('finds a layer of the cover that reaches past its top, left or bottom edge', () => {
+    expect(documentation(pageSnapshot(THUMBNAIL, cover(320)))).toEqual([
+      "Thumbnail / Composition / Card: reaches 37 past the cover's bottom edge, which cuts it off",
+    ]);
+  });
+
+  it('lets the glow run off every edge, and the composition off the right, as the measured cover does', () => {
+    expect(documentation(pageSnapshot(THUMBNAIL, cover()))).toEqual([]);
   });
 
   it('reads nothing off the documentation, and nothing whose layers above it the snapshot lacks', () => {

@@ -135,15 +135,15 @@ colours alone. To change a measure, change zaku's table, which prints this one.
 | view * / `Body` / `Matrix` / `Matrix`                       | FRAME         | vertical, gap 0                                                  | 1200 x any                                | stroke 1 color/border, radius 8                                                                                                                                                                                                   |
 | view * / `Body` / `Matrix` / `Matrix` / `TableHeader`       | FRAME         | horizontal, gap 0                                                | any x 40                                  |                                                                                                                                                                                                                                   |
 | view * / `Body` / `Example` / `Preview`                     | FRAME         | horizontal, wrap, padding 40 40 40 40, gap 48, row gap 24        | 1200 x any                                | fill color/background, stroke 1 color/border, radius 14                                                                                                                                                                           |
-| view * / `Body` / `Variants` / `Preview`                    | FRAME         | horizontal, padding 40 40 40 40, gap 24                          | 1200 x any                                | fill color/background, stroke 1 color/border, radius 14                                                                                                                                                                           |
-| view * / `Body` / `Variants` / `Preview` / `Variants`       | FRAME         | horizontal, wrap, gap 12                                         |                                           |                                                                                                                                                                                                                                   |
-| view * / `Body` / `Sizes` / `Preview`                       | FRAME         | horizontal, padding 40 40 40 40, gap 24                          | 1200 x any                                | fill color/background, stroke 1 color/border, radius 14                                                                                                                                                                           |
-| view * / `Body` / `Sizes` / `Preview` / `Sizes`             | FRAME         | horizontal, wrap, gap 12                                         |                                           |                                                                                                                                                                                                                                   |
-| view * / `Body` / `Composition` / `Preview`                 | FRAME         | horizontal, padding 40 40 40 40, gap 24                          | 1200 x any                                | fill color/background, stroke 1 color/border, radius 14                                                                                                                                                                           |
-| view * / `Body` / `Composition` / `Preview` / `Composition` | FRAME         | horizontal, wrap, gap 12                                         |                                           |                                                                                                                                                                                                                                   |
+| view * / `Body` / `Variants` / `Preview`                    | FRAME         | horizontal, padding 40 40 40 40, gap 24, align center center     | 1200 x any                                | fill color/background, stroke 1 color/border, radius 14                                                                                                                                                                           |
+| view * / `Body` / `Variants` / `Preview` / `Variants`       | FRAME         | horizontal, wrap, gap 12, row gap 12, align min center           | sizing hug / hug                          | centred in the preview, hugging its row of instances                                                                                                                                                                              |
+| view * / `Body` / `Sizes` / `Preview`                       | FRAME         | horizontal, padding 40 40 40 40, gap 24, align center center     | 1200 x any                                | fill color/background, stroke 1 color/border, radius 14                                                                                                                                                                           |
+| view * / `Body` / `Sizes` / `Preview` / `Sizes`             | FRAME         | horizontal, wrap, gap 12, row gap 12, align min center           | sizing hug / hug                          | centred in the preview, hugging its row of instances                                                                                                                                                                              |
+| view * / `Body` / `Composition` / `Preview`                 | FRAME         | horizontal, padding 40 40 40 40, gap 24, align center center     | 1200 x any                                | fill color/background, stroke 1 color/border, radius 14                                                                                                                                                                           |
+| view * / `Body` / `Composition` / `Preview` / `Composition` | FRAME         | horizontal, wrap, gap 12, row gap 12, align min center           | sizing hug / hug                          | centred in the preview, hugging its row of instances                                                                                                                                                                              |
 | view * / `Body` / `Anatomy` / `Anatomy layout`              | FRAME         | horizontal, gap 16                                               | 1200 x any                                |                                                                                                                                                                                                                                   |
-| view * / `Body` / `Anatomy` / `Anatomy layout` / `Preview`  | FRAME         | horizontal, padding 24 24 24 24, gap 24                          | 744 x any                                 | fill color/background, stroke 1 color/border, radius 14                                                                                                                                                                           |
-| view * / `Body` / `Anatomy` / `Anatomy layout` / `Cards`    | FRAME         | grid, gap 16, row gap 16                                         | 440 x any                                 | one column, one Card per part                                                                                                                                                                                                     |
+| view * / `Body` / `Anatomy` / `Anatomy layout` / `Preview`  | FRAME         | horizontal, padding 24 24 24 24, gap 24, align center center     | 744 x any; sizing fill / fill             | fill color/background, stroke 1 color/border, radius 14                                                                                                                                                                           |
+| view * / `Body` / `Anatomy` / `Anatomy layout` / `Cards`    | FRAME         | grid, gap 16, row gap 16                                         | 440 x any; sizing fixed / hug             | one column, one Card per part                                                                                                                                                                                                     |
 | view * / `Body` / * / `Table`                               | FRAME         | vertical, gap 0                                                  | 1200 x any                                | stroke 1 color/border, radius 8                                                                                                                                                                                                   |
 | view * / `Body` / * / `Table` / `TableHeader`               | FRAME         | horizontal, gap 0                                                | any x 40                                  | bottom stroke 1 color/border                                                                                                                                                                                                      |
 | view * / `Body` / * / `Table` / `TableRow`                  | FRAME         | horizontal, gap 0                                                |                                           | bottom stroke 1 color/border, none on the last                                                                                                                                                                                    |
@@ -173,7 +173,8 @@ colours alone. To change a measure, change zaku's table, which prints this one.
 - A `Cards` grid holds the library's Card, its default size with no footer, holding its title and
   description: padding 16 0, gap 16, fill `color/card`, radius 14.
 - The Component section's `Preview` holds the set itself, its variants placed by hand 24 to 48 apart
-  with 24 to 32 around them, the dashed border Figma gives a set, radius 5; no labels.
+  with 24 to 32 around them, the dashed border Figma gives a set, radius 5; no labels. A set too large
+  for one row stands in a labelled grid instead, as "The component set" below gives.
 - The Matrix section's `TableHeader` holds a `DS/Table Head` reading the row axis's name (`Size`), 140
   wide, then one `DS/Matrix Head` per column value reading `Prop=value` (`State=Hover`), each 120 wide,
   wider where the column's widest instance needs more. Each `TableRow` holds a `DS/Table Cell` primary
@@ -194,7 +195,10 @@ colours alone. To change a measure, change zaku's table, which prints this one.
 
 ## The cover
 
-The frame `Thumbnail` fills with `color/background` and sets no mode.
+The frame `Thumbnail` fills with `color/background` and sets no mode. It clips: the glow runs past
+every edge and the composition past the right one, and nothing else leaves the frame. The
+`documentation` check reports a layer that reaches past its top, left or bottom edge, or past its
+right edge from left of x 616.
 
 | Part            | Place and size                                              | Content                                                                                                                                                                                                                                                                                |
 | --------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -214,7 +218,29 @@ The frame `Thumbnail` fills with `color/background` and sets no mode.
   hidden, `INSTANCE_SWAP` for an icon with the icon set as preferred values, `SLOT` for `children`.
   An icon the code places at either end is two pairs, `Show icon start` with `Icon start` and `Show
   icon end` with `Icon end`.
+- An icon in a variant takes the label's colour as Nova's Button does: the icon component keeps its
+  own `color/foreground`, and the variant overrides the paint of the icon's glyph layers, `strokes`
+  for a stroked set such as Lucide and `fills` for a filled one, bound to the variable the label's
+  fill is bound to (`color/primary-foreground` on the default Button). The override sits in the
+  variant, so every instance of the variant carries it; `zaku check` allows that paint override
+  inside a component and still reports it in a product frame, and reports it raw.
   Read `componentPropertyDefinitions` on the set, never on a variant.
+- A set too large for one row of the Component section's `Preview` is laid out as Nova lays out
+  Button's 192 variants, inside a frame `Matrix` that the `Preview` holds: no auto layout, 1200 wide,
+  fixed, the set at 176, 40 in it.
+  - The columns are the axis with the most values whose widest variants still fit the 1024 to the
+    right of the labels (Nova: `Size`, eight columns). Where no single axis fills the width and two
+    fit, the columns are both, the code's later axis inner.
+  - The rows nest the other axes in the code's order, State last: one group per value of the outer
+    axis (Nova: six `Variant` groups), one row per value of the inner one (four `State` rows each). A
+    third axis left over is a level of groups between them. Rows sit 12 apart, each as high as its
+    tallest variant, with no extra space between groups, and each variant is centred in its cell.
+  - Each value is labelled once, in `Matrix` beside the set, never inside a variant: a column's bare
+    value (`sm`) above its column at y 12, centred on it, Medium 12 / 16; a group's value (`outline`)
+    at x 0 on the group's first row, Medium 14 / 20; a row's value (`Hover`) on its row, its right
+    edge 12 before the set, Regular 12 / 16.
+  - Every variant the code styles is drawn, however many the axes multiply to. The grid, not the
+    count, keeps a large set readable, and a variant left out is a value a product cannot place.
 - In the Matrix section, a row's label reads the bare value (`sm`), under a head naming the row axis
   (`Size`); a column's head reads `Prop=value` (`State=Hover`). The section is titled `Matrix`, its
   description `Every variant, labelled by property.`

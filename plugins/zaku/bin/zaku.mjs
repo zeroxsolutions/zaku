@@ -36607,6 +36607,14 @@ function cutReply(reply, limit = REPLY_LIMIT) {
 }
 
 // packages/zaku/dist/lib/domain/documentation-measures.js
+var COVER = {
+  page: 'Thumbnail',
+  frame: 'Thumbnail',
+  width: 1200,
+  height: 675,
+  bleeds: 'Glow',
+  composition: 616,
+};
 var DOCUMENTATION_COMPONENTS_PAGE = 'Component for Docs';
 var vertical = (padding, gap, align) => ({ mode: 'VERTICAL', padding, gap, ...(align ? { align } : {}) });
 var horizontal = (padding, gap, align) => ({ mode: 'HORIZONTAL', padding, gap, ...(align ? { align } : {}) });
@@ -36880,14 +36888,16 @@ var DOCUMENTATION_PARTS = [
       where: 'view',
       type: 'FRAME',
       width: 1200,
-      layout: horizontal([40, 40, 40, 40], 24),
+      layout: horizontal([40, 40, 40, 40], 24, ['CENTER', 'CENTER']),
       paint: 'fill color/background, stroke 1 color/border, radius 14',
     },
     {
       path: ['*', 'Body', section, 'Preview', section],
       where: 'view',
       type: 'FRAME',
-      layout: { mode: 'HORIZONTAL', padding: none, gap: 12, wrap: true },
+      sizing: { horizontal: 'HUG', vertical: 'HUG' },
+      layout: { mode: 'HORIZONTAL', padding: none, gap: 12, crossGap: 12, wrap: true, align: ['MIN', 'CENTER'] },
+      paint: 'centred in the preview, hugging its row of instances',
     },
   ]),
   {
@@ -36902,7 +36912,8 @@ var DOCUMENTATION_PARTS = [
     where: 'view',
     type: 'FRAME',
     width: 744,
-    layout: horizontal([24, 24, 24, 24], 24),
+    sizing: { horizontal: 'FILL', vertical: 'FILL' },
+    layout: horizontal([24, 24, 24, 24], 24, ['CENTER', 'CENTER']),
     paint: 'fill color/background, stroke 1 color/border, radius 14',
   },
   {
@@ -36910,6 +36921,7 @@ var DOCUMENTATION_PARTS = [
     where: 'view',
     type: 'FRAME',
     width: 440,
+    sizing: { horizontal: 'FIXED', vertical: 'HUG' },
     layout: { mode: 'GRID', padding: none, gap: 16, crossGap: 16 },
     paint: 'one column, one Card per part',
   },
@@ -37101,7 +37113,72 @@ function documentationFindings(nodes) {
         });
     }
   }
+  findings.push(...coverFindings(nodes, byId));
   return findings;
+}
+function coverFindings(nodes, byId) {
+  const findings = [];
+  const onCover = (node2) => {
+    if (!node2.box) return null;
+    let x = node2.box.x;
+    let y = node2.box.y;
+    const path2 = [node2.name];
+    for (let up = byId.get(node2.parentId ?? ''); up; up = byId.get(up.parentId ?? '')) {
+      if (up.parentId === node2.page?.id) {
+        if (up.name !== COVER.frame || path2[0] === COVER.bleeds) return null;
+        return { x, y, path: [up.name, ...path2] };
+      }
+      if (!up.box) return null;
+      x += up.box.x;
+      y += up.box.y;
+      path2.unshift(up.name);
+    }
+    return null;
+  };
+  const past = (node2) => {
+    const at = node2.box ? onCover(node2) : null;
+    if (!at || !node2.box) return [];
+    const edges = [
+      ['left', -at.x],
+      ['top', -at.y],
+      ['right', at.x >= COVER.composition ? 0 : at.x + node2.box.width - COVER.width],
+      ['bottom', at.y + node2.box.height - COVER.height],
+    ];
+    return edges
+      .filter(([, by]) => by > 0.5)
+      .map(([edge, by]) => `reaches ${Math.round(by)} past the cover's ${edge} edge`);
+  };
+  for (const node2 of nodes) {
+    if (node2.page?.name !== COVER.page) continue;
+    const reaches = past(node2);
+    if (reaches.length === 0) continue;
+    const parent = byId.get(node2.parentId ?? '');
+    if (parent && past(parent).length > 0) continue;
+    const at = onCover(node2);
+    findings.push({
+      nodeId: node2.id,
+      field: 'bounds',
+      message: `${at?.path.join(' / ') ?? node2.name}: ${reaches.join(', ')}, which cuts it off`,
+    });
+  }
+  return findings;
+}
+var DOCUMENTATION_COMPONENT_NAMES = new Set(
+  DOCUMENTATION_PARTS.filter((part) => part.where === 'components' && part.path.length === 1).map(
+    (part) => part.path[0] ?? '',
+  ),
+);
+function holdsReferenceText(node2) {
+  if (node2.type !== 'TEXT' || node2.characters === void 0) return false;
+  if (node2.page?.name !== DOCUMENTATION_COMPONENTS_PAGE) return false;
+  return DOCUMENTATION_PARTS.some(
+    (part) =>
+      part.where === 'components' &&
+      part.type === 'TEXT' &&
+      part.text === node2.characters &&
+      part.path[0] === node2.frame &&
+      part.path.at(-1) === node2.name,
+  );
 }
 
 // packages/zaku/dist/lib/domain/snapshot-rules.js
@@ -37134,7 +37211,10 @@ function outside(box, width, height) {
 function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
   const policy = copyPolicy(
     copy2,
-    nodes.flatMap((node2) => node2.instance?.carried ?? []),
+    // A documentation component's texts are the reference's own, such as DS/List Item's bullet, not library copy.
+    nodes.flatMap((node2) =>
+      node2.main && DOCUMENTATION_COMPONENT_NAMES.has(node2.main) ? [] : (node2.instance?.carried ?? []),
+    ),
   );
   const findings = [];
   for (const node2 of nodes) {
@@ -37179,7 +37259,7 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
           );
       });
     }
-    if (node2.characters !== void 0) {
+    if (node2.characters !== void 0 && !holdsReferenceText(node2)) {
       for (const issue2 of copyIssues(node2.characters, policy))
         finding('copy', issue2.field, `${label2}: ${issue2.message}`);
     }
@@ -37193,6 +37273,7 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
           if (ALLOWED_OVERRIDES.has(field)) continue;
           if (field === 'fills' && override.picture) continue;
           const self2 = override.nodeId === node2.id;
+          if (!self2 && (field === 'fills' || field === 'strokes') && node2.componentSource === true) continue;
           if (self2 && (field === 'width' || field === 'height') && documentation) continue;
           if (self2 && field === 'width' && node2.instance.sizing.horizontal !== 'FIXED') continue;
           if (self2 && field === 'height' && node2.instance.sizing.vertical !== 'FIXED') continue;

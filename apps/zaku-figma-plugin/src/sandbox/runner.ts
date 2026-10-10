@@ -12,6 +12,8 @@ type AnyNode = {
   remove(): void;
   parent?: AnyNode | null;
   appendChild?(child: AnyNode): void;
+  /** What an instance, or any node with children, holds at every depth. */
+  findAll?(): AnyNode[];
   absoluteTransform?: [[number, number, number], [number, number, number]];
   x?: number;
   y?: number;
@@ -218,20 +220,31 @@ export function createRunner(
       return;
     }
     const snapshot: NodeSnapshot[] = [];
+    const seen = new Set<string>();
+    const add = async (node: AnyNode, created: boolean): Promise<void> => {
+      if (seen.has(node.id)) return;
+      seen.add(node.id);
+      snapshot.push(await host.snapshot(node, created));
+    };
+    // An instance's layers come with it and announce nothing, and check reads their overrides off the instance
+    // that holds them; so a touched node brings the layers of an instance it is and every instance above it.
+    const reach = async (node: AnyNode, created: boolean): Promise<void> => {
+      await add(node, created);
+      if (node.type === 'INSTANCE') for (const layer of node.findAll?.() ?? []) await add(layer, false);
+      for (let up = node.parent; up; up = up.parent) if (up.type === 'INSTANCE') await add(up as AnyNode, false);
+    };
     try {
       const live = run.created.filter((node) => !node.removed && onPage(node));
-      for (const node of live) snapshot.push(await host.snapshot(node, true));
+      for (const node of live) await reach(node, true);
       for (const id of run.mutated) {
         const node = await figma.getNodeByIdAsync(id);
-        if (node && !node.removed) snapshot.push(await host.snapshot(node, false));
+        if (node && !node.removed && node.type !== 'PAGE' && node.type !== 'DOCUMENT')
+          await reach(node as AnyNode, false);
       }
       // A set combined on a page other than the one listened to is heard by no event; its variants still name it.
-      const seen = new Set([...live.map((node) => node.id), ...run.mutated]);
       for (const node of live) {
         const set = node.parent;
-        if (set?.type !== 'COMPONENT_SET' || set.removed || seen.has(set.id)) continue;
-        seen.add(set.id);
-        snapshot.push(await host.snapshot(set, false));
+        if (set?.type === 'COMPONENT_SET' && !set.removed) await add(set, false);
       }
     } catch (error) {
       // Unanswered, the server would wait out its timeout; a change nobody could check is not kept.
