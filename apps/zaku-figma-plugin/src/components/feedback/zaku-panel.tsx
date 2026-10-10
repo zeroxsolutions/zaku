@@ -39,7 +39,7 @@ function ZakuPanel({
   const canCheck = connected && state.file !== null && state.running === null;
   return (
     <div data-slot="zaku-panel" className={cn('flex h-screen flex-col', className)} {...props}>
-      <StatusBar status={status} file={state.file} running={state.running} now={now}>
+      <StatusBar status={status} file={state.file}>
         {/* Unpair revokes through zaku-mcp, so it means nothing while the panel cannot reach it. */}
         {state.pairing.phase === 'paired' && connected && <UnpairDialog onUnpair={unpair} />}
       </StatusBar>
@@ -74,7 +74,15 @@ function ZakuPanel({
           />
         )}
       </main>
-      {connected && <CheckBar count={state.findings?.length ?? null} canCheck={canCheck} onCheck={checkAgain} />}
+      {connected && (
+        <CheckBar
+          count={state.findings?.length ?? null}
+          canCheck={canCheck}
+          running={state.running}
+          now={now}
+          onCheck={checkAgain}
+        />
+      )}
       <ResizeHandle onResize={resize} />
     </div>
   );

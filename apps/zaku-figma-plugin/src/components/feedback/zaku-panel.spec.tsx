@@ -83,6 +83,28 @@ describe('ZakuPanel', () => {
     await expect.element(page.getByRole('textbox', { name: 'Pairing code' })).toBeVisible();
   });
 
+  it('keeps every line of the header on one line at the panel width while a check runs', async () => {
+    await page.viewport(320, 480);
+    await panelOver({
+      pairing: { phase: 'paired' },
+      connection: { state: 'connected', port: 7340 },
+      file: 'Acme',
+      running: { command: 'check', id: 'r', since: 0 },
+      findings: [],
+    });
+    for (const slot of ['status-bar-file', 'status-bar-status']) {
+      const line = document.querySelector<HTMLElement>(`[data-slot="${slot}"]`);
+      if (!line) throw new Error(`no ${slot}`);
+      expect([slot, line.getClientRects().length, line.getBoundingClientRect().height]).toEqual([
+        slot,
+        1,
+        Number.parseFloat(getComputedStyle(line).lineHeight),
+      ]);
+    }
+    await expect.element(page.getByText('Connected on port 7340')).toBeVisible();
+    await expect.element(page.getByText('Checking 0s')).toBeVisible();
+  });
+
   it('hides Unpair while paired and reconnecting', async () => {
     await panelOver({ pairing: { phase: 'paired' }, connection: { state: 'reconnecting', port: 7340 } });
     await expect.element(page.getByText('Reconnecting', { exact: true })).toBeVisible();
