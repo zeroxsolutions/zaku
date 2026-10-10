@@ -2,6 +2,7 @@ import { PLUGIN_VERSION, serverMessageSchema, type FileHello, type PluginMessage
 import { findByPath } from './sandbox/find.js';
 import { outlineNode } from './sandbox/outline.js';
 import { createRunner } from './sandbox/runner.js';
+import { renderScreenshot, type ScreenshotHost } from './sandbox/screenshot.js';
 import { snapshotNode } from './sandbox/snapshot.js';
 
 figma.showUI(__html__, { width: 320, height: 480, themeColors: true });
@@ -129,6 +130,7 @@ async function receive(raw: unknown): Promise<void> {
     }
     return;
   }
+  if (message.type === 'export') return post(await renderScreenshot(figma as unknown as ScreenshotHost, message));
   if (message.type === 'read' || message.type === 'snapshot') {
     try {
       if (message.type === 'read') {

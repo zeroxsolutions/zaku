@@ -35517,6 +35517,377 @@ var ScriptRefused = class extends Error {
   }
 };
 
+// packages/zaku/dist/lib/schema/bridge.js
+var BRIDGE_PORTS = [7337, 7338, 7339, 7340, 7341, 7342, 7343, 7344, 7345, 7346];
+var BRIDGE_PORT_RANGE = `${BRIDGE_PORTS[0]}-${BRIDGE_PORTS[BRIDGE_PORTS.length - 1]}`;
+var SPACING_FIELDS = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing'];
+var paintSchema = external_exports.object({ bound: external_exports.boolean() }).strict();
+var nodeSnapshotSchema = external_exports
+  .object({
+    id: external_exports.string(),
+    name: external_exports.string(),
+    type: external_exports.string(),
+    parentId: external_exports.string().nullable(),
+    /** The name of the top-level frame on the page that holds the node, so a reader finds the screen; null off a page. */
+    frame: external_exports.string().nullable(),
+    created: external_exports.boolean(),
+    fills: external_exports.array(paintSchema),
+    strokes: external_exports.array(paintSchema),
+    /** TEXT only: the style id, `mixed` across ranges, or null when unstyled. */
+    textStyleId: external_exports.string().nullable(),
+    /** A TEXT outside every instance: what it shows. A text an instance holds is read from its override. */
+    characters: external_exports.string().optional(),
+    instance: external_exports
+      .object({
+        /** `picture` marks a layer that holds an image, whose fills override places content rather than restyling. */
+        overrides: external_exports.array(
+          external_exports
+            .object({
+              nodeId: external_exports.string(),
+              fields: external_exports.array(external_exports.string()),
+              picture: external_exports.boolean().optional(),
+              /** On a `characters` override: what the layer now shows. */
+              characters: external_exports.string().optional(),
+            })
+            .strict(),
+        ),
+        /** What the component's text layers left as they are show: the library's own copy. */
+        carried: external_exports.array(external_exports.string()).optional(),
+        sizing: external_exports
+          .object({ horizontal: external_exports.string(), vertical: external_exports.string() })
+          .strict(),
+      })
+      .strict()
+      .nullable(),
+    spacing: external_exports.array(
+      external_exports
+        .object({
+          field: external_exports.enum(SPACING_FIELDS),
+          value: external_exports.number(),
+          bound: external_exports.boolean(),
+        })
+        .strict(),
+    ),
+    /** The page that holds the node; null off a page. Absent from a plugin older than the field. */
+    page: external_exports
+      .object({ id: external_exports.string(), name: external_exports.string() })
+      .strict()
+      .nullable()
+      .optional(),
+    /** Whether the node is a component or a component set, or sits inside one. */
+    componentSource: external_exports.boolean().optional(),
+    /**
+     * A frame, component, set, instance or text: its place in its parent, its size and how it sizes, and its auto
+     * layout. The documentation rule reads it. Absent from a plugin older than the field.
+     */
+    box: external_exports
+      .object({
+        x: external_exports.number(),
+        y: external_exports.number(),
+        width: external_exports.number(),
+        height: external_exports.number(),
+        /** `layoutSizingHorizontal` and `layoutSizingVertical`: FIXED, HUG or FILL. */
+        sizing: external_exports
+          .object({ horizontal: external_exports.string(), vertical: external_exports.string() })
+          .strict(),
+        /** NONE, HORIZONTAL, VERTICAL or GRID. */
+        layout: external_exports.string(),
+        wrap: external_exports.boolean(),
+        /** Top, right, bottom, left. */
+        padding: external_exports.tuple([
+          external_exports.number(),
+          external_exports.number(),
+          external_exports.number(),
+          external_exports.number(),
+        ]),
+        /** The gap along the axis: `itemSpacing`, or a grid's column gap. */
+        gap: external_exports.number(),
+        /** The gap across it: a wrapping row's `counterAxisSpacing`, or a grid's row gap. */
+        crossGap: external_exports.number(),
+        /** `primaryAxisAlignItems`, then `counterAxisAlignItems`. */
+        align: external_exports.tuple([external_exports.string(), external_exports.string()]),
+      })
+      .strict()
+      .optional(),
+    /** TEXT only: the type it is set in; `mixed` where ranges differ. */
+    font: external_exports
+      .object({
+        size: external_exports.union([external_exports.number(), external_exports.literal('mixed')]),
+        /** In px; `auto` for Figma's automatic line height. */
+        lineHeight: external_exports.union([
+          external_exports.number(),
+          external_exports.literal('auto'),
+          external_exports.literal('mixed'),
+        ]),
+        /** The font's style name as the family spells it (`Semi Bold`, `SemiBold`). */
+        style: external_exports.string(),
+      })
+      .strict()
+      .optional(),
+    /** COMPONENT or COMPONENT_SET only: its component properties, by the name a designer reads. */
+    properties: external_exports
+      .array(
+        external_exports
+          .object({
+            name: external_exports.string(),
+            type: external_exports.string(),
+            default: external_exports.union([external_exports.string(), external_exports.boolean()]),
+          })
+          .strict(),
+      )
+      .optional(),
+    /** INSTANCE only: the name of its component, the set's name for a variant. */
+    main: external_exports.string().nullable().optional(),
+    /** COMPONENT_SET only: its size and each variant's box, relative to the set. */
+    set: external_exports
+      .object({
+        width: external_exports.number(),
+        height: external_exports.number(),
+        variants: external_exports.array(
+          external_exports
+            .object({
+              id: external_exports.string(),
+              name: external_exports.string(),
+              x: external_exports.number(),
+              y: external_exports.number(),
+              width: external_exports.number(),
+              height: external_exports.number(),
+            })
+            .strict(),
+        ),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+var outlineNodeSchema = external_exports.lazy(() =>
+  external_exports
+    .object({
+      id: external_exports.string(),
+      name: external_exports.string(),
+      type: external_exports.string(),
+      width: external_exports.number(),
+      height: external_exports.number(),
+      layout: external_exports
+        .object({
+          mode: external_exports.string(),
+          padding: external_exports.tuple([
+            external_exports.number(),
+            external_exports.number(),
+            external_exports.number(),
+            external_exports.number(),
+          ]),
+          gap: external_exports.number(),
+        })
+        .strict()
+        .nullable(),
+      bound: external_exports.record(external_exports.string(), external_exports.string()),
+      component: external_exports
+        .object({ name: external_exports.string(), variant: external_exports.string().nullable() })
+        .strict()
+        .nullable(),
+      text: external_exports.string().nullable(),
+      children: external_exports.array(outlineNodeSchema).optional(),
+    })
+    .strict(),
+);
+var readTargetSchema = external_exports.union([
+  external_exports.object({ nodeId: external_exports.string() }).strict(),
+  /** Names from the page down, `Page/Frame/Layer`. */
+  external_exports.object({ path: external_exports.string() }).strict(),
+]);
+var checkScopeSchema = external_exports.union([
+  external_exports.object({ page: external_exports.literal(true) }).strict(),
+  external_exports.object({ nodeId: external_exports.string() }).strict(),
+  external_exports.object({ all: external_exports.literal(true) }).strict(),
+]);
+var fileHelloSchema = external_exports
+  .object({
+    type: external_exports.literal('hello'),
+    file: external_exports.string(),
+    pages: external_exports.array(
+      external_exports.object({ id: external_exports.string(), name: external_exports.string() }).strict(),
+    ),
+    currentPage: external_exports.string(),
+    selection: external_exports.array(external_exports.string()),
+    pluginVersion: external_exports.string(),
+    user: external_exports.string().nullable(),
+  })
+  .strict();
+var sessionViewSchema = fileHelloSchema.omit({ type: true });
+var credentialSchema = external_exports.union([
+  external_exports.object({ code: external_exports.string().max(32) }).strict(),
+  external_exports.object({ token: external_exports.string().max(128) }).strict(),
+]);
+var helloSchema = fileHelloSchema.extend({ credential: credentialSchema }).strict();
+var REFUSAL_REASONS = ['wrong-code', 'expired-code', 'used-up-code', 'unknown-token'];
+var SCREENSHOT_LIMITS = {
+  maxBytes: 375e4,
+  minScale: 0.1,
+  maxScale: 4,
+  minDimension: 64,
+  maxDimension: 4096,
+  defaultDimension: 1568,
+  /** A maxDimension never enlarges a node past this scale, so a small node does not come back blurred. */
+  maxUpscale: 2,
+};
+var screenshotSizeSchema = external_exports.union([
+  external_exports
+    .object({ scale: external_exports.number().min(SCREENSHOT_LIMITS.minScale).max(SCREENSHOT_LIMITS.maxScale) })
+    .strict(),
+  external_exports
+    .object({
+      maxDimension: external_exports
+        .number()
+        .int()
+        .min(SCREENSHOT_LIMITS.minDimension)
+        .max(SCREENSHOT_LIMITS.maxDimension),
+    })
+    .strict(),
+]);
+var screenshotSchema = external_exports
+  .object({
+    nodeId: external_exports.string().describe('The node rendered'),
+    name: external_exports.string().describe("The node's name"),
+    width: external_exports.number().int().describe("The PNG's width in pixels"),
+    height: external_exports.number().int().describe("The PNG's height in pixels"),
+    scale: external_exports.number().describe("The PNG's pixels per unit of the node's size in Figma"),
+  })
+  .strict();
+var EXPORT_REFUSALS = ['missing', 'not-exportable', 'too-large', 'failed'];
+var pluginMessageSchema = external_exports.discriminatedUnion('type', [
+  helloSchema,
+  /** The panel's Unpair: the server forgets the token this connection presented, and closes it. */
+  external_exports.object({ type: external_exports.literal('unpair') }).strict(),
+  /** The panel's Check again: the server checks the scope and pushes the findings back. */
+  external_exports.object({ type: external_exports.literal('check'), scope: checkScopeSchema }).strict(),
+  external_exports
+    .object({
+      type: external_exports.literal('state'),
+      currentPage: external_exports.string(),
+      selection: external_exports.array(external_exports.string()),
+    })
+    .strict(),
+  external_exports
+    .object({
+      type: external_exports.literal('ran'),
+      runId: external_exports.string(),
+      ok: external_exports.literal(true),
+      value: external_exports.unknown(),
+      created: external_exports.array(external_exports.string()),
+      mutated: external_exports.array(external_exports.string()),
+      snapshot: external_exports.array(nodeSnapshotSchema),
+    })
+    .strict(),
+  external_exports
+    .object({
+      type: external_exports.literal('threw'),
+      runId: external_exports.string(),
+      error: external_exports.string(),
+      /** Nodes that existed before the run and were changed; removing created nodes cannot undo them. */
+      untouchable: external_exports.array(external_exports.string()),
+      /** Nodes the run made that the plugin could not remove: they are still in the file. */
+      left: external_exports.array(external_exports.string()).default([]),
+    })
+    .strict(),
+  external_exports
+    .object({
+      type: external_exports.literal('settled'),
+      runId: external_exports.string(),
+      outcome: external_exports.enum(['committed', 'rolled-back']),
+      /** Nodes that existed before the run and were changed; removing created nodes cannot undo them. */
+      untouchable: external_exports.array(external_exports.string()),
+      /** Nodes the run made that the plugin could not remove: they are still in the file. */
+      left: external_exports.array(external_exports.string()).default([]),
+    })
+    .strict(),
+  external_exports
+    .object({
+      type: external_exports.literal('read-result'),
+      requestId: external_exports.string(),
+      nodes: external_exports.array(outlineNodeSchema).optional(),
+      snapshot: external_exports.array(nodeSnapshotSchema).optional(),
+      error: external_exports.string().optional(),
+    })
+    .strict(),
+  /** A node rendered: its name, the PNG's size in pixels, the scale it was rendered at, and the PNG as base64. */
+  external_exports
+    .object({
+      type: external_exports.literal('exported'),
+      requestId: external_exports.string(),
+      name: external_exports.string(),
+      width: external_exports.number().int(),
+      height: external_exports.number().int(),
+      scale: external_exports.number(),
+      png: external_exports.string(),
+    })
+    .strict(),
+  /** Nothing rendered; a render too large names its size in pixels, and in bytes once it was encoded. */
+  external_exports
+    .object({
+      type: external_exports.literal('export-refused'),
+      requestId: external_exports.string(),
+      reason: external_exports.enum(EXPORT_REFUSALS),
+      bytes: external_exports.number().int().optional(),
+      width: external_exports.number().int().optional(),
+      height: external_exports.number().int().optional(),
+      error: external_exports.string().optional(),
+    })
+    .strict(),
+]);
+var serverMessageSchema = external_exports.discriminatedUnion('type', [
+  external_exports
+    .object({
+      type: external_exports.literal('run'),
+      runId: external_exports.string(),
+      script: external_exports.string(),
+      timeoutMs: external_exports.number().int().positive(),
+      holdMs: external_exports.number().int().positive(),
+    })
+    .strict(),
+  external_exports
+    .object({
+      type: external_exports.literal('decide'),
+      runId: external_exports.string(),
+      decision: external_exports.enum(['commit', 'rollback']),
+    })
+    .strict(),
+  external_exports
+    .object({
+      type: external_exports.literal('read'),
+      requestId: external_exports.string(),
+      target: readTargetSchema,
+      depth: external_exports.number().int().min(0),
+    })
+    .strict(),
+  external_exports
+    .object({
+      type: external_exports.literal('snapshot'),
+      requestId: external_exports.string(),
+      scope: checkScopeSchema,
+    })
+    .strict(),
+  /** Render one node as a PNG no larger than `maxBytes`. */
+  external_exports
+    .object({
+      type: external_exports.literal('export'),
+      requestId: external_exports.string(),
+      nodeId: external_exports.string(),
+      size: screenshotSizeSchema,
+      maxBytes: external_exports.number().int().positive(),
+    })
+    .strict(),
+  external_exports
+    .object({ type: external_exports.literal('findings'), findings: external_exports.array(findingSchema) })
+    .strict(),
+  external_exports.object({ type: external_exports.literal('select'), nodeId: external_exports.string() }).strict(),
+  /** The answer to a valid code: the token the plugin presents from then on. */
+  external_exports.object({ type: external_exports.literal('paired'), token: external_exports.string() }).strict(),
+  external_exports
+    .object({ type: external_exports.literal('refused'), reason: external_exports.enum(REFUSAL_REASONS) })
+    .strict(),
+]);
+
 // packages/zaku/dist/lib/utils/unavailable.js
 function unavailable(what) {
   return new Proxy(
@@ -36613,7 +36984,10 @@ var COVER = {
   width: 1200,
   height: 675,
   bleeds: 'Glow',
-  composition: 616,
+  /** The frame the brand mark is placed in, which keeps the brand's own colours. */
+  logo: 'Logo',
+  bleed: 0.25,
+  margin: 72,
 };
 var DOCUMENTATION_COMPONENTS_PAGE = 'Component for Docs';
 var vertical = (padding, gap, align) => ({ mode: 'VERTICAL', padding, gap, ...(align ? { align } : {}) });
@@ -37117,49 +37491,99 @@ function documentationFindings(nodes) {
   return findings;
 }
 function coverFindings(nodes, byId) {
-  const findings = [];
-  const onCover = (node2) => {
-    if (!node2.box) return null;
+  const layers = /* @__PURE__ */ new Map();
+  const place = (node2) => {
+    const known = layers.get(node2.id);
+    if (known) return known;
+    const parent = byId.get(node2.parentId ?? '');
+    if (!node2.box || !parent || parent.type === 'INSTANCE') return null;
     let x = node2.box.x;
     let y = node2.box.y;
-    const path2 = [node2.name];
-    for (let up = byId.get(node2.parentId ?? ''); up; up = byId.get(up.parentId ?? '')) {
-      if (up.parentId === node2.page?.id) {
-        if (up.name !== COVER.frame || path2[0] === COVER.bleeds) return null;
-        return { x, y, path: [up.name, ...path2] };
-      }
-      if (!up.box) return null;
-      x += up.box.x;
-      y += up.box.y;
-      path2.unshift(up.name);
+    let path2;
+    let above = [];
+    if (parent.parentId === node2.page?.id) {
+      if (parent.name !== COVER.frame || node2.name === COVER.bleeds) return null;
+      path2 = [parent.name, node2.name];
+    } else {
+      const up = place(parent);
+      if (!up) return null;
+      x += up.x;
+      y += up.y;
+      path2 = [...up.path, node2.name];
+      above = [up, ...up.above];
     }
-    return null;
+    const block = node2.type === 'INSTANCE' || !nodes.some((other) => other.parentId === node2.id);
+    const layer = {
+      node: node2,
+      x,
+      y,
+      right: x + node2.box.width,
+      bottom: y + node2.box.height,
+      path: path2,
+      block,
+      above,
+    };
+    layers.set(node2.id, layer);
+    return layer;
   };
-  const past = (node2) => {
-    const at = node2.box ? onCover(node2) : null;
-    if (!at || !node2.box) return [];
-    const edges = [
-      ['left', -at.x],
-      ['top', -at.y],
-      ['right', at.x >= COVER.composition ? 0 : at.x + node2.box.width - COVER.width],
-      ['bottom', at.y + node2.box.height - COVER.height],
-    ];
-    return edges
-      .filter(([, by]) => by > 0.5)
+  for (const node2 of nodes) if (node2.page?.name === COVER.page) place(node2);
+  const all = [...layers.values()];
+  const blocks = all.filter((layer) => layer.block);
+  const past = (right) => right - COVER.width;
+  const columnBleeds = (layer) =>
+    blocks.some(
+      (other) =>
+        Math.abs(other.x - layer.x) <= TOLERANCE &&
+        past(other.right) > TOLERANCE &&
+        past(other.right) >= COVER.bleed * (other.node.box?.width ?? 0),
+    );
+  const findings = [];
+  const add = (layer, field, message) => {
+    findings.push({ nodeId: layer.node.id, field, message: `${layer.path.join(' / ')}: ${message}` });
+  };
+  const cut = (layer) =>
+    [
+      ['left', -layer.x],
+      ['top', -layer.y],
+      ['bottom', layer.bottom - COVER.height],
+    ]
+      .filter(([, by]) => by > TOLERANCE)
       .map(([edge, by]) => `reaches ${Math.round(by)} past the cover's ${edge} edge`);
-  };
-  for (const node2 of nodes) {
-    if (node2.page?.name !== COVER.page) continue;
-    const reaches = past(node2);
-    if (reaches.length === 0) continue;
-    const parent = byId.get(node2.parentId ?? '');
-    if (parent && past(parent).length > 0) continue;
-    const at = onCover(node2);
-    findings.push({
-      nodeId: node2.id,
-      field: 'bounds',
-      message: `${at?.path.join(' / ') ?? node2.name}: ${reaches.join(', ')}, which cuts it off`,
-    });
+  for (const layer of all) {
+    const reaches = cut(layer);
+    if (reaches.length > 0 && !layer.above.some((up) => cut(up).length > 0))
+      add(layer, 'bounds', `${reaches.join(', ')}, which cuts it off`);
+    const over = past(layer.right);
+    if (layer.block) {
+      if (columnBleeds(layer)) continue;
+      const width = Math.round(layer.node.box?.width ?? 0);
+      if (over > TOLERANCE)
+        add(
+          layer,
+          'bounds',
+          `crosses the cover's right edge by ${Math.round(over)} of its ${width}; bleed a quarter of its width past it, or end it ${COVER.margin} inside`,
+        );
+      else if (past(layer.right + COVER.margin) > TOLERANCE)
+        add(
+          layer,
+          'bounds',
+          `ends ${Math.round(-over)} inside the cover's right edge, within its ${COVER.margin} margin`,
+        );
+      continue;
+    }
+    if (over <= TOLERANCE) continue;
+    const inside = all.filter((other) => other.above.includes(layer));
+    const bleeding = inside.filter((other) => other.block && past(other.right) > TOLERANCE && columnBleeds(other));
+    const reach = Math.max(COVER.width, ...bleeding.map((other) => other.right));
+    if (layer.right <= reach + TOLERANCE) continue;
+    if (inside.some((other) => Math.abs(other.right - layer.right) <= TOLERANCE)) continue;
+    add(
+      layer,
+      'bounds',
+      bleeding.length > 0
+        ? `reaches ${Math.round(layer.right - reach)} past the layers that bleed from it at the cover's right edge`
+        : `reaches ${Math.round(over)} past the cover's right edge, and nothing in it bleeds`,
+    );
   }
   return findings;
 }
@@ -37217,6 +37641,13 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
     ),
   );
   const findings = [];
+  const byId = new Map(nodes.map((node2) => [node2.id, node2]));
+  const brandMark = (node2) => {
+    if (node2.page?.name !== COVER.page) return false;
+    for (let up = byId.get(node2.parentId ?? ''); up; up = byId.get(up.parentId ?? ''))
+      if (up.name === COVER.logo) return true;
+    return false;
+  };
   for (const node2 of nodes) {
     const label2 = `${node2.name} (${node2.type.toLowerCase()})`;
     const finding = (check2, field, message, nodeId = node2.id) => {
@@ -37229,8 +37660,11 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
       });
     };
     const documentation = isDocumentation(node2);
-    if (node2.fills.some((paint) => !paint.bound)) finding('binding', 'fill', `${label2}: fill is a raw value`);
-    if (node2.strokes.some((paint) => !paint.bound)) finding('binding', 'stroke', `${label2}: stroke is a raw value`);
+    const mark = brandMark(node2);
+    if (!mark && node2.fills.some((paint) => !paint.bound))
+      finding('binding', 'fill', `${label2}: fill is a raw value`);
+    if (!mark && node2.strokes.some((paint) => !paint.bound))
+      finding('binding', 'stroke', `${label2}: stroke is a raw value`);
     if (node2.type === 'TEXT' && node2.textStyleId === null && !documentation)
       finding('binding', 'textStyle', `${label2}: text has no library text style`);
     for (const space of documentation ? [] : node2.spacing) {

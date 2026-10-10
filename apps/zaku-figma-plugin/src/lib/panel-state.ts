@@ -11,7 +11,7 @@ import { storedToken, type Connection } from './relay.js';
 export type Finding = Extract<ServerMessage, { type: 'findings' }>['findings'][number];
 
 export interface Running {
-  command: 'execute' | 'read' | 'check';
+  command: 'execute' | 'read' | 'check' | 'screenshot';
   id: string;
   since: number;
 }
@@ -66,6 +66,8 @@ function toSandbox(state: PanelState, message: ServerMessage, now: number): Pane
   if (message.type === 'read') return { ...state, running: { command: 'read', id: message.requestId, since: now } };
   if (message.type === 'snapshot')
     return { ...state, running: { command: 'check', id: message.requestId, since: now } };
+  if (message.type === 'export')
+    return { ...state, running: { command: 'screenshot', id: message.requestId, since: now } };
   if (message.type === 'findings') return { ...state, findings: message.findings };
   if (message.type === 'paired') return { ...state, pairing: { phase: 'paired' } };
   if (message.type === 'refused') return { ...state, pairing: { phase: 'unpaired', refusal: message.reason } };
@@ -78,7 +80,7 @@ function fromSandbox(state: PanelState, message: PluginMessage): PanelState {
   const answered =
     message.type === 'settled' || message.type === 'threw'
       ? message.runId
-      : message.type === 'read-result'
+      : message.type === 'read-result' || message.type === 'exported' || message.type === 'export-refused'
         ? message.requestId
         : null;
   return answered !== null && state.running?.id === answered ? { ...state, running: null } : state;

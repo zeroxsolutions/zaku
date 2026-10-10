@@ -187,6 +187,27 @@ describe('snapshotFindings', () => {
   });
   describe('in the library file', () => {
     const entryPage = { id: '0:7', name: '\u2756 Tag' };
+    const coverPage = { id: '3:12', name: 'Thumbnail' };
+
+    it("leaves the brand mark in the cover's Logo frame its own colours, and holds every other cover layer to tokens", () => {
+      const logo = node({ id: '5:1', name: 'Logo', page: coverPage, parentId: '5:9', componentSource: false });
+      const svg = node({ id: '5:2', name: 'shadcn/ui', page: coverPage, parentId: '5:1', componentSource: false });
+      const mark = node({
+        id: '5:3',
+        type: 'VECTOR',
+        name: 'Vector',
+        page: coverPage,
+        parentId: '5:2',
+        componentSource: false,
+        fills: [{ bound: false }],
+      });
+      const badge = node({ id: '5:4', name: 'Stack', page: coverPage, parentId: '5:9', fills: [{ bound: false }] });
+      const bindings = snapshotFindings([logo, svg, mark, badge])
+        .filter((f) => f.check === 'binding')
+        .map((f) => f.nodeId);
+      expect(bindings).toEqual(['5:4']);
+    });
+
     const rawSpacing = [{ field: 'paddingTop' as const, value: 48, bound: false }];
     const docsPage = { id: '0:3', name: 'Component for Docs' };
     const bullet = (patch: Partial<NodeSnapshot>): NodeSnapshot =>

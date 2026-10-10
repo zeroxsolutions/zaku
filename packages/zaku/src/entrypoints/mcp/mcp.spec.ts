@@ -8,7 +8,7 @@ import WebSocket from 'ws';
 import type { CallToolResult, ClientCapabilities } from '@modelcontextprotocol/sdk/types.js';
 import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv';
 import { ElicitRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import type { OutlineNode, ServerMessage } from '../../lib/schema/bridge.js';
+import { SCREENSHOT_LIMITS, type OutlineNode, type ServerMessage } from '../../lib/schema/bridge.js';
 import { fakePlugin, obedient, unboundCard, type Behaviour } from './fake-plugin.testing.js';
 import { startMcp, type McpRuntime } from './main.js';
 
@@ -142,7 +142,7 @@ afterEach(async () => {
 });
 
 describe('zaku-mcp over a real socket', () => {
-  it('lists the eight tools', async () => {
+  it('lists the nine tools', async () => {
     const { runtime } = await setup();
     const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
     await runtime.server.close();
@@ -153,6 +153,7 @@ describe('zaku-mcp over a real socket', () => {
     expect(tools.map((tool) => tool.name).sort()).toEqual([
       'check',
       'execute',
+      'get_screenshot',
       'get_state',
       'pair',
       'pairings',
@@ -501,7 +502,8 @@ async function declaredAnswer(
 ): Promise<Record<string, unknown>> {
   const { tools } = await client.listTools();
   const tool = tools.find((listed) => listed.name === name);
-  expect(tool?.description?.length).toBeLessThanOrEqual(120);
+  // The first sentence says what comes back; the limits the call runs under follow it.
+  expect(tool?.description?.length).toBeLessThanOrEqual(400);
   const inputs = Object.entries(tool?.inputSchema.properties ?? {}).map(([field, property]) => ({
     field,
     description: (property as { description?: unknown }).description,
@@ -608,6 +610,102 @@ describe('every tool declares what it takes and answers', () => {
     const { client, dial, newCode } = await setup();
     await dial(hello({ code: await newCode() }));
     expect(await declaredAnswer(client, 'unpair', { id: 'all' })).toEqual({ revoked: 1 });
+  });
+
+  it('get_screenshot answers the PNG as an image, beside the node, its size in pixels and the scale', async () => {
+    const { client, plugin } = await setup();
+    const asked: ServerMessage[] = [];
+    await plugin('A', (message, send) => {
+      if (message.type !== 'export') return;
+      asked.push(message);
+      send({
+        type: 'exported',
+        requestId: message.requestId,
+        name: 'Nova / Button',
+        width: 1258,
+        height: 1568,
+        scale: 0.874,
+        png: 'iVBORw0KGgo=',
+      });
+    });
+    expect(await declaredAnswer(client, 'get_screenshot', { nodeId: '1:1' })).toEqual({
+      nodeId: '1:1',
+      name: 'Nova / Button',
+      width: 1258,
+      height: 1568,
+      scale: 0.874,
+    });
+    expect(asked).toEqual([
+      {
+        type: 'export',
+        requestId: expect.any(String),
+        nodeId: '1:1',
+        size: { maxDimension: SCREENSHOT_LIMITS.defaultDimension },
+        maxBytes: SCREENSHOT_LIMITS.maxBytes,
+      },
+    ]);
+    const result = (await client.callTool({
+      name: 'get_screenshot',
+      arguments: { nodeId: '1:1', scale: 2 },
+    })) as CallToolResult;
+    expect(result.content).toContainEqual({ type: 'image', data: 'iVBORw0KGgo=', mimeType: 'image/png' });
+    expect(asked[1]).toMatchObject({ size: { scale: 2 } });
+  });
+
+  it('refuses a screenshot too large to carry, rendering nothing, and names the smaller call to make', async () => {
+    const { client, plugin } = await setup();
+    await plugin('A', (message, send) => {
+      if (message.type === 'export')
+        send({
+          type: 'export-refused',
+          requestId: message.requestId,
+          reason: 'too-large',
+          bytes: 7_500_000,
+          width: 2880,
+          height: 3588,
+        });
+    });
+    const result = (await client.callTool({
+      name: 'get_screenshot',
+      arguments: { nodeId: '1:1', scale: 2 },
+    })) as CallToolResult;
+    expect(result.isError).toBe(true);
+    expect(result).not.toHaveProperty('structuredContent');
+    const [text] = result.content;
+    expect(text?.type === 'text' ? text.text : '').toMatch(
+      /7500000 bytes.*3750000.*Nothing was sent.*get_screenshot.*maxDimension \d+/s,
+    );
+  });
+
+  it('refuses a node the file does not have, and points at read for its id', async () => {
+    const { client, plugin } = await setup();
+    await plugin('A', (message, send) => {
+      if (message.type === 'export') send({ type: 'export-refused', requestId: message.requestId, reason: 'missing' });
+    });
+    const result = (await client.callTool({ name: 'get_screenshot', arguments: { nodeId: '9:9' } })) as CallToolResult;
+    expect(result.isError).toBe(true);
+    const [text] = result.content;
+    expect(text?.type === 'text' ? text.text : '').toMatch(/9:9.*Nothing was rendered.*read/s);
+  });
+
+  it('gives every tool a title and all four hints, and marks get_screenshot read-only', async () => {
+    const { client } = await setup();
+    const { tools } = await client.listTools();
+    for (const tool of tools) {
+      expect(tool.title, tool.name).toEqual(expect.any(String));
+      expect(Object.keys(tool.annotations ?? {}).sort(), tool.name).toEqual([
+        'destructiveHint',
+        'idempotentHint',
+        'openWorldHint',
+        'readOnlyHint',
+      ]);
+    }
+    expect(tools.find((tool) => tool.name === 'get_screenshot')?.annotations).toEqual({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    });
   });
 
   it('answers a refusal as an error with its text and no structured content', async () => {

@@ -173,58 +173,119 @@ export function documentationFindings(nodes: readonly NodeSnapshot[]): Documenta
   return findings;
 }
 
+/** Where a layer of the cover stands: its box on the cover, and the names from the cover down. */
+interface CoverLayer {
+  node: NodeSnapshot;
+  x: number;
+  y: number;
+  right: number;
+  bottom: number;
+  path: string[];
+  /** An instance, or a layer with nothing under it in the snapshot: judged by its own box. */
+  block: boolean;
+  /** The cover layers above it, nearest first. */
+  above: CoverLayer[];
+}
+
 /**
- * Every layer of the cover that reaches past its frame, which clips it; only the outermost of a run that does. The
- * glow runs off every edge, and the composition off the right. A layer whose layers above it the snapshot lacks is left.
+ * Every layer of the cover that its frame cuts off. The glow runs off every edge. At the right edge a layer bleeds
+ * when its column, the blocks that start where it starts, runs a quarter of a block's width past the edge, as the
+ * measured cover's second column does; a block that crosses the edge by less, or ends inside the right margin, is
+ * a mistake, and a frame may reach past the edge only as far as a bleeding layer in it. A layer whose layers above
+ * it the snapshot lacks, or that sits inside an instance, is left to the instance.
  */
 function coverFindings(
   nodes: readonly NodeSnapshot[],
   byId: ReadonlyMap<string, NodeSnapshot>,
 ): DocumentationFinding[] {
-  const findings: DocumentationFinding[] = [];
-  /** The node's box on the cover, and the names from the cover down; null off the cover or inside the glow. */
-  const onCover = (node: NodeSnapshot): { x: number; y: number; path: string[] } | null => {
-    if (!node.box) return null;
+  const layers = new Map<string, CoverLayer>();
+  const place = (node: NodeSnapshot): CoverLayer | null => {
+    const known = layers.get(node.id);
+    if (known) return known;
+    const parent = byId.get(node.parentId ?? '');
+    if (!node.box || !parent || parent.type === 'INSTANCE') return null;
     let x = node.box.x;
     let y = node.box.y;
-    const path = [node.name];
-    for (let up = byId.get(node.parentId ?? ''); up; up = byId.get(up.parentId ?? '')) {
-      if (up.parentId === node.page?.id) {
-        if (up.name !== COVER.frame || path[0] === COVER.bleeds) return null;
-        return { x, y, path: [up.name, ...path] };
-      }
-      if (!up.box) return null;
-      x += up.box.x;
-      y += up.box.y;
-      path.unshift(up.name);
+    let path: string[];
+    let above: CoverLayer[] = [];
+    if (parent.parentId === node.page?.id) {
+      if (parent.name !== COVER.frame || node.name === COVER.bleeds) return null;
+      path = [parent.name, node.name];
+    } else {
+      const up = place(parent);
+      if (!up) return null;
+      x += up.x;
+      y += up.y;
+      path = [...up.path, node.name];
+      above = [up, ...up.above];
     }
-    return null;
+    const block = node.type === 'INSTANCE' || !nodes.some((other) => other.parentId === node.id);
+    const layer = { node, x, y, right: x + node.box.width, bottom: y + node.box.height, path, block, above };
+    layers.set(node.id, layer);
+    return layer;
   };
-  const past = (node: NodeSnapshot): string[] => {
-    const at = node.box ? onCover(node) : null;
-    if (!at || !node.box) return [];
-    const edges: [string, number][] = [
-      ['left', -at.x],
-      ['top', -at.y],
-      ['right', at.x >= COVER.composition ? 0 : at.x + node.box.width - COVER.width],
-      ['bottom', at.y + node.box.height - COVER.height],
-    ];
-    return edges
-      .filter(([, by]) => by > 0.5)
+  for (const node of nodes) if (node.page?.name === COVER.page) place(node);
+  const all = [...layers.values()];
+  const blocks = all.filter((layer) => layer.block);
+  const past = (right: number): number => right - COVER.width;
+  /** Whether the blocks that start at the block's left edge run a quarter of one's width past the right edge. */
+  const columnBleeds = (layer: CoverLayer): boolean =>
+    blocks.some(
+      (other) =>
+        Math.abs(other.x - layer.x) <= TOLERANCE &&
+        past(other.right) > TOLERANCE &&
+        past(other.right) >= COVER.bleed * (other.node.box?.width ?? 0),
+    );
+  const findings: DocumentationFinding[] = [];
+  const add = (layer: CoverLayer, field: string, message: string): void => {
+    findings.push({ nodeId: layer.node.id, field, message: `${layer.path.join(' / ')}: ${message}` });
+  };
+  const cut = (layer: CoverLayer): string[] =>
+    (
+      [
+        ['left', -layer.x],
+        ['top', -layer.y],
+        ['bottom', layer.bottom - COVER.height],
+      ] as const
+    )
+      .filter(([, by]) => by > TOLERANCE)
       .map(([edge, by]) => `reaches ${Math.round(by)} past the cover's ${edge} edge`);
-  };
-  for (const node of nodes) {
-    if (node.page?.name !== COVER.page) continue;
-    const reaches = past(node);
-    if (reaches.length === 0) continue;
-    const parent = byId.get(node.parentId ?? '');
-    if (parent && past(parent).length > 0) continue;
-    const at = onCover(node);
-    findings.push({
-      nodeId: node.id,
-      field: 'bounds',
-      message: `${at?.path.join(' / ') ?? node.name}: ${reaches.join(', ')}, which cuts it off`,
-    });
+  for (const layer of all) {
+    const reaches = cut(layer);
+    if (reaches.length > 0 && !layer.above.some((up) => cut(up).length > 0))
+      add(layer, 'bounds', `${reaches.join(', ')}, which cuts it off`);
+    const over = past(layer.right);
+    if (layer.block) {
+      if (columnBleeds(layer)) continue;
+      const width = Math.round(layer.node.box?.width ?? 0);
+      if (over > TOLERANCE)
+        add(
+          layer,
+          'bounds',
+          `crosses the cover's right edge by ${Math.round(over)} of its ${width}; bleed a quarter of its width past it, or end it ${COVER.margin} inside`,
+        );
+      else if (past(layer.right + COVER.margin) > TOLERANCE)
+        add(
+          layer,
+          'bounds',
+          `ends ${Math.round(-over)} inside the cover's right edge, within its ${COVER.margin} margin`,
+        );
+      continue;
+    }
+    if (over <= TOLERANCE) continue;
+    const inside = all.filter((other) => other.above.includes(layer));
+    const bleeding = inside.filter((other) => other.block && past(other.right) > TOLERANCE && columnBleeds(other));
+    const reach = Math.max(COVER.width, ...bleeding.map((other) => other.right));
+    if (layer.right <= reach + TOLERANCE) continue;
+    // A frame hugging a layer that crosses the edge is reported through that layer.
+    if (inside.some((other) => Math.abs(other.right - layer.right) <= TOLERANCE)) continue;
+    add(
+      layer,
+      'bounds',
+      bleeding.length > 0
+        ? `reaches ${Math.round(layer.right - reach)} past the layers that bleed from it at the cover's right edge`
+        : `reaches ${Math.round(over)} past the cover's right edge, and nothing in it bleeds`,
+    );
   }
   return findings;
 }

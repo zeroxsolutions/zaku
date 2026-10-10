@@ -2,6 +2,7 @@ import type { NodeSnapshot } from '../schema/bridge.js';
 import { DEFAULT_COPY, type CopyConfig } from '../schema/zaku-config.js';
 import { ALLOWED_OVERRIDES } from './checks/overrides.js';
 import { copyIssues, copyPolicy } from './copy-rules.js';
+import { COVER } from './documentation-measures.js';
 import { DOCUMENTATION_COMPONENT_NAMES, documentationFindings, holdsReferenceText } from './documentation-rule.js';
 import type { Finding } from './findings.js';
 import { isDefaultLayerName } from './layer-names.js';
@@ -63,6 +64,14 @@ export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfi
     ),
   );
   const findings: Finding[] = [];
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  /** Whether the node is the brand's mark, placed from its SVG inside the cover's Logo frame in the brand's colours. */
+  const brandMark = (node: NodeSnapshot): boolean => {
+    if (node.page?.name !== COVER.page) return false;
+    for (let up = byId.get(node.parentId ?? ''); up; up = byId.get(up.parentId ?? ''))
+      if (up.name === COVER.logo) return true;
+    return false;
+  };
   for (const node of nodes) {
     const label = `${node.name} (${node.type.toLowerCase()})`;
     const finding = (check: Finding['check'], field: string | undefined, message: string, nodeId = node.id): void => {
@@ -75,8 +84,10 @@ export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfi
       });
     };
     const documentation = isDocumentation(node);
-    if (node.fills.some((paint) => !paint.bound)) finding('binding', 'fill', `${label}: fill is a raw value`);
-    if (node.strokes.some((paint) => !paint.bound)) finding('binding', 'stroke', `${label}: stroke is a raw value`);
+    const mark = brandMark(node);
+    if (!mark && node.fills.some((paint) => !paint.bound)) finding('binding', 'fill', `${label}: fill is a raw value`);
+    if (!mark && node.strokes.some((paint) => !paint.bound))
+      finding('binding', 'stroke', `${label}: stroke is a raw value`);
     if (node.type === 'TEXT' && node.textStyleId === null && !documentation)
       finding('binding', 'textStyle', `${label}: text has no library text style`);
     for (const space of documentation ? [] : node.spacing) {

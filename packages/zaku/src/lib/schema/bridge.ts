@@ -210,6 +210,46 @@ export const helloSchema = fileHelloSchema.extend({ credential: credentialSchema
 /** Why the server refused a connection's credential; it closes the connection after saying so. */
 export const REFUSAL_REASONS = ['wrong-code', 'expired-code', 'used-up-code', 'unknown-token'] as const;
 
+/**
+ * What a screenshot may be. Figma's exportAsync documents no size limit of its own; these are the image a model
+ * can read. The Claude API takes an image of at most 5 MB, which the base64 of `maxBytes` of PNG stays under, and
+ * scales one whose longer side passes 1568 px down before reading it, so that is the default.
+ */
+export const SCREENSHOT_LIMITS = {
+  maxBytes: 3_750_000,
+  minScale: 0.1,
+  maxScale: 4,
+  minDimension: 64,
+  maxDimension: 4096,
+  defaultDimension: 1568,
+  /** A maxDimension never enlarges a node past this scale, so a small node does not come back blurred. */
+  maxUpscale: 2,
+} as const;
+
+/** How large to render: a scale of the node's size, or the length its longer side is rendered at. */
+export const screenshotSizeSchema = z.union([
+  z.object({ scale: z.number().min(SCREENSHOT_LIMITS.minScale).max(SCREENSHOT_LIMITS.maxScale) }).strict(),
+  z
+    .object({
+      maxDimension: z.number().int().min(SCREENSHOT_LIMITS.minDimension).max(SCREENSHOT_LIMITS.maxDimension),
+    })
+    .strict(),
+]);
+
+/** A node rendered as a PNG, as get_screenshot reports it beside the image. */
+export const screenshotSchema = z
+  .object({
+    nodeId: z.string().describe('The node rendered'),
+    name: z.string().describe("The node's name"),
+    width: z.number().int().describe("The PNG's width in pixels"),
+    height: z.number().int().describe("The PNG's height in pixels"),
+    scale: z.number().describe("The PNG's pixels per unit of the node's size in Figma"),
+  })
+  .strict();
+
+/** Why the sandbox rendered nothing: no such node, a node with no image (a page), too large, or Figma threw. */
+export const EXPORT_REFUSALS = ['missing', 'not-exportable', 'too-large', 'failed'] as const;
+
 export const pluginMessageSchema = z.discriminatedUnion('type', [
   helloSchema,
   /** The panel's Unpair: the server forgets the token this connection presented, and closes it. */
@@ -259,6 +299,30 @@ export const pluginMessageSchema = z.discriminatedUnion('type', [
       error: z.string().optional(),
     })
     .strict(),
+  /** A node rendered: its name, the PNG's size in pixels, the scale it was rendered at, and the PNG as base64. */
+  z
+    .object({
+      type: z.literal('exported'),
+      requestId: z.string(),
+      name: z.string(),
+      width: z.number().int(),
+      height: z.number().int(),
+      scale: z.number(),
+      png: z.string(),
+    })
+    .strict(),
+  /** Nothing rendered; a render too large names its size in pixels, and in bytes once it was encoded. */
+  z
+    .object({
+      type: z.literal('export-refused'),
+      requestId: z.string(),
+      reason: z.enum(EXPORT_REFUSALS),
+      bytes: z.number().int().optional(),
+      width: z.number().int().optional(),
+      height: z.number().int().optional(),
+      error: z.string().optional(),
+    })
+    .strict(),
 ]);
 
 export const serverMessageSchema = z.discriminatedUnion('type', [
@@ -281,6 +345,16 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
     })
     .strict(),
   z.object({ type: z.literal('snapshot'), requestId: z.string(), scope: checkScopeSchema }).strict(),
+  /** Render one node as a PNG no larger than `maxBytes`. */
+  z
+    .object({
+      type: z.literal('export'),
+      requestId: z.string(),
+      nodeId: z.string(),
+      size: screenshotSizeSchema,
+      maxBytes: z.number().int().positive(),
+    })
+    .strict(),
   z.object({ type: z.literal('findings'), findings: z.array(findingSchema) }).strict(),
   z.object({ type: z.literal('select'), nodeId: z.string() }).strict(),
   /** The answer to a valid code: the token the plugin presents from then on. */
@@ -298,3 +372,7 @@ export type ReadTarget = z.output<typeof readTargetSchema>;
 export type CheckScope = z.output<typeof checkScopeSchema>;
 export type PluginMessage = z.output<typeof pluginMessageSchema>;
 export type ServerMessage = z.output<typeof serverMessageSchema>;
+export type ScreenshotSize = z.output<typeof screenshotSizeSchema>;
+export type ExportRefusal = (typeof EXPORT_REFUSALS)[number];
+/** A rendered node, and its PNG as base64. */
+export type Screenshot = z.output<typeof screenshotSchema> & { png: string };

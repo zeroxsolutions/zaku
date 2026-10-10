@@ -27,6 +27,10 @@ file saved in the team. `figma.library` in `zaku.yaml` holds it before the first
 - Every `figma.create*()` call puts its node on `figma.currentPage`, and the current page follows the
   page the person opens while a script runs. A script that draws an entry looks the entry's page up by
   name and appends each node it makes to its parent there, before it returns.
+- `get_screenshot` renders one node, a view's frame or the cover, as a PNG whose longer side is
+  `maxDimension` (1568 by default). A view taller than that comes back small; render its sections
+  one by one, by their ids from `read`, when a detail has to be read. A render it refuses as too large
+  names the `maxDimension` that fits.
 - The views are two frames appended to the entry's page; the set is made with
   `figma.combineAsVariants(components, demoCard)`, its parent the Component section's `Preview`,
   never the page.
@@ -196,18 +200,21 @@ colours alone. To change a measure, change zaku's table, which prints this one.
 ## The cover
 
 The frame `Thumbnail` fills with `color/background` and sets no mode. It clips: the glow runs past
-every edge and the composition past the right one, and nothing else leaves the frame. The
-`documentation` check reports a layer that reaches past its top, left or bottom edge, or past its
-right edge from left of x 616.
+every edge, a column of the composition may bleed off the right one, and nothing else leaves the
+frame. A column bleeds when one of its blocks runs at least a quarter of its own width past the edge,
+as Nova's second column does (its Sonner by 140 of 356); a block that crosses by less reads as cut by
+mistake, and one that does not bleed ends 72 inside the edge, the margin the intro keeps on the left.
+A frame holding the composition reaches past the edge only as far as a block in it bleeds. The
+`documentation` check reports each of these, and a layer past the top, left or bottom edge.
 
-| Part            | Place and size                                              | Content                                                                                                                                                                                                                                                                                |
-| --------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Glow`          | a frame 1200 x 675 at 0, 0, no fill, behind everything      | three ellipses named as the header's: `primary` 1000 x 760 at 520, -260, opacity 0.70; `sidebar-primary` 560 x 460 at 820, -120, opacity 0.35; `primary`, a middle dot, `bottom` 760 x 520 at -280, 420, opacity 0.45; each fill drawn as the header's                                 |
-| `Intro`         | vertical, at 72, 72, 464 wide, its foot 72 above the bottom | `Brand`, then `Title`, then `Stack`, spaced to fill                                                                                                                                                                                                                                    |
-| `Brand`         | horizontal, gap 8, items centred, 32 high                   | the mark, its SVG imported with `figma.createNodeFromSvg(svg)` and scaled into a 32 x 32 frame named `Logo`, radius `radius/lg`; the design system's name, Medium 14 / 20, `color/foreground`; the style, Regular 14 / 20, `color/muted-foreground`                                    |
-| `Title`         | vertical, gap 24                                            | the library's Badge, its outline variant, reading `Design System`; the library's name, Semi Bold 60 / 60, tracking -2.5%, `color/foreground`, on two lines where it breaks; one sentence, Regular 20 / 28, `color/muted-foreground`, in the library's lead text style where it has one |
-| `Stack`         | horizontal, gap 8, its foot 72 above the bottom             | one library Badge per source, its secondary variant, a word each: the package, the style, the icon package, the font                                                                                                                                                                   |
-| the composition | from x 616, top 72, past the right edge                     | instances of the library's components as the code's demos compose them, in two or three columns 32 apart                                                                                                                                                                               |
+| Part            | Place and size                                              | Content                                                                                                                                                                                                                                                                                                                 |
+| --------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Glow`          | a frame 1200 x 675 at 0, 0, no fill, behind everything      | three ellipses named as the header's: `primary` 1000 x 760 at 520, -260, opacity 0.70; `sidebar-primary` 560 x 460 at 820, -120, opacity 0.35; `primary`, a middle dot, `bottom` 760 x 520 at -280, 420, opacity 0.45; each fill drawn as the header's                                                                  |
+| `Intro`         | vertical, at 72, 72, 464 wide, its foot 72 above the bottom | `Brand`, then `Title`, then `Stack`, spaced to fill                                                                                                                                                                                                                                                                     |
+| `Brand`         | horizontal, gap 8, items centred, 32 high                   | the mark, its SVG imported with `figma.createNodeFromSvg(svg)`, named for the brand and scaled into a 32 x 32 frame named `Logo`, no fill, clipping, radius `radius/lg`, the SVG's own colours kept; the design system's name, Medium 14 / 20, `color/foreground`; the style, Regular 14 / 20, `color/muted-foreground` |
+| `Title`         | vertical, gap 24                                            | the library's Badge, its outline variant, reading `Design System`; the library's name, Semi Bold 60 / 60, tracking -2.5%, `color/foreground`, on two lines where it breaks; one sentence, Regular 20 / 28, `color/muted-foreground`, in the library's lead text style where it has one                                  |
+| `Stack`         | horizontal, gap 8, its foot 72 above the bottom             | one library Badge per source, its secondary variant, a word each: the package, the style, the icon package, the font                                                                                                                                                                                                    |
+| the composition | from x 616, top 72, past the right edge                     | instances of the library's components as the code's demos compose them, in two or three columns 32 apart                                                                                                                                                                                                                |
 
 ## The component set
 
