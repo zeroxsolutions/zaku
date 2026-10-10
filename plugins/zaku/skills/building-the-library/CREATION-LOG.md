@@ -113,3 +113,12 @@ below.
    first drawing says no Figma file is created; a missing one is asked for. The same run stopped on a
    `naming` finding against the `Component` section frame the reference prescribes, which the checker
    now reads by node type.
+9. From a GREEN run on a live file: the documentation components were drawn from a reference that gave
+   their measures but not their properties, placeholders, places on the page or the matrix head, so
+   the run guessed each, and it held the page header back until the Tag existed. The reference now
+   names every documentation component with its properties and defaults, its place on the page and
+   its layers, adds the matrix head and the component view's Matrix section that uses it, and says the
+   header is drawn first with its badge row empty, the Badge placed into it once its set exists. In
+   the checker, in the same change: documentation may size the instances it lays out (a table's head
+   and cell to its column), and the plugin's rollback no longer removes a node an earlier run made
+   when the rolled-back run had moved it into a node of its own.

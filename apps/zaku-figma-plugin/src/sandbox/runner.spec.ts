@@ -211,4 +211,31 @@ describe('the sandbox runner', () => {
       ['COMPONENT_SET', false],
     ]);
   });
+
+  it('keeps an existing node a rolled-back run moved into a node it made', async () => {
+    const { runner, figma } = setup();
+    const page = figma.existing('Component for Docs');
+    const header = figma.existing('DS/Header');
+    page.appendChild(header);
+    await runner.receive(
+      run(
+        `const wrap = figma.createFrame(); (await figma.getNodeByIdAsync('${page.id}')).appendChild(wrap); wrap.appendChild(await figma.getNodeByIdAsync('${header.id}'));`,
+      ),
+    );
+    await runner.receive({ type: 'decide', runId: 'r1', decision: 'rollback' });
+    expect([header.removed, header.parent?.id]).toEqual([false, page.id]);
+  });
+
+  it('keeps an existing node a thrown script moved into a node it made', async () => {
+    const { runner, figma } = setup();
+    const page = figma.existing('Component for Docs');
+    const header = figma.existing('DS/Header');
+    page.appendChild(header);
+    await runner.receive(
+      run(
+        `const wrap = figma.createFrame(); (await figma.getNodeByIdAsync('${page.id}')).appendChild(wrap); wrap.appendChild(await figma.getNodeByIdAsync('${header.id}')); throw new Error('boom');`,
+      ),
+    );
+    expect([header.removed, header.parent?.id]).toEqual([false, page.id]);
+  });
 });

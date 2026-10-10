@@ -161,6 +161,25 @@ describe('snapshotFindings', () => {
       expect(snapshotFindings([header, label])).toEqual([]);
     });
 
+    it("lets a documentation view size a table's head and cell instances, and still holds them to their paints", () => {
+      const instance = {
+        overrides: [
+          { nodeId: '1:1', fields: ['width', 'height'] },
+          { nodeId: '1:1;2:1', fields: ['fills'] },
+        ],
+        sizing: { horizontal: 'FIXED', vertical: 'FIXED' },
+      };
+      const head = node({
+        id: '1:1',
+        type: 'INSTANCE',
+        name: 'TableHead',
+        page: entryPage,
+        componentSource: false,
+        instance,
+      });
+      expect(snapshotFindings([head]).map((f) => [f.check, f.field])).toEqual([['overrides', 'fills']]);
+    });
+
     it('holds a documentation view to its colour bindings', () => {
       const view = node({ name: 'Nova / Tag', page: entryPage, componentSource: false, fills: [{ bound: false }] });
       expect(snapshotFindings([view]).map((f) => f.field)).toEqual(['fill']);

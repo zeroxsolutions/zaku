@@ -36657,6 +36657,7 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
           if (ALLOWED_OVERRIDES.has(field)) continue;
           if (field === 'fills' && override.picture) continue;
           const self2 = override.nodeId === node2.id;
+          if (self2 && (field === 'width' || field === 'height') && documentation) continue;
           if (self2 && field === 'width' && node2.instance.sizing.horizontal !== 'FIXED') continue;
           if (self2 && field === 'height' && node2.instance.sizing.vertical !== 'FIXED') continue;
           finding('overrides', field, `${field} overridden inside an instance of ${node2.name}`, override.nodeId);

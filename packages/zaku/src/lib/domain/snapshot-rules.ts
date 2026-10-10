@@ -116,6 +116,8 @@ export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfi
           // As zaku check: a picture is placed as an image fill, so that fill is content.
           if (field === 'fills' && override.picture) continue;
           const self = override.nodeId === node.id;
+          // Documentation lays out its own components: a table sizes each column's head and cell to the column.
+          if (self && (field === 'width' || field === 'height') && documentation) continue;
           if (self && field === 'width' && node.instance.sizing.horizontal !== 'FIXED') continue;
           if (self && field === 'height' && node.instance.sizing.vertical !== 'FIXED') continue;
           finding('overrides', field, `${field} overridden inside an instance of ${node.name}`, override.nodeId);
