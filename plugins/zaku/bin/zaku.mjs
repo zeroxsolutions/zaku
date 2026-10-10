@@ -35466,11 +35466,40 @@ var RecipeUrlRequired = class extends Error {
   }
 };
 
+// packages/zaku/dist/lib/domain/script-refusal.js
+var REFUSED = [
+  { call: 'figma.closePlugin', pattern: /\bfigma\s*\.\s*closePlugin\b/ },
+  { call: 'figma.notify', pattern: /\bfigma\s*\.\s*notify\b/ },
+  { call: 'figma.loadAllPagesAsync', pattern: /\bfigma\s*\.\s*loadAllPagesAsync\b/ },
+  { call: 'setting figma.currentPage', pattern: /\bfigma\s*\.\s*currentPage\s*=(?!=)/ },
+  ...['textStyleId', 'fillStyleId', 'strokeStyleId', 'effectStyleId', 'gridStyleId', 'vectorNetwork', 'reactions'].map(
+    (property) => ({
+      // The plugin reads a file page by page (documentAccess dynamic-page), and Figma's API makes these read-only then.
+      call: `setting ${property} (use set${property[0].toUpperCase()}${property.slice(1)}Async)`,
+      pattern: new RegExp(`\\.\\s*${property}\\s*=(?!=)`),
+    }),
+  ),
+  { call: 'new Function', pattern: /\bnew\s+Function\s*\(/ },
+  { call: 'Function()', pattern: /(?<![\w$.])(?<!\bnew\s+)Function\s*\(/ },
+  { call: 'eval()', pattern: /(?<![\w$.])eval\s*\(/ },
+  { call: 'the Function constructor', pattern: /\.\s*constructor\b/ },
+];
+var DYNAMIC_CODE_CALLS = /* @__PURE__ */ new Set(['new Function', 'Function()', 'eval()', 'the Function constructor']);
+function refusedCalls(script) {
+  return REFUSED.filter(({ pattern }) => pattern.test(script)).map(({ call }) => call);
+}
+
 // packages/zaku/dist/lib/domain/errors/script-refused.js
 var ScriptRefused = class extends Error {
   calls;
   constructor(calls) {
-    super(`ScriptRefused: the script calls ${calls.join(', ')}`);
+    const dynamic = calls.some((call) => DYNAMIC_CODE_CALLS.has(call));
+    super(
+      `ScriptRefused: the script calls ${calls.join(', ')}` +
+        (dynamic
+          ? '. Code built from a string at run time is not read by these checks; write the helpers into the script itself, at its top, in every script that uses them'
+          : ''),
+    );
     this.calls = calls;
     this.name = 'ScriptRefused';
   }
@@ -36557,17 +36586,6 @@ function cutReply(reply, limit = REPLY_LIMIT) {
   return cut;
 }
 
-// packages/zaku/dist/lib/domain/script-refusal.js
-var REFUSED = [
-  { call: 'figma.closePlugin', pattern: /\bfigma\s*\.\s*closePlugin\b/ },
-  { call: 'figma.notify', pattern: /\bfigma\s*\.\s*notify\b/ },
-  { call: 'figma.loadAllPagesAsync', pattern: /\bfigma\s*\.\s*loadAllPagesAsync\b/ },
-  { call: 'setting figma.currentPage', pattern: /\bfigma\s*\.\s*currentPage\s*=(?!=)/ },
-];
-function refusedCalls(script) {
-  return REFUSED.filter(({ pattern }) => pattern.test(script)).map(({ call }) => call);
-}
-
 // packages/zaku/dist/lib/domain/snapshot-rules.js
 var ENTRY_PAGE_PREFIX = '\u2756 ';
 var DOCUMENTATION_PAGES = /* @__PURE__ */ new Set(['Thumbnail', 'Component for Docs']);
@@ -36671,6 +36689,7 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
 
 // packages/zaku/dist/lib/handlers/execute-script.js
 var UNKNOWN = { outcome: 'unknown', message: 'read before retrying' };
+var rolledBack = (left) => (left.length > 0 ? { outcome: 'partly-rolled-back', left } : { outcome: 'rolled-back' });
 var ExecuteScriptHandler = class ExecuteScriptHandler2 {
   bridge;
   configs;
@@ -36689,15 +36708,29 @@ var ExecuteScriptHandler = class ExecuteScriptHandler2 {
       if (ran.kind === 'dropped') return UNKNOWN;
       const empty = { value: null, created: [], mutated: [], findings: [], untouchable: [] };
       if (ran.kind === 'threw')
-        return { outcome: 'rolled-back', reason: 'threw', error: ran.error, ...empty, untouchable: ran.untouchable };
-      if (ran.kind === 'timeout')
         return {
-          outcome: 'rolled-back',
-          reason: 'timeout',
-          // The script may still be running; what it changed on nodes that already existed is not known yet.
-          message: 'the script may have changed nodes that already existed; read before retrying',
+          ...rolledBack(ran.left),
+          reason: 'threw',
+          error: ran.error,
           ...empty,
+          untouchable: ran.untouchable,
         };
+      if (ran.kind === 'timeout') {
+        const budget = `${Math.round(ran.budgetMs / 1e3)} s`;
+        if (ran.settled === null)
+          return {
+            outcome: 'unknown',
+            reason: 'timeout',
+            message: `the script ran past the ${budget} budget and the plugin did not confirm it gave it up; read before retrying`,
+          };
+        return {
+          ...rolledBack(ran.settled.left),
+          reason: 'timeout',
+          message: `the script ran past the ${budget} budget and was given up: what it made is removed, and untouchable names the nodes that already existed which it changed. Split the work into scripts that each finish well inside ${budget}, one entry part per script.`,
+          ...empty,
+          untouchable: ran.settled.untouchable,
+        };
+      }
       const findings = snapshotFindings(ran.snapshot, config2?.copy);
       const decision = command.mode === 'strict' && findings.length > 0 ? 'rollback' : 'commit';
       const settled = await this.bridge.decide(session, ran.runId, decision);
@@ -36705,7 +36738,7 @@ var ExecuteScriptHandler = class ExecuteScriptHandler2 {
       this.bridge.push(session, { type: 'findings', findings });
       const parents = Object.fromEntries(ran.snapshot.map((node2) => [node2.id, node2.parentId]));
       return cutReply({
-        outcome: settled.outcome,
+        ...(settled.outcome === 'rolled-back' ? rolledBack(settled.left) : { outcome: settled.outcome }),
         ...(decision === 'rollback' ? { reason: 'findings' } : {}),
         value: ran.value,
         created: ran.created,

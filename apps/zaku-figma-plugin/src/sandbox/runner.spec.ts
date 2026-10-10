@@ -46,7 +46,13 @@ describe('the sandbox runner', () => {
     await runner.receive(run(`figma.createRectangle(); (await figma.getNodeByIdAsync('${old.id}')).rename('Top');`));
     await runner.receive({ type: 'decide', runId: 'r1', decision: 'rollback' });
     expect(figma.nodes.has('1:11')).toBe(false);
-    expect(posted.at(-1)).toEqual({ type: 'settled', runId: 'r1', outcome: 'rolled-back', untouchable: [old.id] });
+    expect(posted.at(-1)).toEqual({
+      type: 'settled',
+      runId: 'r1',
+      outcome: 'rolled-back',
+      untouchable: [old.id],
+      left: [],
+    });
   });
 
   it('commits undo on commit', async () => {
@@ -61,7 +67,7 @@ describe('the sandbox runner', () => {
   it('rolls back a thrown script at once', async () => {
     const { posted, runner, figma } = setup();
     await runner.receive(run('figma.createRectangle(); throw new Error("boom");'));
-    expect(posted).toEqual([{ type: 'threw', runId: 'r1', error: 'Error: boom', untouchable: [] }]);
+    expect(posted).toEqual([{ type: 'threw', runId: 'r1', error: 'Error: boom', untouchable: [], left: [] }]);
     expect([...figma.nodes.keys()]).toEqual([]);
   });
 
@@ -105,7 +111,9 @@ describe('the sandbox runner', () => {
       (message) => posted.push(message),
     );
     await runner.receive(run('figma.createRectangle();'));
-    expect(posted).toEqual([{ type: 'threw', runId: 'r1', error: 'Error: snapshot failed', untouchable: [] }]);
+    expect(posted).toEqual([
+      { type: 'threw', runId: 'r1', error: 'Error: snapshot failed', untouchable: [], left: [] },
+    ]);
     expect(figma.nodes.size).toBe(0);
   });
 
@@ -187,7 +195,7 @@ describe('the sandbox runner', () => {
     const { posted, runner, figma } = setup();
     const old = figma.existing('Header');
     await runner.receive(run(`(await figma.getNodeByIdAsync('${old.id}')).rename('Top'); throw new Error('boom');`));
-    expect(posted).toEqual([{ type: 'threw', runId: 'r1', error: 'Error: boom', untouchable: [old.id] }]);
+    expect(posted).toEqual([{ type: 'threw', runId: 'r1', error: 'Error: boom', untouchable: [old.id], left: [] }]);
   });
   it('checks the nodes a script creates and not the text styles it creates, which are not on a page', async () => {
     const { posted, runner, figma } = setup();
@@ -237,5 +245,95 @@ describe('the sandbox runner', () => {
       ),
     );
     expect([header.removed, header.parent?.id]).toEqual([false, page.id]);
+  });
+
+  describe('a run that never settles', () => {
+    const forever = (before: string) =>
+      ({
+        type: 'run',
+        runId: 'stuck',
+        script: `${before} await new Promise(() => undefined);`,
+        timeoutMs: 1000,
+        holdMs: 1000,
+      }) as const;
+
+    it("gives the run up on the server's rollback, removes what it made at once, and says so", async () => {
+      const { posted, runner, figma } = setup();
+      void runner.receive(forever('figma.createFrame();'));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      await runner.receive({ type: 'decide', runId: 'stuck', decision: 'rollback' });
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(posted).toEqual([{ type: 'settled', runId: 'stuck', outcome: 'rolled-back', untouchable: [], left: [] }]);
+      expect(figma.nodes.size).toBe(0);
+    });
+
+    it('lets the next run go once it is given up', async () => {
+      const { posted, runner } = setup();
+      void runner.receive(forever(''));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      await runner.receive({ type: 'decide', runId: 'stuck', decision: 'rollback' });
+      await runner.receive({ type: 'run', runId: 'next', script: 'return 1;', timeoutMs: 1000, holdMs: 1000 });
+      expect(posted.at(-1)).toMatchObject({ type: 'ran', runId: 'next', value: 1 });
+    });
+
+    it('removes a node it makes after it was given up, so a late finish keeps nothing', async () => {
+      const { runner, figma } = setup();
+      void runner.receive({
+        type: 'run',
+        runId: 'late',
+        script: 'await new Promise((r) => setTimeout(r, 30)); figma.createFrame();',
+        timeoutMs: 1000,
+        holdMs: 1000,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      await runner.receive({ type: 'decide', runId: 'late', decision: 'rollback' });
+      await new Promise((resolve) => setTimeout(resolve, 60));
+      expect(figma.nodes.size).toBe(0);
+    });
+  });
+
+  describe('a node Figma will not remove', () => {
+    it('is named as left in the file, not reported removed, on rollback', async () => {
+      const { posted, runner, figma } = setup();
+      await runner.receive(run('figma.createRectangle(); figma.createFrame();'));
+      figma.nodes.get('1:10')!.refusesRemoval = true;
+      await runner.receive({ type: 'decide', runId: 'r1', decision: 'rollback' });
+      expect(posted.at(-1)).toEqual({
+        type: 'settled',
+        runId: 'r1',
+        outcome: 'rolled-back',
+        untouchable: [],
+        left: ['1:10'],
+      });
+      expect(figma.nodes.has('1:11')).toBe(false);
+    });
+
+    it('is named as left when the script threw', async () => {
+      const { posted, runner } = setup();
+      await runner.receive(run('const r = figma.createRectangle(); r.refusesRemoval = true; throw new Error("boom");'));
+      expect(posted).toEqual([{ type: 'threw', runId: 'r1', error: 'Error: boom', untouchable: [], left: ['1:10'] }]);
+    });
+
+    it('does not keep the next run from going, when the held change it rolls back first will not go', async () => {
+      const { posted, runner, figma } = setup();
+      await runner.receive({
+        type: 'run',
+        runId: 'a',
+        script: 'figma.createRectangle();',
+        timeoutMs: 1000,
+        holdMs: 1000,
+      });
+      figma.nodes.get('1:10')!.refusesRemoval = true;
+      await runner.receive({ type: 'run', runId: 'b', script: 'return 2;', timeoutMs: 1000, holdMs: 1000 });
+      await runner.receive({ type: 'run', runId: 'c', script: 'return 3;', timeoutMs: 1000, holdMs: 1000 });
+      expect(posted.map((m) => [m.type, 'runId' in m ? m.runId : ''])).toEqual([
+        ['ran', 'a'],
+        ['settled', 'a'],
+        ['ran', 'b'],
+        ['settled', 'b'],
+        ['ran', 'c'],
+      ]);
+      expect(posted[1]).toMatchObject({ left: ['1:10'] });
+    });
   });
 });

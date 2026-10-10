@@ -101,7 +101,7 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
     'execute',
     {
       description:
-        'Run a Figma plugin script in an open file; the change is checked against zaku rules and rolled back on a finding in strict mode',
+        'Run a Figma plugin script in an open file; the change is checked against zaku rules and rolled back on a finding in strict mode. A script has 30 s: past that it is given up and what it made is removed, so draw one part per script. Helpers are written into each script that uses them; code built from a string (new Function, eval, a function constructor) is refused. In a file the plugin reads page by page, set a style id with its async setter (setTextStyleIdAsync).',
       inputSchema: { file, script: z.string(), mode: z.enum(['strict', 'report']).default('strict') },
     },
     ({ file: name, script, mode }) =>

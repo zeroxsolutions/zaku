@@ -76,6 +76,7 @@ export function obedient(snapshot: NodeSnapshot[], log: ServerMessage[] = []): B
         runId: message.runId,
         outcome: message.decision === 'commit' ? 'committed' : 'rolled-back',
         untouchable: [],
+        left: [],
       });
     if (message.type === 'read') send({ type: 'read-result', requestId: message.requestId, nodes: [] });
     if (message.type === 'snapshot') send({ type: 'read-result', requestId: message.requestId, snapshot });

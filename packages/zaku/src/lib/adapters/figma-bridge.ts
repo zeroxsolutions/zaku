@@ -33,12 +33,13 @@ export interface Session extends SessionView {
 
 export type RunOutcome =
   | { kind: 'ran'; runId: string; value: unknown; created: string[]; mutated: string[]; snapshot: NodeSnapshot[] }
-  | { kind: 'threw'; error: string; untouchable: string[] }
-  | { kind: 'timeout' }
+  | { kind: 'threw'; error: string; untouchable: string[]; left: string[] }
+  /** `settled` is the plugin's word that it gave the run up, or null when it did not answer that either. */
+  | { kind: 'timeout'; budgetMs: number; settled: { untouchable: string[]; left: string[] } | null }
   | { kind: 'dropped' };
 
 export type Settled =
-  | { kind: 'settled'; outcome: 'committed' | 'rolled-back'; untouchable: string[] }
+  | { kind: 'settled'; outcome: 'committed' | 'rolled-back'; untouchable: string[]; left: string[] }
   | { kind: 'dropped' };
 
 export interface BridgeTimings {
@@ -131,10 +132,15 @@ export class FigmaBridge {
     const message = await reply;
     if (message === null) return { kind: 'dropped' };
     if (message === 'timeout') {
-      if (session.connection.isOpen()) session.connection.send({ type: 'decide', runId, decision: 'rollback' });
-      return { kind: 'timeout' };
+      const given = await this.decide(session, runId, 'rollback');
+      return {
+        kind: 'timeout',
+        budgetMs: this.timings.timeoutMs,
+        settled: given.kind === 'settled' ? { untouchable: given.untouchable, left: given.left } : null,
+      };
     }
-    if (message.type === 'threw') return { kind: 'threw', error: message.error, untouchable: message.untouchable };
+    if (message.type === 'threw')
+      return { kind: 'threw', error: message.error, untouchable: message.untouchable, left: message.left };
     if (message.type !== 'ran') return { kind: 'dropped' };
     const { value, created, mutated, snapshot } = message;
     return { kind: 'ran', runId, value, created, mutated, snapshot };
@@ -146,7 +152,7 @@ export class FigmaBridge {
     session.connection.send({ type: 'decide', runId, decision });
     const message = await reply;
     if (message === null || message === 'timeout' || message.type !== 'settled') return { kind: 'dropped' };
-    return { kind: 'settled', outcome: message.outcome, untouchable: message.untouchable };
+    return { kind: 'settled', outcome: message.outcome, untouchable: message.untouchable, left: message.left };
   }
 
   async read(session: Session, target: ReadTarget, depth: number): Promise<OutlineNode[]> {

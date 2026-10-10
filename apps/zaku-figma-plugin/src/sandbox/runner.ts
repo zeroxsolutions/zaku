@@ -35,6 +35,10 @@ interface Pending {
   /** Nodes that were there before the run and that it moved; one moved into a node the run made goes when that node does. */
   moved: Map<string, AnyNode>;
   hold: unknown;
+  /** Set once the run is settled or given up: a node it makes from then on is removed as it is made. */
+  closed: boolean;
+  /** Ends the wait on a script the server gave up on; the script itself cannot be stopped. */
+  giveUp: () => void;
 }
 
 /** Runs one script at a time against the file, holds its change, and keeps or removes it on the server's word. */
@@ -51,56 +55,85 @@ export function createRunner(
     getNodeByIdAsync(id: string): Promise<AnyNode | null>;
   };
   let pending: Pending | null = null;
+  /** The run whose script is being awaited, which the server can give up on. */
+  let running: Pending | null = null;
   const abandoned = new Set<string>();
 
   /**
-   * Removes what the run made. A node that was there before and that the run moved into one of them is
-   * moved out first, to the nearest ancestor that stays, where it keeps its place on the canvas: removing
-   * a node removes everything inside it, and that node may hold work an earlier run committed.
+   * Removes what the run made and returns the ids of what it could not remove, which are still in the file. A node
+   * that was there before and that the run moved into one of them is moved out first, to the nearest ancestor that
+   * stays, where it keeps its place on the canvas: removing a node removes everything inside it, and that node may
+   * hold work an earlier run committed. Where it cannot be moved out, the nodes around it stay.
    */
-  const discard = (run: Pending): void => {
+  const discard = (run: Pending): string[] => {
+    run.closed = true;
     const made = new Set(run.created.map((node) => node.id));
+    const kept = new Set<string>();
     for (const node of run.moved.values()) {
       if (node.removed) continue;
-      let doomed = false;
+      const around: string[] = [];
       let keeper: AnyNode | null = null;
       for (let up = node.parent ?? null; up; up = up.parent ?? null) {
         if (!made.has(up.id)) {
           keeper = up;
           break;
         }
-        doomed = true;
+        around.push(up.id);
       }
-      if (!doomed) continue;
-      const target = keeper ?? (figma.currentPage as unknown as AnyNode);
-      const at = node.absoluteTransform;
-      target.appendChild?.(node);
-      if (at) {
-        const origin = target.absoluteTransform;
-        node.x = at[0][2] - (origin ? origin[0][2] : 0);
-        node.y = at[1][2] - (origin ? origin[1][2] : 0);
+      if (around.length === 0) continue;
+      try {
+        const target = keeper ?? (figma.currentPage as unknown as AnyNode);
+        const at = node.absoluteTransform;
+        target.appendChild?.(node);
+        if (at) {
+          const origin = target.absoluteTransform;
+          node.x = at[0][2] - (origin ? origin[0][2] : 0);
+          node.y = at[1][2] - (origin ? origin[1][2] : 0);
+        }
+      } catch {
+        for (const id of around) kept.add(id);
       }
     }
-    for (const node of run.created) if (!node.removed) node.remove();
+    for (const node of run.created) {
+      if (node.removed || kept.has(node.id)) continue;
+      try {
+        node.remove();
+      } catch {
+        // Named below as left in the file.
+      }
+    }
+    return run.created.filter((node) => !node.removed).map((node) => node.id);
   };
 
+  /** Rolls the run back and says so, naming what is still in the file. Never throws, so the next run can go. */
   const rollback = (run: Pending): void => {
     host.holdTimer.clear(run.hold);
-    discard(run);
-    post({ type: 'settled', runId: run.runId, outcome: 'rolled-back', untouchable: [...run.mutated] });
     if (pending === run) pending = null;
+    const left = discard(run);
+    post({ type: 'settled', runId: run.runId, outcome: 'rolled-back', untouchable: [...run.mutated], left });
   };
 
   async function execute(message: Extract<ServerMessage, { type: 'run' }>): Promise<void> {
     if (abandoned.delete(message.runId)) {
       // The server gave up on this run before it started; it never touches the file.
-      post({ type: 'settled', runId: message.runId, outcome: 'rolled-back', untouchable: [] });
+      post({ type: 'settled', runId: message.runId, outcome: 'rolled-back', untouchable: [], left: [] });
       return;
     }
     // A change still held when the next run starts was never decided; it is not kept.
     if (pending) rollback(pending);
     figma.commitUndo();
-    const run: Pending = { runId: message.runId, created: [], mutated: new Set(), moved: new Map(), hold: null };
+    const run: Pending = {
+      runId: message.runId,
+      created: [],
+      mutated: new Set(),
+      moved: new Map(),
+      hold: null,
+      closed: false,
+      giveUp: () => undefined,
+    };
+    const givenUp = new Promise<'given-up'>((resolve) => {
+      run.giveUp = (): void => resolve('given-up');
+    });
     // The API object refuses assignment to its methods, and a proxy over it must hand back its read-only
     // members unchanged, so the script gets a proxy over an empty object that forwards to it and records each create*.
     const api = host.figma as object;
@@ -113,7 +146,16 @@ export function createRunner(
           const records = typeof property === 'string' && property.startsWith('create');
           return (...args: unknown[]): unknown => {
             const result = (value as (...a: unknown[]) => unknown).apply(api, args);
-            if (records && result && typeof result === 'object' && 'id' in result) run.created.push(result as AnyNode);
+            if (!records || !result || typeof result !== 'object' || !('id' in result)) return result;
+            const node = result as AnyNode;
+            // A script the server gave up on still runs; what it makes after that is not kept.
+            if (run.closed) {
+              try {
+                node.remove();
+              } catch {
+                // Nothing reports a node made after its run settled; the next check finds it.
+              }
+            } else run.created.push(node);
             return result;
           };
         },
@@ -138,11 +180,21 @@ export function createRunner(
     figma.currentPage.on('nodechange', onChange);
     let value: unknown;
     let failure: string | null = null;
+    let gaveUp = false;
+    running = run;
     try {
-      value = await new AsyncFunction('figma', 'zaku', message.script)(watched, host.helper);
+      const script = new AsyncFunction('figma', 'zaku', message.script)(watched, host.helper).then(
+        (result) => ({ result }),
+        (error: unknown) => ({ error: String(error) }),
+      );
+      const ended = await Promise.race([script, givenUp]);
+      if (ended === 'given-up') gaveUp = true;
+      else if ('error' in ended) failure = ended.error;
+      else value = ended.result;
     } catch (error) {
       failure = String(error);
     } finally {
+      running = null;
       figma.currentPage.off('nodechange', onChange);
     }
     const known = createdIds();
@@ -151,15 +203,17 @@ export function createRunner(
       const node = await figma.getNodeByIdAsync(id);
       if (node) run.created.push(node);
     }
+    if (gaveUp) {
+      rollback(run);
+      return;
+    }
     if (failure !== null) {
-      discard(run);
+      const left = discard(run);
       if (!abandoned.delete(message.runId))
-        post({ type: 'threw', runId: message.runId, error: failure, untouchable: [...run.mutated] });
+        post({ type: 'threw', runId: message.runId, error: failure, untouchable: [...run.mutated], left });
       return;
     }
     if (abandoned.delete(message.runId)) {
-      run.hold = null;
-      pending = run;
       rollback(run);
       return;
     }
@@ -181,8 +235,8 @@ export function createRunner(
       }
     } catch (error) {
       // Unanswered, the server would wait out its timeout; a change nobody could check is not kept.
-      discard(run);
-      post({ type: 'threw', runId: message.runId, error: String(error), untouchable: [...run.mutated] });
+      const left = discard(run);
+      post({ type: 'threw', runId: message.runId, error: String(error), untouchable: [...run.mutated], left });
       return;
     }
     // A rollback can arrive while the snapshot is taken; the run is then never held.
@@ -203,13 +257,18 @@ export function createRunner(
     });
   }
 
-  // Runs go one at a time: a run the server gave up on can still be running when the next arrives.
+  // Runs go one at a time; a run the server gave up on stops holding the queue the moment it is given up.
   let queue: Promise<void> = Promise.resolve();
 
   return {
     receive(message: ServerMessage): Promise<void> {
       if (message.type === 'run') {
-        queue = queue.then(() => execute(message)).catch(() => undefined);
+        queue = queue
+          .then(() => execute(message))
+          .catch((error: unknown) => {
+            // Unanswered, the server would wait out its timeout and learn nothing of what is in the file.
+            post({ type: 'threw', runId: message.runId, error: String(error), untouchable: [], left: [] });
+          });
         return queue;
       }
       if (message.type !== 'decide') return Promise.resolve();
@@ -218,13 +277,20 @@ export function createRunner(
         if (message.decision === 'rollback') rollback(run);
         else {
           host.holdTimer.clear(run.hold);
-          figma.commitUndo();
-          post({ type: 'settled', runId: run.runId, outcome: 'committed', untouchable: [] });
           pending = null;
+          run.closed = true;
+          figma.commitUndo();
+          post({ type: 'settled', runId: run.runId, outcome: 'committed', untouchable: [], left: [] });
         }
+      } else if (message.decision === 'rollback' && running?.runId === message.runId) {
+        // The script is still being awaited, perhaps forever: stop waiting, roll back what it made so far.
+        running.giveUp();
       } else if (message.decision === 'rollback') {
-        // Still running, still queued, or being snapshotted: the run settles as rolled back when it gets there.
+        // Still queued, or being snapshotted: the run settles as rolled back when it gets there.
         abandoned.add(message.runId);
+      } else {
+        // Nothing is held under this id: its hold ran out, or the next run rolled it back.
+        post({ type: 'settled', runId: message.runId, outcome: 'rolled-back', untouchable: [], left: [] });
       }
       return Promise.resolve();
     },
