@@ -73,6 +73,15 @@ describe('a screenshot the sandbox renders', () => {
     expect(exports).toEqual([]);
   });
 
+  it('refuses a side past 2000 px, which a request holding more than 20 images refuses', async () => {
+    const { host, exports } = file({ width: 1050, height: 700 });
+    expect(await renderScreenshot(host, ask('1:1', { scale: 2 }))).toMatchObject({
+      reason: 'too-large',
+      width: 2100,
+    });
+    expect(exports).toEqual([]);
+  });
+
   it('refuses a PNG over the bytes the server takes, and sends none of it', async () => {
     const { host } = file({ width: 1440, height: 1794 }, 5000);
     expect(await renderScreenshot(host, ask('1:1', { maxDimension: 1568 }, 4000))).toEqual({

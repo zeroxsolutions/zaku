@@ -212,15 +212,19 @@ export const REFUSAL_REASONS = ['wrong-code', 'expired-code', 'used-up-code', 'u
 
 /**
  * What a screenshot may be. Figma's exportAsync documents no size limit of its own; these are the image a model
- * can read. The Claude API takes an image of at most 5 MB, which the base64 of `maxBytes` of PNG stays under, and
- * scales one whose longer side passes 1568 px down before reading it, so that is the default.
+ * can read, per Claude's vision docs (https://platform.claude.com/docs/en/build-with-claude/vision, read
+ * 2026-10-10). An image may be 10 MB of base64 on the Claude API and 5 MB on Amazon Bedrock and Google Cloud;
+ * `maxBytes` of PNG stays under the 5 MB as base64, so a screenshot reads on all three. A request holding more
+ * than 20 images refuses one whose side passes 2000 px, and a library run takes more than 20, so no side passes
+ * `maxDimension`. A standard-tier model scales a long edge past 1568 px down, the default here; a
+ * high-resolution one reads up to 2576 px, so a caller gains detail up to the 2000 cap.
  */
 export const SCREENSHOT_LIMITS = {
   maxBytes: 3_750_000,
   minScale: 0.1,
   maxScale: 4,
   minDimension: 64,
-  maxDimension: 4096,
+  maxDimension: 2000,
   defaultDimension: 1568,
   /** A maxDimension never enlarges a node past this scale, so a small node does not come back blurred. */
   maxUpscale: 2,
