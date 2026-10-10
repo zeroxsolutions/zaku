@@ -21,27 +21,33 @@ function layerOf(instance: SceneNode, id: string): unknown {
 
 type Ancestor = { id: string; name: string; type: string; parent?: Ancestor | null };
 
-/** The top-level frame on the page that holds the node, the node itself when it is one; null off a page. */
-function frameOf(node: Ancestor): string | null {
-  let top = node;
-  while (top.parent && top.parent.type !== 'PAGE') top = top.parent;
-  return top.parent?.type === 'PAGE' ? top.name : null;
-}
+/** What a node's ancestors decide about it, read once per node and handed down to its children. */
+type Ancestry = {
+  /** The top-level frame on the page that holds the node, the node itself when it is one; null off a page. */
+  frame: string | null;
+  page: { id: string; name: string } | null;
+  /** Whether the node is a component or a component set, or sits inside one. */
+  componentSource: boolean;
+  /** Whether an instance holds the node, whose text is then the instance's to report. */
+  insideInstance: boolean;
+};
 
-/** The page that holds the node; null off a page. */
-function pageOf(node: Ancestor): { id: string; name: string } | null {
-  for (let up: Ancestor | null | undefined = node; up; up = up.parent) {
-    if (up.type === 'PAGE') return { id: up.id, name: up.name };
-  }
-  return null;
-}
+/** Ancestries by node id, so a snapshot of a large set walks each parent chain once. */
+export type AncestryCache = Map<string, Ancestry>;
 
-/** Whether the node is a component or a component set, or sits inside one. */
-function inComponentSource(node: Ancestor): boolean {
-  for (let up: Ancestor | null | undefined = node; up; up = up.parent) {
-    if (up.type === 'COMPONENT' || up.type === 'COMPONENT_SET') return true;
-  }
-  return false;
+function ancestryOf(node: Ancestor, cache: AncestryCache): Ancestry {
+  const known = cache.get(node.id);
+  if (known) return known;
+  const parent = node.parent ?? null;
+  const above = parent ? ancestryOf(parent, cache) : null;
+  const ancestry: Ancestry = {
+    frame: parent?.type === 'PAGE' ? node.name : (above?.frame ?? null),
+    page: node.type === 'PAGE' ? { id: node.id, name: node.name } : (above?.page ?? null),
+    componentSource: node.type === 'COMPONENT' || node.type === 'COMPONENT_SET' || (above?.componentSource ?? false),
+    insideInstance: parent?.type === 'INSTANCE' || (above?.insideInstance ?? false),
+  };
+  cache.set(node.id, ancestry);
+  return ancestry;
 }
 
 type Box = { id: string; name: string; x: number; y: number; width: number; height: number };
@@ -54,12 +60,6 @@ function setLayout(node: Record<string, unknown>): NonNullable<NodeSnapshot['set
     height: Number(node['height'] ?? 0),
     variants: children.map(({ id, name, x, y, width, height }) => ({ id, name, x, y, width, height })),
   };
-}
-
-/** Whether an instance holds the node, whose text is then the instance's to report. */
-function insideInstance(node: Ancestor): boolean {
-  for (let up = node.parent; up; up = up.parent) if (up.type === 'INSTANCE') return true;
-  return false;
 }
 
 /** The characters of every text layer in an instance that no override changed: the component's own copy. */
@@ -158,11 +158,15 @@ async function mainOf(node: Record<string, unknown>): Promise<string | null> {
   return main.parent?.type === 'COMPONENT_SET' ? main.parent.name : main.name;
 }
 
-/** What the rules read of one node. `mixed` is `figma.mixed`, passed in so a spec can stand one in. */
+/**
+ * What the rules read of one node. `mixed` is `figma.mixed`, passed in so a spec can stand one in; a snapshot of
+ * many nodes hands every call one `cache`.
+ */
 export async function snapshotNode(
   node: SceneNode,
   created: boolean,
   mixed: symbol = typeof figma === 'undefined' ? Symbol('mixed') : figma.mixed,
+  cache: AncestryCache = new Map(),
 ): Promise<NodeSnapshot> {
   const any = node as unknown as Record<string, unknown> & {
     parent?: Ancestor | null;
@@ -173,21 +177,20 @@ export async function snapshotNode(
   const texted = new Set(overrides.filter((o) => o.overriddenFields.includes('characters')).map((o) => o.id));
   const carried = node.type === 'INSTANCE' ? carriedTexts(node, texted) : [];
   const auto = typeof any['layoutMode'] === 'string' && any['layoutMode'] !== 'NONE';
+  const ancestry = ancestryOf(node as unknown as Ancestor, cache);
   const properties = propertiesOf(any as Record<string, unknown> & { type: string; parent?: Ancestor | null });
   return {
     id: node.id,
     name: node.name,
     type: node.type,
     parentId: any.parent?.id ?? null,
-    frame: frameOf(node as unknown as Ancestor),
+    frame: ancestry.frame,
     created,
     fills: paints(any['fills']),
     strokes: paints(any['strokes']),
     textStyleId:
       node.type !== 'TEXT' ? null : style === mixed ? 'mixed' : typeof style === 'string' && style ? style : null,
-    ...(node.type === 'TEXT' && !insideInstance(node as unknown as Ancestor)
-      ? { characters: String(any['characters'] ?? '') }
-      : {}),
+    ...(node.type === 'TEXT' && !ancestry.insideInstance ? { characters: String(any['characters'] ?? '') } : {}),
     instance:
       node.type === 'INSTANCE'
         ? {
@@ -209,8 +212,8 @@ export async function snapshotNode(
     spacing: auto
       ? SPACING.map((field) => ({ field, value: Number(any[field] ?? 0), bound: Boolean(any.boundVariables?.[field]) }))
       : [],
-    page: pageOf(node as unknown as Ancestor),
-    componentSource: inComponentSource(node as unknown as Ancestor),
+    page: ancestry.page,
+    componentSource: ancestry.componentSource,
     ...(BOXED.has(node.type) ? { box: boxOf(any) } : {}),
     ...(node.type === 'TEXT' ? { font: fontOf(any, mixed) } : {}),
     ...(properties ? { properties } : {}),

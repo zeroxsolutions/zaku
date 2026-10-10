@@ -3,7 +3,7 @@ import { findByPath } from './sandbox/find.js';
 import { outlineNode } from './sandbox/outline.js';
 import { createRunner } from './sandbox/runner.js';
 import { renderScreenshot, type ScreenshotHost } from './sandbox/screenshot.js';
-import { snapshotNode } from './sandbox/snapshot.js';
+import { snapshotNode, type AncestryCache } from './sandbox/snapshot.js';
 
 figma.showUI(__html__, { width: 320, height: 480, themeColors: true });
 const post = (message: PluginMessage | FileHello): void => figma.ui.postMessage(message);
@@ -145,7 +145,8 @@ async function receive(raw: unknown): Promise<void> {
         post({ type: 'read-result', requestId: message.requestId, nodes });
       } else {
         const nodes = await scopeNodes(message.scope);
-        const snapshot = await Promise.all(nodes.map((node) => snapshotNode(node, false)));
+        const cache: AncestryCache = new Map();
+        const snapshot = await Promise.all(nodes.map((node) => snapshotNode(node, false, figma.mixed, cache)));
         post({ type: 'read-result', requestId: message.requestId, snapshot });
       }
     } catch (error) {
