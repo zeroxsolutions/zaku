@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 export const REPLY_LIMIT = 20_000;
 
 /** How many ids or findings a cut reply still lists. */
@@ -13,11 +15,13 @@ export interface CuttableReply {
   snapshotParents?: Record<string, string | null>;
 }
 
-interface CutIds {
-  count: number;
-  roots: string[];
-  more: number;
-}
+/** A cut reply's ids: how many there were, the first roots among them, and how many roots it left out. */
+export const cutIdsSchema = z
+  .object({ count: z.number().int(), roots: z.array(z.string()), more: z.number().int() })
+  .strict()
+  .describe('The ids counted, as the reply was cut: the first roots listed, more of them left out');
+
+type CutIds = z.output<typeof cutIdsSchema>;
 
 export type CutReply<T> = Omit<T, 'created' | 'mutated' | 'value' | 'snapshotParents'> & {
   created: CutIds;

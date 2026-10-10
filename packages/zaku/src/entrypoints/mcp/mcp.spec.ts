@@ -5,9 +5,10 @@ import { createServer, type AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import WebSocket from 'ws';
-import type { ClientCapabilities } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, ClientCapabilities } from '@modelcontextprotocol/sdk/types.js';
+import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv';
 import { ElicitRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import type { ServerMessage } from '../../lib/schema/bridge.js';
+import type { OutlineNode, ServerMessage } from '../../lib/schema/bridge.js';
 import { fakePlugin, obedient, unboundCard, type Behaviour } from './fake-plugin.testing.js';
 import { startMcp, type McpRuntime } from './main.js';
 
@@ -485,5 +486,137 @@ describe('zaku-mcp over a real socket', () => {
     const code = /(\d{4}) (\d{4})/.exec(shown[0] ?? '');
     expect(code).not.toBeNull();
     expect((await dial(hello({ code: `${code?.[1]}${code?.[2]}` }))).messages).toMatchObject([{ type: 'paired' }]);
+  });
+});
+
+/**
+ * Calls the tool as a client that read tools/list would, and answers its structured content. Fails unless the
+ * listing gives the tool a short description, a description on every input and an output schema, and the
+ * result's structured content validates against that schema and matches its text block.
+ */
+async function declaredAnswer(
+  client: Client,
+  name: string,
+  args: Record<string, unknown> = {},
+): Promise<Record<string, unknown>> {
+  const { tools } = await client.listTools();
+  const tool = tools.find((listed) => listed.name === name);
+  expect(tool?.description?.length).toBeLessThanOrEqual(120);
+  const inputs = Object.entries(tool?.inputSchema.properties ?? {}).map(([field, property]) => ({
+    field,
+    description: (property as { description?: unknown }).description,
+  }));
+  expect(inputs).toEqual(inputs.map(({ field }) => ({ field, description: expect.any(String) })));
+  expect(tool?.outputSchema).toEqual(expect.objectContaining({ type: 'object' }));
+  const result = (await client.callTool({ name, arguments: args })) as CallToolResult;
+  expect(result.isError).not.toBe(true);
+  const validate = new AjvJsonSchemaValidator().getValidator(tool?.outputSchema ?? {});
+  expect(validate(result.structuredContent).errorMessage).toBeUndefined();
+  const [text] = result.content;
+  expect(JSON.parse(text?.type === 'text' ? text.text : 'null')).toEqual(result.structuredContent);
+  return result.structuredContent ?? {};
+}
+
+const outline: OutlineNode = {
+  id: '1:1',
+  name: 'Card',
+  type: 'FRAME',
+  width: 320,
+  height: 200,
+  layout: { mode: 'VERTICAL', padding: [16, 16, 16, 16], gap: 8 },
+  bound: { fills: 'color/card' },
+  component: null,
+  text: null,
+  children: [
+    {
+      id: '1:2',
+      name: 'Title',
+      type: 'TEXT',
+      width: 288,
+      height: 24,
+      layout: null,
+      bound: {},
+      component: null,
+      text: 'Trips',
+    },
+  ],
+};
+
+describe('every tool declares what it takes and answers', () => {
+  it('get_state answers the files, the port, the pairing code and the config', async () => {
+    const { client, plugin } = await setup();
+    await plugin('A', obedient([]));
+    expect(await declaredAnswer(client, 'get_state')).toMatchObject({ files: [{ file: 'A' }], pairing: {} });
+  });
+
+  it('read_guide answers the topic and its text', async () => {
+    const { client } = await setup();
+    expect(await declaredAnswer(client, 'read_guide', { topic: 'binding' })).toMatchObject({ topic: 'binding' });
+  });
+
+  it('read answers the outline, children included', async () => {
+    const { client, plugin } = await setup();
+    await plugin('A', (message, send) => {
+      if (message.type === 'read') send({ type: 'read-result', requestId: message.requestId, nodes: [outline] });
+    });
+    expect(await declaredAnswer(client, 'read', { nodeId: '1:1' })).toEqual({ nodes: [outline] });
+  });
+
+  it('execute answers a settled run and a run whose outcome is unknown', async () => {
+    const { client, plugin } = await setup();
+    await plugin('A', obedient([unboundCard]));
+    expect(await declaredAnswer(client, 'execute', { script: 'return 1' })).toMatchObject({
+      outcome: 'rolled-back',
+      findings: [{ check: 'binding' }],
+    });
+    const second = await setup();
+    await second.plugin('B', (m, send, socket) => {
+      if (m.type !== 'run') return;
+      send({ type: 'ran', runId: m.runId, ok: true, value: 1, created: [], mutated: [], snapshot: [] });
+      socket.terminate();
+    });
+    expect(await declaredAnswer(second.client, 'execute', { script: 'return 1' })).toEqual({
+      outcome: 'unknown',
+      message: 'read before retrying',
+    });
+  });
+
+  it('check answers the count checked and the findings', async () => {
+    const { client, plugin } = await setup();
+    await plugin('A', obedient([unboundCard]));
+    expect(await declaredAnswer(client, 'check', { scope: 'page' })).toMatchObject({
+      checked: 1,
+      findings: [{ check: 'binding' }],
+    });
+  });
+
+  it('pair answers the code, when it expires and where to type it', async () => {
+    const { client } = await setup();
+    expect(await declaredAnswer(client, 'pair')).toMatchObject({ code: expect.stringMatching(/^\d{4} \d{4}$/) });
+  });
+
+  it('pairings answers the stored pairings and the code state', async () => {
+    const { client, dial, newCode } = await setup();
+    await dial(hello({ code: await newCode() }));
+    expect(await declaredAnswer(client, 'pairings')).toMatchObject({
+      pairings: [{ file: 'Evil' }],
+      code: { state: 'none' },
+    });
+  });
+
+  it('unpair answers how many pairings it revoked', async () => {
+    const { client, dial, newCode } = await setup();
+    await dial(hello({ code: await newCode() }));
+    expect(await declaredAnswer(client, 'unpair', { id: 'all' })).toEqual({ revoked: 1 });
+  });
+
+  it('answers a refusal as an error with its text and no structured content', async () => {
+    const { client } = await setup();
+    const result = (await client.callTool({ name: 'read_guide', arguments: { topic: 'nope' } })) as CallToolResult;
+    expect(result).toMatchObject({
+      isError: true,
+      content: [{ type: 'text', text: expect.stringContaining('UnknownTopic') }],
+    });
+    expect(result).not.toHaveProperty('structuredContent');
   });
 });

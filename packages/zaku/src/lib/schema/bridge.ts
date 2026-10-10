@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { CHECK_IDS } from '../domain/findings.js';
+import { findingSchema } from '../domain/findings.js';
 
 /**
  * The ports the plugin's manifest admits, in the order zaku-mcp tries them. Figma admits a localhost port only
@@ -132,18 +132,6 @@ export const checkScopeSchema = z.union([
   z.object({ all: z.literal(true) }).strict(),
 ]);
 
-const findingSchema = z
-  .object({
-    check: z.enum(CHECK_IDS),
-    message: z.string(),
-    feature: z.string().optional(),
-    screen: z.string().optional(),
-    frame: z.string().optional(),
-    nodeId: z.string().optional(),
-    field: z.string().optional(),
-  })
-  .strict();
-
 /** What the sandbox reports about its file; the panel adds the credential before it goes on the socket. */
 export const fileHelloSchema = z
   .object({
@@ -156,6 +144,9 @@ export const fileHelloSchema = z
     user: z.string().nullable(),
   })
   .strict();
+
+/** A connected file as get_state reports it: its hello, without the message type. */
+export const sessionViewSchema = fileHelloSchema.omit({ type: true });
 
 /** A connection is attached only once its first message carries one of these. */
 export const credentialSchema = z.union([
@@ -248,6 +239,7 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
 
 export type NodeSnapshot = z.output<typeof nodeSnapshotSchema>;
 export type FileHello = z.output<typeof fileHelloSchema>;
+export type SessionView = z.output<typeof sessionViewSchema>;
 export type Credential = z.output<typeof credentialSchema>;
 export type Hello = z.output<typeof helloSchema>;
 export type RefusalReason = (typeof REFUSAL_REASONS)[number];

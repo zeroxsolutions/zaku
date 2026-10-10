@@ -12,6 +12,7 @@ export {
   pluginMessageSchema,
   readTargetSchema,
   serverMessageSchema,
+  sessionViewSchema,
   type CheckScope,
   type Credential,
   type FileHello,
@@ -22,5 +23,6 @@ export {
   type ReadTarget,
   type RefusalReason,
   type ServerMessage,
+  type SessionView,
 } from './bridge.js';
 export { zakuConfigSchema, type ZakuConfig } from './zaku-config.js';

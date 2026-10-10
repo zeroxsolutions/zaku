@@ -4,18 +4,18 @@ import { dirname, join } from 'node:path';
 import { z } from 'zod';
 
 /** A plugin the user paired; the token it was given never leaves the plugin, only its hash is kept. */
-export interface Pairing {
-  id: string;
-  /** The Figma file the plugin said hello from when it paired. */
-  file: string;
-  /** ISO 8601. */
-  created: string;
-}
+export const pairingSchema = z
+  .object({
+    id: z.string().describe('The id unpair takes'),
+    file: z.string().describe('The Figma file the plugin said hello from when it paired'),
+    created: z.string().describe('When it paired, ISO 8601'),
+  })
+  .strict();
+
+export type Pairing = z.output<typeof pairingSchema>;
 
 const pairingsFileSchema = z
-  .object({
-    pairings: z.array(z.object({ id: z.string(), hash: z.string(), file: z.string(), created: z.string() }).strict()),
-  })
+  .object({ pairings: z.array(pairingSchema.extend({ hash: z.string() }).strict()) })
   .strict();
 
 type PairingsFile = z.output<typeof pairingsFileSchema>;

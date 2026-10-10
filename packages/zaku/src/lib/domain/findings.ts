@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { ZakuConfig } from '../schema/zaku-config.js';
 import type { LibrarySnapshot } from './library.js';
 import type { LoadedMap } from '../repositories/feature-maps.js';
@@ -32,15 +33,20 @@ export const CHECK_IDS = [
 
 export type CheckId = (typeof CHECK_IDS)[number];
 
-export interface Finding {
-  check: CheckId;
-  message: string;
-  feature?: string;
-  screen?: string;
-  frame?: string;
-  nodeId?: string;
-  field?: string;
-}
+/** One broken rule: the check that found it, what it says, and where. */
+export const findingSchema = z
+  .object({
+    check: z.enum(CHECK_IDS).describe('The rule broken; read_guide with it explains the rule'),
+    message: z.string(),
+    feature: z.string().optional(),
+    screen: z.string().optional(),
+    frame: z.string().optional().describe('The top-level frame that holds the node'),
+    nodeId: z.string().optional(),
+    field: z.string().optional().describe('The property at fault, such as fill or paddingTop'),
+  })
+  .strict();
+
+export type Finding = z.output<typeof findingSchema>;
 
 export interface NotRun {
   check: CheckId;

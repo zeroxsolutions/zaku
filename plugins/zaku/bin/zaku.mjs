@@ -34906,6 +34906,17 @@ var CHECK_IDS = [
   'component',
   'prototype',
 ];
+var findingSchema = external_exports
+  .object({
+    check: external_exports.enum(CHECK_IDS).describe('The rule broken; read_guide with it explains the rule'),
+    message: external_exports.string(),
+    feature: external_exports.string().optional(),
+    screen: external_exports.string().optional(),
+    frame: external_exports.string().optional().describe('The top-level frame that holds the node'),
+    nodeId: external_exports.string().optional(),
+    field: external_exports.string().optional().describe('The property at fault, such as fill or paddingTop'),
+  })
+  .strict();
 
 // packages/zaku/dist/lib/domain/run-checks.js
 function runChecks(input2, checks) {
@@ -36549,6 +36560,14 @@ var import_tsyringe7 = __toESM(require_cjs(), 1);
 // packages/zaku/dist/lib/domain/reply-cut.js
 var REPLY_LIMIT = 2e4;
 var LISTED = 20;
+var cutIdsSchema = external_exports
+  .object({
+    count: external_exports.number().int(),
+    roots: external_exports.array(external_exports.string()),
+    more: external_exports.number().int(),
+  })
+  .strict()
+  .describe('The ids counted, as the reply was cut: the first roots listed, more of them left out');
 var printed = (value) => JSON.stringify(value, null, 2)?.length ?? 0;
 function cutIds(ids, parents) {
   const set2 = new Set(ids);
@@ -36688,6 +36707,45 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
 }
 
 // packages/zaku/dist/lib/handlers/execute-script.js
+var idsSchema = external_exports.union([external_exports.array(external_exports.string()), cutIdsSchema]);
+var settledRunSchema = external_exports
+  .object({
+    outcome: external_exports
+      .enum(['committed', 'rolled-back', 'partly-rolled-back'])
+      .describe('committed keeps the change; rolled-back undid it; partly-rolled-back left the nodes in left'),
+    reason: external_exports.enum(['findings', 'threw', 'timeout']).optional().describe('Why the run rolled back'),
+    left: external_exports
+      .array(external_exports.string())
+      .optional()
+      .describe('Nodes the run made that the plugin could not remove'),
+    error: external_exports.string().optional().describe('What the script threw'),
+    message: external_exports.string().optional().describe('Set when what the file now holds is not certain'),
+    value: external_exports.unknown().describe("The script's return value, as JSON"),
+    created: idsSchema.describe('The ids of the nodes the script created'),
+    mutated: idsSchema.describe('The ids of the nodes that existed before and that the script changed'),
+    findings: external_exports.array(findingSchema).describe('What broke a rule, among the nodes the script touched'),
+    untouchable: external_exports
+      .array(external_exports.string())
+      .describe('Changed nodes a rollback could not restore'),
+    findingCounts: external_exports
+      .record(external_exports.string(), external_exports.number().int())
+      .optional()
+      .describe('On a cut reply: findings by check'),
+    untouchableCount: external_exports
+      .number()
+      .int()
+      .optional()
+      .describe('On a cut reply: how many untouchable ids there were'),
+    cut: external_exports.literal(true).optional().describe('Set when the reply was cut to stay under its size limit'),
+  })
+  .strict();
+var lostRunSchema = external_exports
+  .object({
+    outcome: external_exports.literal('unknown'),
+    reason: external_exports.literal('timeout').optional(),
+    message: external_exports.string().describe('What to do before retrying'),
+  })
+  .strict();
 var UNKNOWN = { outcome: 'unknown', message: 'read before retrying' };
 var rolledBack = (left) => (left.length > 0 ? { outcome: 'partly-rolled-back', left } : { outcome: 'rolled-back' });
 var ExecuteScriptHandler = class ExecuteScriptHandler2 {
@@ -36837,19 +36895,15 @@ var SourceFiles = class SourceFiles2 {
 SourceFiles = __decorate2([(0, import_tsyringe12.injectable)({ token: TOKENS.SOURCE_FILES })], SourceFiles);
 
 // packages/zaku/dist/lib/repositories/pairing-store.js
-var pairingsFileSchema = external_exports
+var pairingSchema = external_exports
   .object({
-    pairings: external_exports.array(
-      external_exports
-        .object({
-          id: external_exports.string(),
-          hash: external_exports.string(),
-          file: external_exports.string(),
-          created: external_exports.string(),
-        })
-        .strict(),
-    ),
+    id: external_exports.string().describe('The id unpair takes'),
+    file: external_exports.string().describe('The Figma file the plugin said hello from when it paired'),
+    created: external_exports.string().describe('When it paired, ISO 8601'),
   })
+  .strict();
+var pairingsFileSchema = external_exports
+  .object({ pairings: external_exports.array(pairingSchema.extend({ hash: external_exports.string() }).strict()) })
   .strict();
 
 // packages/zaku/dist/entrypoints/cli/dependencies.js

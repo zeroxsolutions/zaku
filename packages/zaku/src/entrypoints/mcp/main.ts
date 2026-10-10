@@ -37,7 +37,8 @@ export interface McpRuntime {
 
 /** Wires the bridge, the bus and the tools, and opens the socket the plugin dials. Stdio is attached by the caller. */
 export async function startMcp(seams: McpSeams): Promise<McpRuntime> {
-  const bridge = new FigmaBridge(seams.timings ?? DEFAULT_TIMINGS);
+  const timings = seams.timings ?? DEFAULT_TIMINGS;
+  const bridge = new FigmaBridge(timings);
   const guides = new GuideRepository(seams.skillsDir);
   const bus = compose(bridge, guides);
   // A failed panel check has nobody waiting on it; the panel keeps its last findings.
@@ -76,6 +77,7 @@ export async function startMcp(seams: McpSeams): Promise<McpRuntime> {
     config: new DesignConfigRepository(),
     designRoot: resolve(seams.cwd, seams.env['ZAKU_DESIGN_ROOT'] ?? 'docs/design'),
     listening: () => ({ port: port(), portError: portError() }),
+    runTimeoutMs: timings.timeoutMs,
   });
   return {
     server,

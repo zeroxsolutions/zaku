@@ -1,15 +1,20 @@
 import type { MessageBus } from '@zeroxsolutions/cosmic';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import type { FigmaBridge } from '../../lib/adapters/figma-bridge.js';
 import { ExecuteScript } from '../../lib/commands/index.js';
+import { findingSchema } from '../../lib/domain/findings.js';
 import { CODE_LIFETIME_MS, displayCode } from '../../lib/domain/pairing-codes.js';
 import { UnknownTopic } from '../../lib/domain/errors/index.js';
+import { lostRunSchema, settledRunSchema, type ExecuteResult } from '../../lib/handlers/index.js';
 import type { IDesignConfigRepository } from '../../lib/repositories/design-config-repository.js';
 import type { IGuideRepository } from '../../lib/repositories/guide-repository.js';
+import { pairingSchema } from '../../lib/repositories/pairing-store.js';
+import { outlineNodeSchema, sessionViewSchema } from '../../lib/schema/bridge.js';
 import { runCheck } from './check.js';
 import { refusalText } from './error-map.js';
-import type { Pairings } from './pairings.js';
+import { codeReportSchema, type Pairings } from './pairings.js';
 
 export interface ToolSeams {
   bus: MessageBus;
@@ -19,18 +24,29 @@ export interface ToolSeams {
   config: IDesignConfigRepository;
   designRoot: string;
   listening: () => { port: number | null; portError: string | null };
+  /** How long a script may run before the bridge rolls it back, as execute's description states it. */
+  runTimeoutMs: number;
 }
 
-type ToolResult = { content: { type: 'text'; text: string }[]; isError?: boolean };
+/** A tool's answer, as the structured content its output schema declares. */
+type Body = Record<string, unknown>;
 
-const ok = (body: unknown): ToolResult => ({ content: [{ type: 'text', text: JSON.stringify(body, null, 2) }] });
-const refused = (text: string): ToolResult => ({
+/** The structured content, and the same JSON as text for a client that reads only the text. */
+const ok = (body: Body): CallToolResult => ({
+  content: [{ type: 'text', text: JSON.stringify(body, null, 2) }],
+  structuredContent: body,
+});
+/**
+ * A refusal carries text alone: the MCP spec's tool execution error has no structured content, and the SDK
+ * checks no error result against the output schema.
+ */
+const refused = (text: string): CallToolResult => ({
   content: [{ type: 'text', text: JSON.stringify({ error: text }) }],
   isError: true,
 });
 
 /** Runs a tool body; a domain refusal becomes an error result, anything else is rethrown for the SDK to report. */
-async function answerWith(body: () => Promise<unknown>, portError: string | null): Promise<ToolResult> {
+async function answerWith(body: () => Promise<Body>, portError: string | null): Promise<CallToolResult> {
   try {
     return ok(await body());
   } catch (error) {
@@ -40,17 +56,75 @@ async function answerWith(body: () => Promise<unknown>, portError: string | null
   }
 }
 
-const file = z.string().optional().describe('The connected file; needed only when more than one is open');
+const file = z
+  .string()
+  .optional()
+  .describe("A connected file's name from get_state; needed only when more than one is open");
+const port = z
+  .number()
+  .int()
+  .nullable()
+  .describe('The port zaku-mcp listens on for the plugin; null while every port is taken');
+const expiresAt = z.string().describe('When the code stops working, ISO 8601');
+const findings = z.array(findingSchema).describe('What broke a rule; the plugin shows the same list');
+const configSchema = z
+  .object({ loaded: z.boolean(), error: z.string().optional().describe('Why zaku.yaml did not load') })
+  .strict()
+  .describe('Whether zaku.yaml loaded from the design directory');
+
+/**
+ * What each tool answers. The SDK lists an output schema only when its root is an object, so execute's two
+ * outcomes share one object: on `unknown`, every field but `outcome` and `message` is absent.
+ */
+const OUTPUTS = {
+  get_state: {
+    files: z.array(sessionViewSchema).describe('The files with the zaku plugin open and paired'),
+    port,
+    portError: z.string().nullable().describe('Why zaku-mcp is not listening; null while it is'),
+    pairing: codeReportSchema,
+    designRoot: z.string().describe("The design directory whose zaku.yaml execute's copy rules read"),
+    config: configSchema,
+  },
+  read_guide: {
+    topic: z.string().describe('The topic asked for'),
+    text: z.string().describe('The guide, as markdown'),
+  },
+  read: { nodes: z.array(outlineNodeSchema).describe('The nodes found, each with its children to the depth asked') },
+  execute: settledRunSchema.partial().extend({
+    outcome: z
+      .enum([...settledRunSchema.shape.outcome.options, lostRunSchema.shape.outcome.value])
+      .describe(
+        'committed keeps the change; rolled-back undid it; partly-rolled-back left nodes; unknown: read before retrying',
+      ),
+  }).shape,
+  check: { checked: z.number().int().describe('How many nodes the rules read'), findings },
+  pair: {
+    code: z
+      .string()
+      .optional()
+      .describe('The code to show the user, two groups of four digits; absent when a dialog showed it'),
+    shown: z.string().optional().describe('Set instead of code when the user saw the code in a dialog'),
+    expiresAt,
+    port,
+    next: z.string().describe('What to tell the user to do with the code'),
+  },
+  pairings: { pairings: z.array(pairingSchema).describe('Every stored pairing'), code: codeReportSchema },
+  unpair: { revoked: z.number().int().describe('How many pairings were revoked') },
+} satisfies Record<string, z.ZodRawShape>;
 
 export function registerTools(server: McpServer, seams: ToolSeams): void {
-  const answer = (body: () => Promise<unknown>): Promise<ToolResult> => answerWith(body, seams.listening().portError);
+  const answer = (body: () => Promise<Body>): Promise<CallToolResult> => answerWith(body, seams.listening().portError);
 
   server.registerTool(
     'get_state',
-    { description: 'The connected Figma files, the bridge port and whether zaku.yaml loaded', inputSchema: {} },
+    {
+      description: 'The connected Figma files, the bridge port, the pairing code state and whether zaku.yaml loaded',
+      inputSchema: {},
+      outputSchema: OUTPUTS.get_state,
+    },
     () =>
       answer(async () => {
-        let config: { loaded: boolean; error?: string };
+        let config: z.output<typeof configSchema>;
         try {
           config = { loaded: (await seams.config.readOptional(seams.designRoot)) !== null };
         } catch (error) {
@@ -68,7 +142,13 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
 
   server.registerTool(
     'read_guide',
-    { description: 'A zaku skill or rule, by name', inputSchema: { topic: z.string() } },
+    {
+      description: "A zaku skill's or rule's guide as markdown; an unknown topic's error lists every topic",
+      inputSchema: {
+        topic: z.string().describe('A skill name, such as drawing-a-screen, or a rule id, such as binding'),
+      },
+      outputSchema: OUTPUTS.read_guide,
+    },
     ({ topic }) =>
       answer(async () => {
         const text = await seams.guides.read(topic);
@@ -81,13 +161,14 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
     'read',
     {
       description:
-        'An outline of a node subtree in an open file: type, name, size, layout, bound variables, component, text',
+        "An outline of a node subtree: each node's type, name, size, layout, bound variables, component and text",
       inputSchema: {
         file,
-        nodeId: z.string().optional(),
-        path: z.string().optional().describe('Names from the page down, Page/Frame/Layer'),
-        depth: z.number().int().min(0).max(6).default(2),
+        nodeId: z.string().optional().describe('The node to read, such as 1:23; taken over path'),
+        path: z.string().optional().describe('Names from the page down, Page/Frame/Layer; read when nodeId is absent'),
+        depth: z.number().int().min(0).max(6).default(2).describe('Levels of children to include, 0 to 6'),
       },
+      outputSchema: OUTPUTS.read,
     },
     ({ file: name, nodeId, path, depth }) =>
       answer(async () => {
@@ -101,19 +182,49 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
     'execute',
     {
       description:
-        'Run a Figma plugin script in an open file; the change is checked against zaku rules and rolled back on a finding in strict mode. A script has 30 s: past that it is given up and what it made is removed, so draw one part per script. Helpers are written into each script that uses them; code built from a string (new Function, eval, a function constructor) is refused. In a file the plugin reads page by page, set a style id with its async setter (setTextStyleIdAsync).',
-      inputSchema: { file, script: z.string(), mode: z.enum(['strict', 'report']).default('strict') },
+        'Run a Figma plugin script in an open file, check what it touched, and return the outcome and findings',
+      inputSchema: {
+        file,
+        script: z
+          .string()
+          .describe(
+            [
+              'Plugin API code, run as an async function body; return a JSON value.',
+              `A script has ${seams.runTimeoutMs / 1000} s: past that it is given up and what it made is removed, so draw one part per script.`,
+              'Helpers are written into each script that uses them; code built from a string (new Function, eval, a function constructor) is refused.',
+              'In a file the plugin reads page by page, set a style id with its async setter (setTextStyleIdAsync).',
+            ].join(' '),
+          ),
+        mode: z
+          .enum(['strict', 'report'])
+          .default('strict')
+          .describe('strict rolls the change back on any finding; report keeps it and returns the findings'),
+      },
+      outputSchema: OUTPUTS.execute,
     },
     ({ file: name, script, mode }) =>
-      answer(() => seams.bus.send(new ExecuteScript({ file: name, script, mode, designRoot: seams.designRoot }))),
+      answer(
+        async () =>
+          (await seams.bus.send(
+            new ExecuteScript({ file: name, script, mode, designRoot: seams.designRoot }),
+          )) as ExecuteResult,
+      ),
   );
 
   server.registerTool(
     'check',
     {
       description:
-        'Run the zaku rules over the current page, one node, or every page, and show the findings in the plugin',
-      inputSchema: { file, scope: z.enum(['page', 'node', 'all']).default('page'), nodeId: z.string().optional() },
+        'Run the zaku rules over the current page, one node or every page; show the findings in the plugin and return them',
+      inputSchema: {
+        file,
+        scope: z
+          .enum(['page', 'node', 'all'])
+          .default('page')
+          .describe('page: the current page; node: the node nodeId names; all: every page'),
+        nodeId: z.string().optional().describe('The node to check when scope is node'),
+      },
+      outputSchema: OUTPUTS.check,
     },
     ({ file: name, scope, nodeId }) =>
       answer(() =>
@@ -128,9 +239,9 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   server.registerTool(
     'pair',
     {
-      description:
-        'Show the user a code to type into the zaku panel in Figma, so the plugin can connect. Replaces any code shown before',
+      description: 'A one-time code the user types into the zaku panel in Figma to pair it; replaces any earlier code',
       inputSchema: {},
+      outputSchema: OUTPUTS.pair,
     },
     () =>
       answer(async () => {
@@ -162,15 +273,20 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
 
   server.registerTool(
     'pairings',
-    { description: 'The Figma plugins paired with this machine, and the state of the pairing code', inputSchema: {} },
+    {
+      description: 'The Figma plugins paired with this machine, and the state of the pairing code',
+      inputSchema: {},
+      outputSchema: OUTPUTS.pairings,
+    },
     () => answer(async () => ({ pairings: await seams.pairings.list(), code: seams.pairings.codeReport() })),
   );
 
   server.registerTool(
     'unpair',
     {
-      description: 'Revoke a pairing, closing its connection; the plugin has to pair again',
+      description: 'Revoke a pairing, or all of them, and close their connections; returns how many were revoked',
       inputSchema: { id: z.string().describe('A pairing id from pairings, or all') },
+      outputSchema: OUTPUTS.unpair,
     },
     ({ id }) => answer(async () => ({ revoked: await seams.pairings.revoke(id) })),
   );

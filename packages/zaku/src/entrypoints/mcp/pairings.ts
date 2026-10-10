@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { z } from 'zod';
 import { PairingNotFound } from '../../lib/domain/errors/index.js';
 import { PairingCodes, type CodeStatus } from '../../lib/domain/pairing-codes.js';
 import type { IPairingStore, Pairing } from '../../lib/repositories/pairing-store.js';
@@ -9,10 +10,21 @@ export type Admission =
   | { kind: 'refused'; reason: RefusalReason };
 
 /** The code status as the agent reads it from get_state and pairings. */
-export type CodeReport =
-  | { state: 'none' }
-  | { state: 'live'; expiresAt: string; attemptsLeft: number }
-  | { state: 'used-up'; message: string };
+export const codeReportSchema = z
+  .discriminatedUnion('state', [
+    z.object({ state: z.literal('none') }).strict(),
+    z
+      .object({
+        state: z.literal('live'),
+        expiresAt: z.string().describe('ISO 8601'),
+        attemptsLeft: z.number().int().describe('Wrong codes the panel may still type before the code is used up'),
+      })
+      .strict(),
+    z.object({ state: z.literal('used-up'), message: z.string() }).strict(),
+  ])
+  .describe('The pairing code: none issued, live until expiresAt, or used up by wrong attempts');
+
+export type CodeReport = z.output<typeof codeReportSchema>;
 
 export const USED_UP_MESSAGE = 'This code was used up by wrong attempts. Ask your agent for a new one.';
 
