@@ -51,17 +51,38 @@
   --primary-foreground: var(--figma-color-text-onbrand);
   --secondary: var(--figma-color-bg-secondary);
   --secondary-foreground: var(--figma-color-text);
-  --muted: var(--figma-color-bg-secondary);
+  /*
+   * One step past Figma's section fill: the recipes lay muted at half strength (a dialog's footer band), and half
+   * of bg-secondary is a band nobody sees; half of bg-tertiary is bg-secondary again in dark.
+   */
+  --muted: var(--figma-color-bg-tertiary);
   --muted-foreground: var(--figma-color-text-secondary);
   --accent: var(--figma-color-bg-hover);
   --accent-foreground: var(--figma-color-text);
-  /* Figma's text-grade danger: the recipes write destructive text with it and fill with it at 10-20%. */
-  --destructive: var(--figma-color-text-danger);
+  /*
+   * The recipes write destructive text with this and fill behind it with it at 10% (20% in dark). Figma's
+   * text-danger reads at 3.99:1 on its own 10% fill in light, so light takes its darkest red, bg-danger-secondary,
+   * at 5.12:1; dark keeps text-danger, at 4.72:1 on its 20% fill.
+   */
+  --destructive: var(--figma-color-bg-danger-secondary);
   --border: var(--figma-color-border);
   --input: var(--figma-color-border);
   --ring: var(--figma-color-border-selected);
   --success: var(--figma-color-bg-success);
   --warning: var(--figma-color-bg-warning);
+}
+
+:root.figma-dark {
+  --destructive: var(--figma-color-text-danger);
+}
+
+/*
+ * The dialog recipe's scrim is black at 10%, which sets a dialog apart from Figma's light panel at 1.25:1 and from
+ * its dark one at 1.04:1. Figma publishes no scrim colour, so dark takes the strength that gives the light ratio
+ * back: 40%, at 1.24:1.
+ */
+.figma-dark [data-slot='alert-dialog-overlay'] {
+  background-color: rgb(0 0 0 / 0.4);
 }
 
 @layer base {
