@@ -196,7 +196,7 @@ export const fileHelloSchema = z
   })
   .strict();
 
-/** A connected file as get_state reports it: its hello, without the message type. */
+/** A connected file as get_bridge_state reports it: its hello, without the message type. */
 export const sessionViewSchema = fileHelloSchema.omit({ type: true });
 
 /** A connection is attached only once its first message carries one of these. */

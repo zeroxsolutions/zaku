@@ -30,7 +30,7 @@ export interface ToolSeams {
   config: IDesignConfigRepository;
   designRoot: string;
   listening: () => { port: number | null; portError: string | null };
-  /** How long a script may run before the bridge rolls it back, as execute's description states it. */
+  /** How long a script may run before the bridge rolls it back, as run_script's script field states it. */
   runTimeoutMs: number;
 }
 
@@ -65,7 +65,7 @@ async function answerWith(body: () => Promise<Body>, portError: string | null): 
 const file = z
   .string()
   .optional()
-  .describe("A connected file's name from get_state; needed only when more than one is open");
+  .describe("A connected file's name from get_bridge_state; needed only when more than one is open");
 const port = z
   .number()
   .int()
@@ -79,32 +79,34 @@ const configSchema = z
   .describe('Whether zaku.yaml loaded from the design directory');
 
 /**
- * What each tool answers. The SDK lists an output schema only when its root is an object, so execute's two
+ * What each tool answers. The SDK lists an output schema only when its root is an object, so run_script's two
  * outcomes share one object: on `unknown`, every field but `outcome` and `message` is absent.
  */
 const OUTPUTS = {
-  get_state: {
+  get_bridge_state: {
     files: z.array(sessionViewSchema).describe('The files with the zaku plugin open and paired'),
     port,
     portError: z.string().nullable().describe('Why zaku-mcp is not listening; null while it is'),
     pairing: codeReportSchema,
-    designRoot: z.string().describe("The design directory whose zaku.yaml execute's copy rules read"),
+    designRoot: z.string().describe("The design directory whose zaku.yaml run_script's copy rules read"),
     config: configSchema,
   },
   read_guide: {
     topic: z.string().describe('The topic asked for'),
     text: z.string().describe('The guide, as markdown'),
   },
-  read: { nodes: z.array(outlineNodeSchema).describe('The nodes found, each with its children to the depth asked') },
-  execute: settledRunSchema.partial().extend({
+  read_nodes: {
+    nodes: z.array(outlineNodeSchema).describe('The nodes found, each with its children to the depth asked'),
+  },
+  run_script: settledRunSchema.partial().extend({
     outcome: z
       .enum([...settledRunSchema.shape.outcome.options, lostRunSchema.shape.outcome.value])
       .describe(
-        'committed keeps the change; rolled-back undid it; partly-rolled-back left nodes; unknown: read before retrying',
+        'committed keeps the change; rolled-back undid it; partly-rolled-back left nodes; unknown: call read_nodes before running it again',
       ),
   }).shape,
-  check: { checked: z.number().int().describe('How many nodes the rules read'), findings },
-  pair: {
+  check_rules: { checked: z.number().int().describe('How many nodes the rules read'), findings },
+  issue_pairing_code: {
     code: z
       .string()
       .optional()
@@ -114,8 +116,8 @@ const OUTPUTS = {
     port,
     next: z.string().describe('What to tell the user to do with the code'),
   },
-  pairings: { pairings: z.array(pairingSchema).describe('Every stored pairing'), code: codeReportSchema },
-  unpair: { revoked: z.number().int().describe('How many pairings were revoked') },
+  list_pairings: { pairings: z.array(pairingSchema).describe('Every stored pairing'), code: codeReportSchema },
+  revoke_pairing: { revoked: z.number().int().describe('How many pairings were revoked') },
   get_screenshot: screenshotSchema.shape,
 } satisfies Record<string, z.ZodRawShape>;
 
@@ -125,18 +127,18 @@ const OUTPUTS = {
  */
 const reads = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 const ANNOTATIONS = {
-  get_state: reads,
+  get_bridge_state: reads,
   read_guide: reads,
-  read: reads,
+  read_nodes: reads,
   get_screenshot: reads,
-  pairings: reads,
+  list_pairings: reads,
   // It removes and changes nodes, and two runs of one script draw twice.
-  execute: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+  run_script: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
   // It replaces the findings the panel shows, and nothing else.
-  check: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  check_rules: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
   // A new code ends the one before it.
-  pair: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
-  unpair: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  issue_pairing_code: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+  revoke_pairing: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
 } satisfies Record<keyof typeof OUTPUTS, Record<string, boolean>>;
 
 /** A rendered node's structured content, the same JSON as text, and the PNG as an image block. */
@@ -152,13 +154,14 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   const answer = (body: () => Promise<Body>): Promise<CallToolResult> => answerWith(body, seams.listening().portError);
 
   server.registerTool(
-    'get_state',
+    'get_bridge_state',
     {
-      title: 'Get zaku state',
-      annotations: ANNOTATIONS.get_state,
-      description: 'The connected Figma files, the bridge port, the pairing code state and whether zaku.yaml loaded',
+      title: 'Get the bridge state',
+      annotations: ANNOTATIONS.get_bridge_state,
+      description:
+        "Reports the bridge and returns the open files, the port, the pairing code's state and whether zaku.yaml loaded.",
       inputSchema: {},
-      outputSchema: OUTPUTS.get_state,
+      outputSchema: OUTPUTS.get_bridge_state,
     },
     () =>
       answer(async () => {
@@ -181,11 +184,15 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   server.registerTool(
     'read_guide',
     {
-      title: 'Read a zaku guide',
+      title: 'Read a guide',
       annotations: ANNOTATIONS.read_guide,
-      description: "A zaku skill's or rule's guide as markdown; an unknown topic's error lists every topic",
+      description: "Reads a zaku skill's or rule's guide and returns its topic and its text as markdown.",
       inputSchema: {
-        topic: z.string().describe('A skill name, such as drawing-a-screen, or a rule id, such as binding'),
+        topic: z
+          .string()
+          .describe(
+            'A skill name, such as drawing-a-screen, or a rule id, such as binding; an unknown one is refused with every topic',
+          ),
       },
       outputSchema: OUTPUTS.read_guide,
     },
@@ -198,19 +205,19 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   );
 
   server.registerTool(
-    'read',
+    'read_nodes',
     {
-      title: 'Read a Figma node',
-      annotations: ANNOTATIONS.read,
+      title: 'Read nodes',
+      annotations: ANNOTATIONS.read_nodes,
       description:
-        "An outline of a node subtree: each node's type, name, size, layout, bound variables, component and text",
+        "Reads a node subtree and returns each node's type, name, size, layout, bound variables, component and text.",
       inputSchema: {
         file,
         nodeId: z.string().optional().describe('The node to read, such as 1:23; taken over path'),
         path: z.string().optional().describe('Names from the page down, Page/Frame/Layer; read when nodeId is absent'),
         depth: z.number().int().min(0).max(6).default(2).describe('Levels of children to include, 0 to 6'),
       },
-      outputSchema: OUTPUTS.read,
+      outputSchema: OUTPUTS.read_nodes,
     },
     ({ file: name, nodeId, path, depth }) =>
       answer(async () => {
@@ -221,12 +228,12 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   );
 
   server.registerTool(
-    'execute',
+    'run_script',
     {
-      title: 'Execute a Figma script',
-      annotations: ANNOTATIONS.execute,
+      title: 'Run a script',
+      annotations: ANNOTATIONS.run_script,
       description:
-        'Run a Figma plugin script in an open file, check what it touched, and return the outcome and findings',
+        'Runs a Figma plugin script in an open file, checks what it touched, and returns the outcome and the findings.',
       inputSchema: {
         file,
         script: z
@@ -244,7 +251,7 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
           .default('strict')
           .describe('strict rolls the change back on any finding; report keeps it and returns the findings'),
       },
-      outputSchema: OUTPUTS.execute,
+      outputSchema: OUTPUTS.run_script,
     },
     ({ file: name, script, mode }) =>
       answer(
@@ -256,12 +263,12 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   );
 
   server.registerTool(
-    'check',
+    'check_rules',
     {
-      title: 'Check a Figma page',
-      annotations: ANNOTATIONS.check,
+      title: 'Check the rules',
+      annotations: ANNOTATIONS.check_rules,
       description:
-        'Run the zaku rules over the current page, one node or every page; show the findings in the plugin and return them',
+        'Checks the zaku rules over a page, a node or every page, shows the findings in the plugin, and returns them.',
       inputSchema: {
         file,
         scope: z
@@ -270,7 +277,7 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
           .describe('page: the current page; node: the node nodeId names; all: every page'),
         nodeId: z.string().optional().describe('The node to check when scope is node'),
       },
-      outputSchema: OUTPUTS.check,
+      outputSchema: OUTPUTS.check_rules,
     },
     ({ file: name, scope, nodeId }) =>
       answer(() =>
@@ -285,25 +292,23 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   server.registerTool(
     'get_screenshot',
     {
-      title: 'Screenshot a Figma node',
+      title: 'Get a screenshot',
       annotations: ANNOTATIONS.get_screenshot,
-      description: [
-        "Renders one node of an open file as a PNG and returns it as an image, with the node's id and name, the PNG's width and height in pixels and the scale.",
-        `A PNG over ${SCREENSHOT_LIMITS.maxBytes} bytes or ${SCREENSHOT_LIMITS.maxDimension} px a side is refused with a maxDimension that fits.`,
-        `It waits for a running execute and takes up to ${seams.runTimeoutMs / 1000} s. Pass a frame or a layer, not a page.`,
-      ].join(' '),
+      description: 'Renders one node as a PNG and returns it as an image with its id, name, size in pixels and scale.',
       inputSchema: {
         file,
         nodeId: z
           .string()
-          .describe('The node to render, such as 1:23, from read, check or execute: a frame or a layer, not a page'),
+          .describe(
+            `The node to render, such as 1:23, from read_nodes, check_rules or run_script: a frame or a layer, not a page; it waits for a running run_script and renders within ${seams.runTimeoutMs / 1000} s`,
+          ),
         scale: z
           .number()
           .min(SCREENSHOT_LIMITS.minScale)
           .max(SCREENSHOT_LIMITS.maxScale)
           .optional()
           .describe(
-            `Pixels per unit of the node's size, ${SCREENSHOT_LIMITS.minScale} to ${SCREENSHOT_LIMITS.maxScale}; taken over maxDimension when given`,
+            `Pixels per unit of the node's size, ${SCREENSHOT_LIMITS.minScale} to ${SCREENSHOT_LIMITS.maxScale}; taken over maxDimension when given; a render past ${SCREENSHOT_LIMITS.maxDimension} px a side is refused`,
           ),
         maxDimension: z
           .number()
@@ -312,7 +317,7 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
           .max(SCREENSHOT_LIMITS.maxDimension)
           .default(SCREENSHOT_LIMITS.defaultDimension)
           .describe(
-            `The pixels the node's longer side is rendered at, ${SCREENSHOT_LIMITS.minDimension} to ${SCREENSHOT_LIMITS.maxDimension}, default ${SCREENSHOT_LIMITS.defaultDimension}; a small node is enlarged at most ${SCREENSHOT_LIMITS.maxUpscale}x`,
+            `The pixels the node's longer side is rendered at, ${SCREENSHOT_LIMITS.minDimension} to ${SCREENSHOT_LIMITS.maxDimension}, default ${SCREENSHOT_LIMITS.defaultDimension}; a small node is enlarged at most ${SCREENSHOT_LIMITS.maxUpscale}x; a PNG over ${SCREENSHOT_LIMITS.maxBytes} bytes is refused with a maxDimension that fits`,
           ),
       },
       outputSchema: OUTPUTS.get_screenshot,
@@ -321,7 +326,7 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
       const size: ScreenshotSize = scale !== undefined ? { scale } : { maxDimension };
       try {
         const session = seams.bridge.session(name);
-        // A held execute's nodes are not the file's yet; the render waits until it is decided.
+        // A held script's nodes are not the file's yet; the render waits until it is decided.
         return pictured(await seams.bridge.exclusive(session, () => seams.bridge.screenshot(session, nodeId, size)));
       } catch (error) {
         const text = refusalText(error, seams.listening().portError);
@@ -332,13 +337,16 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   );
 
   server.registerTool(
-    'pair',
+    'issue_pairing_code',
     {
-      title: 'Pair the zaku plugin',
-      annotations: ANNOTATIONS.pair,
-      description: 'A one-time code the user types into the zaku panel in Figma to pair it; replaces any earlier code',
+      title: 'Issue a pairing code',
+      annotations: ANNOTATIONS.issue_pairing_code,
+      description: [
+        'Issues a code the user types into the zaku panel in Figma and returns it, when it expires, the port and what to do.',
+        `It works once, for ${CODE_LIFETIME_MS / 60_000} minutes, and the next code issued ends it.`,
+      ].join(' '),
       inputSchema: {},
-      outputSchema: OUTPUTS.pair,
+      outputSchema: OUTPUTS.issue_pairing_code,
     },
     () =>
       answer(async () => {
@@ -369,25 +377,25 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   );
 
   server.registerTool(
-    'pairings',
+    'list_pairings',
     {
-      title: 'List zaku pairings',
-      annotations: ANNOTATIONS.pairings,
-      description: 'The Figma plugins paired with this machine, and the state of the pairing code',
+      title: 'List the pairings',
+      annotations: ANNOTATIONS.list_pairings,
+      description: "Lists the zaku plugins paired with this machine and returns them with the pairing code's state.",
       inputSchema: {},
-      outputSchema: OUTPUTS.pairings,
+      outputSchema: OUTPUTS.list_pairings,
     },
     () => answer(async () => ({ pairings: await seams.pairings.list(), code: seams.pairings.codeReport() })),
   );
 
   server.registerTool(
-    'unpair',
+    'revoke_pairing',
     {
-      title: 'Unpair the zaku plugin',
-      annotations: ANNOTATIONS.unpair,
-      description: 'Revoke a pairing, or all of them, and close their connections; returns how many were revoked',
-      inputSchema: { id: z.string().describe('A pairing id from pairings, or all') },
-      outputSchema: OUTPUTS.unpair,
+      title: 'Revoke a pairing',
+      annotations: ANNOTATIONS.revoke_pairing,
+      description: 'Revokes a pairing, or all of them, closes their connections, and returns how many were revoked.',
+      inputSchema: { id: z.string().describe('A pairing id from list_pairings, or all for every pairing') },
+      outputSchema: OUTPUTS.revoke_pairing,
     },
     ({ id }) => answer(async () => ({ revoked: await seams.pairings.revoke(id) })),
   );

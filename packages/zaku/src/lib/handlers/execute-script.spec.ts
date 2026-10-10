@@ -154,11 +154,11 @@ describe('ExecuteScriptHandler', () => {
   it('answers unknown when the connection drops before or during the decision', async () => {
     expect(await handler(fakeBridge({ kind: 'dropped' }).bridge).handle(command())).toEqual({
       outcome: 'unknown',
-      message: 'read before retrying',
+      message: 'call read_nodes before running it again',
     });
     expect(await handler(fakeBridge(clean, { kind: 'dropped' }).bridge).handle(command())).toEqual({
       outcome: 'unknown',
-      message: 'read before retrying',
+      message: 'call read_nodes before running it again',
     });
   });
 

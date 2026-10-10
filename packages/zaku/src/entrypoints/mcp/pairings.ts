@@ -9,7 +9,7 @@ export type Admission =
   | { kind: 'admitted'; pairing: Pairing; issued: string | null }
   | { kind: 'refused'; reason: RefusalReason };
 
-/** The code status as the agent reads it from get_state and pairings. */
+/** The code status as the agent reads it from get_bridge_state and list_pairings. */
 export const codeReportSchema = z
   .discriminatedUnion('state', [
     z.object({ state: z.literal('none') }).strict(),

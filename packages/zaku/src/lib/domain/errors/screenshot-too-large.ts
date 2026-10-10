@@ -21,7 +21,7 @@ export class ScreenshotTooLarge extends Error {
         ? `${nodeId} would render ${width} x ${height} px, past the ${SCREENSHOT_LIMITS.maxDimension} px a side may be`
         : `${nodeId} renders to ${bytes} bytes of PNG at ${width} x ${height} px, over the ${SCREENSHOT_LIMITS.maxBytes} a screenshot may carry`;
     super(
-      `ScreenshotTooLarge: ${what}. Nothing was sent. Call get_screenshot again with maxDimension ${Math.max(SCREENSHOT_LIMITS.minDimension, fits)}, or with the id of one of its children, which read lists.`,
+      `ScreenshotTooLarge: ${what}. Nothing was sent. Call get_screenshot again with maxDimension ${Math.max(SCREENSHOT_LIMITS.minDimension, fits)}, or with the id of one of its children, which read_nodes lists.`,
     );
     this.name = 'ScreenshotTooLarge';
   }

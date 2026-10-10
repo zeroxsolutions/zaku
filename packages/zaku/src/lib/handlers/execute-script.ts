@@ -45,7 +45,7 @@ export const lostRunSchema = z
 
 export type ExecuteResult = z.output<typeof settledRunSchema> | z.output<typeof lostRunSchema>;
 
-const UNKNOWN = { outcome: 'unknown', message: 'read before retrying' } as const;
+const UNKNOWN = { outcome: 'unknown', message: 'call read_nodes before running it again' } as const;
 
 /** The outcome of a rollback, true to what the plugin removed: nodes it could not remove are named, not called gone. */
 const rolledBack = (left: string[]): { outcome: 'rolled-back' } | { outcome: 'partly-rolled-back'; left: string[] } =>
@@ -84,7 +84,7 @@ export class ExecuteScriptHandler implements ICommandHandler<ExecuteScript, Exec
           return {
             outcome: 'unknown',
             reason: 'timeout',
-            message: `the script ran past the ${budget} budget and the plugin did not confirm it gave it up; read before retrying`,
+            message: `the script ran past the ${budget} budget and the plugin did not confirm it gave it up; call read_nodes before running it again`,
           };
         return {
           ...rolledBack(ran.settled.left),
