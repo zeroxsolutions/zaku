@@ -160,8 +160,13 @@ export class FigmaBridge {
     return message.nodes ?? [];
   }
 
+  /** Reads what the rules check, within the run budget, since a large component set takes longer than a read. */
   async snapshot(session: Session, scope: CheckScope): Promise<NodeSnapshot[]> {
-    const message = await this.request(session, (requestId) => ({ type: 'snapshot', requestId, scope }));
+    const message = await this.request(
+      session,
+      (requestId) => ({ type: 'snapshot', requestId, scope }),
+      this.timings.timeoutMs,
+    );
     return message.snapshot ?? [];
   }
 
@@ -194,13 +199,14 @@ export class FigmaBridge {
   private async request(
     session: Session,
     build: (requestId: string) => ServerMessage,
+    ms: number = this.timings.readMs,
   ): Promise<Extract<PluginMessage, { type: 'read-result' }>> {
     const requestId = this.nextId();
-    const reply = this.await(session.connection, requestId, this.timings.readMs);
+    const reply = this.await(session.connection, requestId, ms);
     session.connection.send(build(requestId));
     const message = await reply;
     if (message === null) throw new PluginNotConnected();
-    if (message === 'timeout') throw new Error(`the plugin did not answer within ${this.timings.readMs} ms`);
+    if (message === 'timeout') throw new Error(`the plugin did not answer within ${ms} ms`);
     if (message.type !== 'read-result') throw new Error(`unexpected ${message.type}`);
     if (message.error) throw new Error(message.error);
     return message;

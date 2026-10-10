@@ -86,6 +86,18 @@ describe('FigmaBridge', () => {
     expect(b.sessions()).toEqual([]);
   });
 
+  it('waits the run budget for a snapshot, which outlasts a read on a large set', async () => {
+    const b = new FigmaBridge({ timeoutMs: 200, holdMs: 100, readMs: 20 }, () => `r${++ids}`);
+    const c = new FakeConnection();
+    b.attach(c);
+    c.emit(hello('A'));
+    c.reply = (m): void => {
+      if (m.type === 'snapshot')
+        setTimeout(() => c.emit({ type: 'read-result', requestId: m.requestId, snapshot: [] }), 60);
+    };
+    await expect(b.snapshot(b.session(), { all: true })).resolves.toEqual([]);
+  });
+
   it('returns what the plugin ran', async () => {
     const b = bridge();
     const c = new FakeConnection();
