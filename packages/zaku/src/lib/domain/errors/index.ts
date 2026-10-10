@@ -12,3 +12,5 @@ export { PairingNotFound } from './pairing-not-found.js';
 export { PluginNotConnected } from './plugin-not-connected.js';
 export { ScriptRefused } from './script-refused.js';
 export { UnknownTopic } from './unknown-topic.js';
+export { NodeNotRendered } from './node-not-rendered.js';
+export { ScreenshotTooLarge } from './screenshot-too-large.js';

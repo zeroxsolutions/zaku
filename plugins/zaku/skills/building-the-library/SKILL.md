@@ -94,10 +94,8 @@ hidden from the pickers still ships, and the finding it silenced is still true.
 
 ## What the library holds, in order
 
-1. **A cover**, 1200 x 675, in two halves. On the left, a column: the brand (the design system's own
-   mark, its official vector taken from the package, its repository or its site, never a letter drawn
-   in a box, then the design system's name and its style's; a design system with no published mark
-   shows its name alone), a badge reading `Design System`, the library's name set large, one
+1. **A cover**, 1200 x 675, in two halves. On the left, a column: the brand (the design system's mark,
+   then the design system's name and its style's), a badge reading `Design System`, the library's name set large, one
    sentence on what it holds, and at the foot a row of short badges naming what it was built from: the
    package, the style, the icon package, the font, a word each. On the right, the library's own
    components composed into the blocks the code's demos build (a form in a card, a calendar, a toast,
@@ -106,6 +104,15 @@ hidden from the pickers still ships, and the finding it silenced is still true.
    own, so it shows whichever mode the page is in: a cover pinned to one mode ignores the switch a
    designer makes to see the other. A badge holds a word, not a sentence: what the library leaves out
    is said in the definition of the view it affects.
+
+   The mark is an asset the brand published, never a drawing. It comes from the product's own files
+   (its logo or favicon SVG), the design system's package, or the brand's official published asset
+   (its repository's logo file, its brand or press page), in that order, and the reply cites where. An
+   icon that shares the brand's name is an icon, not the mark: antd's `AntDesignOutlined` is a one
+   colour glyph, and the Ant Design logo is the multi-colour one its repository publishes. The SVG is
+   placed as vector, its own colours kept, and is never redrawn, recoloured or approximated. With no
+   source found, the Logo frame holds an empty frame named `Logo placeholder`, and the reply says so.
+
 2. **The documentation components** every documentation view is built from (below), the page header
    first. They wait on no entry: the header's badge is the library's Badge, placed into the header
    once the Badge entry exists, and every view drawn before then shows it as soon as it is placed. The
@@ -315,6 +322,13 @@ Before the first step, read the tool's reference: it names the page, the frames 
 5. **The Matrix section**, for a set with more than one axis, as the component view says.
 6. **The guidance view's sections**, in the order of its table.
 7. **The entry's check**: zaku's `check` over the entry's page returns no finding.
+8. **The entry's review**: zaku's `get_screenshot` on each of the entry's views, and on the cover once
+   it is drawn, and each image held to this list. A fail is fixed, checked and rendered again before
+   the next entry starts:
+   - no text clipped, cut off or running out of its frame;
+   - nothing cut at a frame's edge, except the cover's bleed as the reference gives it;
+   - every set laid out as the reference's component set says, a large one in its labelled `Matrix`;
+   - every section of the view's table present, in its order, none empty.
 
 zaku's checks report a set placed on an entry page outside its view (`placement`), and a variant over
 another or past its set's edge (`overlap`).
@@ -325,6 +339,7 @@ Every reply on library work carries these lines, each REQUIRED, `none` where the
 
 ```
 Library file: <the key zaku.yaml names>
+Logo: <the path or URL the mark's SVG came from, or `none found` and the placeholder left>
 Entries: <entry> - page <page>, views <component view> and <guidance view>, sets <set names>   (one line per entry)
 Check: <what zaku's check over every page returned: the count, then each finding>
 Misread findings: <finding, node id, what the node really is, the change that waits>

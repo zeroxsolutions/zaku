@@ -1,9 +1,11 @@
 import {
   FileNotConnected,
   FileRequired,
+  NodeNotRendered,
   PairingNotFound,
   PluginNotConnected,
   ScriptRefused,
+  ScreenshotTooLarge,
   UnknownTopic,
 } from '../../lib/domain/errors/index.js';
 
@@ -20,6 +22,8 @@ export function refusalText(error: unknown, portError: string | null): string | 
     error instanceof FileNotConnected ||
     error instanceof PairingNotFound ||
     error instanceof ScriptRefused ||
+    error instanceof NodeNotRendered ||
+    error instanceof ScreenshotTooLarge ||
     error instanceof UnknownTopic
   )
     return error.message;

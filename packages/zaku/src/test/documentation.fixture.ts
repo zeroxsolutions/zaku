@@ -363,22 +363,74 @@ export function buttonViews(): Layer[] {
   ];
 }
 
+const glow = (): Layer =>
+  frame('Glow', { width: 1200, height: 675 }, [
+    frame('Glow \u00b7 primary', { x: 820, y: -170, width: 900, height: 420 }),
+  ]);
+const intro = (): Layer => frame('Intro', { x: 72, y: 72, width: 464, height: 531, ...vertical(none, 24) });
+
 /**
- * The library's cover as the measured library draws it: the Thumbnail frame, its Glow running past the edges, and
- * a composition whose second column runs past the right edge. `cardHeight` is the height of that column's Card,
- * at y 320 in the composition.
+ * The measured library's cover: its instances straight on the Thumbnail frame, the second column at x 984 running
+ * past the right edge (Sonner by 140 of its 356, the Card by 64 of its 280) beside a Calendar that ends 2 inside
+ * it. `cardHeight` is the height of the first column's lower Card, at y 371.
  */
-export function cover(cardHeight = 240): Layer[] {
+export function novaCover(cardHeight = 173): Layer[] {
   return [
     frame('Thumbnail', { width: 1200, height: 675 }, [
-      frame('Glow', { width: 1200, height: 675 }, [
-        frame('Glow \u00b7 primary', { x: 820, y: -170, width: 900, height: 420 }),
+      glow(),
+      intro(),
+      {
+        ...instance('Sonner', 'Sonner', { x: 984, y: 350, width: 356, height: 75 }),
+        children: [frame('[data-content]', { x: 16, y: 16, width: 270, height: 43 })],
+      },
+      instance('Calendar', 'Calendar', { x: 984, y: 72, width: 214, height: 262 }),
+      instance('Card', 'Card', { x: 616, y: 72, width: 336, height: 283 }),
+      instance('Card', 'Card', { x: 616, y: 371, width: 336, height: cardHeight }),
+      instance('Card', 'Card', { x: 984, y: 441, width: 280, height: 84 }),
+    ]),
+  ];
+}
+
+/**
+ * The hand-built library's cover: a Composition of two column frames, the second 300 wide at x 988 running 88 past
+ * the right edge, the Composition hugging it.
+ */
+export function handBuiltCover(): Layer[] {
+  const column = (name: string, x: number, width: number): Layer =>
+    frame(name, { x, width, height: 392, ...vertical(none, 32) }, [
+      instance('Card', 'Card', { width, height: 180 }),
+      instance('Card', 'Card', { y: 212, width, height: 180 }),
+    ]);
+  return [
+    frame('Thumbnail', { width: 1200, height: 675 }, [
+      glow(),
+      frame('Composition', { x: 616, y: 72, width: 672, height: 392, ...horizontal(none, 32) }, [
+        column('Column 1', 0, 340),
+        column('Column 2', 372, 300),
       ]),
-      frame('Intro', { x: 72, y: 72, width: 464, height: 531, ...vertical(none, 24) }),
-      frame('Composition', { x: 616, y: 72, width: 648, height: 531 }, [
-        instance('Card', 'Card', { x: 0, y: 0, width: 336, height: 283 }),
-        instance('Card', 'Card', { x: 368, y: 320, width: 280, height: cardHeight }),
+      intro(),
+    ]),
+  ];
+}
+
+/**
+ * Run 5's cover: a Composition 620 wide at x 616, 36 past the right edge and empty there, whose second column puts
+ * its 280-wide Variants Card at x 928, 8 past the edge.
+ */
+export function run5Cover(): Layer[] {
+  return [
+    frame('Thumbnail', { width: 1200, height: 675 }, [
+      glow(),
+      frame('Composition', { x: 616, y: 0, width: 620, height: 675 }, [
+        frame('Column 1', { y: 72, width: 280, height: 420, ...vertical(none, 24) }, [
+          instance('Card', 'Card', { width: 280, height: 160 }),
+        ]),
+        frame('Column 2', { x: 312, y: 120, width: 280, height: 400, ...vertical(none, 12) }, [
+          instance('Variants', 'Card', { width: 280, height: 120 }),
+          instance('Button', 'Button', { y: 132, width: 72, height: 32 }),
+        ]),
       ]),
+      intro(),
     ]),
   ];
 }

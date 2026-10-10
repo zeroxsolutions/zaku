@@ -1,4 +1,11 @@
-import { buttonViews, cover, documentationComponents, pageSnapshot } from '../../test/documentation.fixture.js';
+import {
+  buttonViews,
+  documentationComponents,
+  handBuiltCover,
+  novaCover,
+  pageSnapshot,
+  run5Cover,
+} from '../../test/documentation.fixture.js';
 import { snapshotFindings } from './snapshot-rules.js';
 
 const DOCS = { id: '3:16', name: 'Component for Docs' };
@@ -109,14 +116,22 @@ describe('the documentation rule', () => {
     ]);
   });
 
-  it('finds a layer of the cover that reaches past its top, left or bottom edge', () => {
-    expect(documentation(pageSnapshot(THUMBNAIL, cover(320)))).toEqual([
-      "Thumbnail / Composition / Card: reaches 37 past the cover's bottom edge, which cuts it off",
+  it('passes the measured cover and the hand-built one, whose columns bleed off the right edge', () => {
+    expect(documentation(pageSnapshot(THUMBNAIL, novaCover()))).toEqual([]);
+    expect(documentation(pageSnapshot(THUMBNAIL, handBuiltCover()))).toEqual([]);
+  });
+
+  it("finds run 5's cover: a card cut by a sliver at the right edge, and a composition reaching past it empty", () => {
+    expect(documentation(pageSnapshot(THUMBNAIL, run5Cover()))).toEqual([
+      "Thumbnail / Composition: reaches 36 past the cover's right edge, and nothing in it bleeds",
+      "Thumbnail / Composition / Column 2 / Variants: crosses the cover's right edge by 8 of its 280; bleed a quarter of its width past it, or end it 72 inside",
     ]);
   });
 
-  it('lets the glow run off every edge, and the composition off the right, as the measured cover does', () => {
-    expect(documentation(pageSnapshot(THUMBNAIL, cover()))).toEqual([]);
+  it('finds a layer of the cover that reaches past its top, left or bottom edge', () => {
+    expect(documentation(pageSnapshot(THUMBNAIL, novaCover(320)))).toEqual([
+      "Thumbnail / Card: reaches 16 past the cover's bottom edge, which cuts it off",
+    ]);
   });
 
   it('reads nothing off the documentation, and nothing whose layers above it the snapshot lacks', () => {

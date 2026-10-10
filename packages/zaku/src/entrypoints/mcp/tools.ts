@@ -11,7 +11,13 @@ import { lostRunSchema, settledRunSchema, type ExecuteResult } from '../../lib/h
 import type { IDesignConfigRepository } from '../../lib/repositories/design-config-repository.js';
 import type { IGuideRepository } from '../../lib/repositories/guide-repository.js';
 import { pairingSchema } from '../../lib/repositories/pairing-store.js';
-import { outlineNodeSchema, sessionViewSchema } from '../../lib/schema/bridge.js';
+import {
+  outlineNodeSchema,
+  SCREENSHOT_LIMITS,
+  screenshotSchema,
+  sessionViewSchema,
+  type ScreenshotSize,
+} from '../../lib/schema/bridge.js';
 import { runCheck } from './check.js';
 import { refusalText } from './error-map.js';
 import { codeReportSchema, type Pairings } from './pairings.js';
@@ -110,7 +116,37 @@ const OUTPUTS = {
   },
   pairings: { pairings: z.array(pairingSchema).describe('Every stored pairing'), code: codeReportSchema },
   unpair: { revoked: z.number().int().describe('How many pairings were revoked') },
+  get_screenshot: screenshotSchema.shape,
 } satisfies Record<string, z.ZodRawShape>;
+
+/**
+ * What each tool may do to the file and the pairings, for a host deciding what to ask the user. None reaches past
+ * this machine: the plugin, the pairings file and the skills are all local.
+ */
+const reads = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
+const ANNOTATIONS = {
+  get_state: reads,
+  read_guide: reads,
+  read: reads,
+  get_screenshot: reads,
+  pairings: reads,
+  // It removes and changes nodes, and two runs of one script draw twice.
+  execute: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+  // It replaces the findings the panel shows, and nothing else.
+  check: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  // A new code ends the one before it.
+  pair: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
+  unpair: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+} satisfies Record<keyof typeof OUTPUTS, Record<string, boolean>>;
+
+/** A rendered node's structured content, the same JSON as text, and the PNG as an image block. */
+const pictured = ({ png, ...body }: { png: string } & Body): CallToolResult => ({
+  content: [
+    { type: 'text', text: JSON.stringify(body, null, 2) },
+    { type: 'image', data: png, mimeType: 'image/png' },
+  ],
+  structuredContent: body,
+});
 
 export function registerTools(server: McpServer, seams: ToolSeams): void {
   const answer = (body: () => Promise<Body>): Promise<CallToolResult> => answerWith(body, seams.listening().portError);
@@ -118,6 +154,8 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   server.registerTool(
     'get_state',
     {
+      title: 'Get zaku state',
+      annotations: ANNOTATIONS.get_state,
       description: 'The connected Figma files, the bridge port, the pairing code state and whether zaku.yaml loaded',
       inputSchema: {},
       outputSchema: OUTPUTS.get_state,
@@ -143,6 +181,8 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   server.registerTool(
     'read_guide',
     {
+      title: 'Read a zaku guide',
+      annotations: ANNOTATIONS.read_guide,
       description: "A zaku skill's or rule's guide as markdown; an unknown topic's error lists every topic",
       inputSchema: {
         topic: z.string().describe('A skill name, such as drawing-a-screen, or a rule id, such as binding'),
@@ -160,6 +200,8 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   server.registerTool(
     'read',
     {
+      title: 'Read a Figma node',
+      annotations: ANNOTATIONS.read,
       description:
         "An outline of a node subtree: each node's type, name, size, layout, bound variables, component and text",
       inputSchema: {
@@ -181,6 +223,8 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   server.registerTool(
     'execute',
     {
+      title: 'Execute a Figma script',
+      annotations: ANNOTATIONS.execute,
       description:
         'Run a Figma plugin script in an open file, check what it touched, and return the outcome and findings',
       inputSchema: {
@@ -214,6 +258,8 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   server.registerTool(
     'check',
     {
+      title: 'Check a Figma page',
+      annotations: ANNOTATIONS.check,
       description:
         'Run the zaku rules over the current page, one node or every page; show the findings in the plugin and return them',
       inputSchema: {
@@ -237,8 +283,59 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   );
 
   server.registerTool(
+    'get_screenshot',
+    {
+      title: 'Screenshot a Figma node',
+      annotations: ANNOTATIONS.get_screenshot,
+      description: [
+        "Renders one node of an open file as a PNG and returns it as an image, with the node's id and name, the PNG's width and height in pixels and the scale.",
+        `A PNG over ${SCREENSHOT_LIMITS.maxBytes} bytes or ${SCREENSHOT_LIMITS.maxDimension} px a side is refused with a maxDimension that fits.`,
+        `It waits for a running execute and takes up to ${seams.runTimeoutMs / 1000} s. Pass a frame or a layer, not a page.`,
+      ].join(' '),
+      inputSchema: {
+        file,
+        nodeId: z
+          .string()
+          .describe('The node to render, such as 1:23, from read, check or execute: a frame or a layer, not a page'),
+        scale: z
+          .number()
+          .min(SCREENSHOT_LIMITS.minScale)
+          .max(SCREENSHOT_LIMITS.maxScale)
+          .optional()
+          .describe(
+            `Pixels per unit of the node's size, ${SCREENSHOT_LIMITS.minScale} to ${SCREENSHOT_LIMITS.maxScale}; taken over maxDimension when given`,
+          ),
+        maxDimension: z
+          .number()
+          .int()
+          .min(SCREENSHOT_LIMITS.minDimension)
+          .max(SCREENSHOT_LIMITS.maxDimension)
+          .default(SCREENSHOT_LIMITS.defaultDimension)
+          .describe(
+            `The pixels the node's longer side is rendered at, ${SCREENSHOT_LIMITS.minDimension} to ${SCREENSHOT_LIMITS.maxDimension}, default ${SCREENSHOT_LIMITS.defaultDimension}; a small node is enlarged at most ${SCREENSHOT_LIMITS.maxUpscale}x`,
+          ),
+      },
+      outputSchema: OUTPUTS.get_screenshot,
+    },
+    async ({ file: name, nodeId, scale, maxDimension }) => {
+      const size: ScreenshotSize = scale !== undefined ? { scale } : { maxDimension };
+      try {
+        const session = seams.bridge.session(name);
+        // A held execute's nodes are not the file's yet; the render waits until it is decided.
+        return pictured(await seams.bridge.exclusive(session, () => seams.bridge.screenshot(session, nodeId, size)));
+      } catch (error) {
+        const text = refusalText(error, seams.listening().portError);
+        if (text === null) throw error;
+        return refused(text);
+      }
+    },
+  );
+
+  server.registerTool(
     'pair',
     {
+      title: 'Pair the zaku plugin',
+      annotations: ANNOTATIONS.pair,
       description: 'A one-time code the user types into the zaku panel in Figma to pair it; replaces any earlier code',
       inputSchema: {},
       outputSchema: OUTPUTS.pair,
@@ -274,6 +371,8 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   server.registerTool(
     'pairings',
     {
+      title: 'List zaku pairings',
+      annotations: ANNOTATIONS.pairings,
       description: 'The Figma plugins paired with this machine, and the state of the pairing code',
       inputSchema: {},
       outputSchema: OUTPUTS.pairings,
@@ -284,6 +383,8 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
   server.registerTool(
     'unpair',
     {
+      title: 'Unpair the zaku plugin',
+      annotations: ANNOTATIONS.unpair,
       description: 'Revoke a pairing, or all of them, and close their connections; returns how many were revoked',
       inputSchema: { id: z.string().describe('A pairing id from pairings, or all') },
       outputSchema: OUTPUTS.unpair,

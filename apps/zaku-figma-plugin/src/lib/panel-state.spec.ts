@@ -105,6 +105,20 @@ describe('panelReducer', () => {
     expect(done.running).toBeNull();
   });
 
+  it('shows a screenshot as running until it is rendered or refused', () => {
+    const asked = run(connected, {
+      kind: 'to-sandbox',
+      now: 3,
+      message: { type: 'export', requestId: 'e', nodeId: '1:1', size: { scale: 1 }, maxBytes: 10 },
+    });
+    expect(asked.running).toEqual({ command: 'screenshot', id: 'e', since: 3 });
+    const refused = panelReducer(asked, {
+      kind: 'from-sandbox',
+      message: { type: 'export-refused', requestId: 'e', reason: 'missing' },
+    });
+    expect(refused.running).toBeNull();
+  });
+
   it('ends what was running when the connection drops', () => {
     const state = run(
       connected,

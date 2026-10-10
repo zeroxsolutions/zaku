@@ -1,11 +1,20 @@
-import { FileNotConnected, FileRequired, PluginNotConnected } from '../domain/errors/index.js';
+import {
+  FileNotConnected,
+  FileRequired,
+  NodeNotRendered,
+  PluginNotConnected,
+  ScreenshotTooLarge,
+} from '../domain/errors/index.js';
 import {
   pluginMessageSchema,
+  SCREENSHOT_LIMITS,
   type CheckScope,
   type NodeSnapshot,
   type OutlineNode,
   type PluginMessage,
   type ReadTarget,
+  type Screenshot,
+  type ScreenshotSize,
   type ServerMessage,
   type SessionView,
 } from '../schema/bridge.js';
@@ -156,6 +165,28 @@ export class FigmaBridge {
     return message.snapshot ?? [];
   }
 
+  /**
+   * Renders one node as a PNG, within the run budget, since an export of a large frame takes longer than a read.
+   * Throws NodeNotRendered when there is nothing to render, and ScreenshotTooLarge past the limits.
+   */
+  async screenshot(session: Session, nodeId: string, size: ScreenshotSize): Promise<Screenshot> {
+    const requestId = this.nextId();
+    const reply = this.await(session.connection, requestId, this.timings.timeoutMs);
+    session.connection.send({ type: 'export', requestId, nodeId, size, maxBytes: SCREENSHOT_LIMITS.maxBytes });
+    const message = await reply;
+    if (message === null) throw new PluginNotConnected();
+    if (message === 'timeout')
+      throw new NodeNotRendered(nodeId, 'failed', `the plugin did not answer within ${this.timings.timeoutMs} ms`);
+    if (message.type === 'exported') {
+      const { name, width, height, scale, png } = message;
+      return { nodeId, name, width, height, scale, png };
+    }
+    if (message.type !== 'export-refused') throw new Error(`unexpected ${message.type}`);
+    if (message.reason === 'too-large')
+      throw new ScreenshotTooLarge(nodeId, message.width ?? 0, message.height ?? 0, message.bytes);
+    throw new NodeNotRendered(nodeId, message.reason, message.error);
+  }
+
   push(session: Session, message: Extract<ServerMessage, { type: 'findings' | 'select' }>): void {
     if (session.connection.isOpen()) session.connection.send(message);
   }
@@ -212,7 +243,7 @@ export class FigmaBridge {
     const id =
       message.type === 'settled'
         ? `settled:${message.runId}`
-        : message.type === 'read-result'
+        : message.type === 'read-result' || message.type === 'exported' || message.type === 'export-refused'
           ? message.requestId
           : message.runId;
     const waiter = this.waiters.get(id);

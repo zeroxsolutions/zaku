@@ -53,8 +53,10 @@ export interface DocumentationPart {
 }
 
 /**
- * The library's cover: its page, its one frame and that frame's size; the layer that runs past every edge; and the
- * x the composition starts at, from which a layer may run past the right edge, as the measured cover's columns do.
+ * The library's cover: its page, its one frame and that frame's size; the layer that runs past every edge; the frame
+ * holding the brand mark; the
+ * share of a block's width that has to run past the right edge for it to bleed rather than be cut; and the margin
+ * a block that does not bleed keeps from the right edge, as the intro keeps from the left.
  */
 export const COVER = {
   page: 'Thumbnail',
@@ -62,7 +64,10 @@ export const COVER = {
   width: 1200,
   height: 675,
   bleeds: 'Glow',
-  composition: 616,
+  /** The frame the brand mark is placed in, which keeps the brand's own colours. */
+  logo: 'Logo',
+  bleed: 0.25,
+  margin: 72,
 } as const;
 
 /** The name the views' and the components' page carries. */

@@ -8,6 +8,7 @@ const CHECK_BAR_VERBS: Record<Running['command'], string> = {
   execute: 'Running',
   read: 'Reading',
   check: 'Checking',
+  screenshot: 'Rendering',
 };
 
 type CheckBarProps = {
