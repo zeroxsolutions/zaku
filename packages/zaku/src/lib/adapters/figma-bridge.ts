@@ -2,12 +2,12 @@ import { FileNotConnected, FileRequired, PluginNotConnected } from '../domain/er
 import {
   pluginMessageSchema,
   type CheckScope,
-  type Hello,
   type NodeSnapshot,
   type OutlineNode,
   type PluginMessage,
   type ReadTarget,
   type ServerMessage,
+  type SessionView,
 } from '../schema/bridge.js';
 
 /** The transport the plugin's socket is reached through; the MCP entrypoint builds it over a WebSocket. */
@@ -16,15 +16,6 @@ export interface BridgeConnection {
   onMessage(listener: (message: unknown) => void): void;
   onClose(listener: () => void): void;
   isOpen(): boolean;
-}
-
-export interface SessionView {
-  file: string;
-  pages: Hello['pages'];
-  currentPage: string;
-  selection: string[];
-  pluginVersion: string;
-  user: string | null;
 }
 
 export interface Session extends SessionView {

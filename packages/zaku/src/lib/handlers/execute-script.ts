@@ -1,32 +1,49 @@
 import type { ICommandHandler } from '@zeroxsolutions/cosmic';
 import { inject, injectable } from 'tsyringe';
+import { z } from 'zod';
 import type { FigmaBridge } from '../adapters/figma-bridge.js';
 import { ExecuteScript } from '../commands/index.js';
 import { TOKENS } from '../constants/index.js';
 import { ScriptRefused } from '../domain/errors/index.js';
-import type { Finding } from '../domain/findings.js';
-import { cutReply } from '../domain/reply-cut.js';
+import { findingSchema } from '../domain/findings.js';
+import { cutIdsSchema, cutReply } from '../domain/reply-cut.js';
 import { refusedCalls } from '../domain/script-refusal.js';
 import { snapshotFindings } from '../domain/snapshot-rules.js';
 import type { IDesignConfigRepository } from '../repositories/design-config-repository.js';
 
-export type ExecuteResult =
-  | {
-      /** `partly-rolled-back`: the plugin could not remove every node the run made; `left` names those still in the file. */
-      outcome: 'committed' | 'rolled-back' | 'partly-rolled-back';
-      reason?: 'findings' | 'threw' | 'timeout';
-      left?: string[];
-      error?: string;
-      /** Set when what the file now holds is not certain. */
-      message?: string;
-      value: unknown;
-      created: unknown;
-      mutated: unknown;
-      findings: Finding[];
-      untouchable: string[];
-      cut?: true;
-    }
-  | { outcome: 'unknown'; reason?: 'timeout'; message: string };
+const idsSchema = z.union([z.array(z.string()), cutIdsSchema]);
+
+/** A run the plugin settled, or rolled back after the script threw or ran out of time. */
+export const settledRunSchema = z
+  .object({
+    outcome: z
+      .enum(['committed', 'rolled-back', 'partly-rolled-back'])
+      .describe('committed keeps the change; rolled-back undid it; partly-rolled-back left the nodes in left'),
+    reason: z.enum(['findings', 'threw', 'timeout']).optional().describe('Why the run rolled back'),
+    left: z.array(z.string()).optional().describe('Nodes the run made that the plugin could not remove'),
+    error: z.string().optional().describe('What the script threw'),
+    message: z.string().optional().describe('Set when what the file now holds is not certain'),
+    value: z.unknown().describe("The script's return value, as JSON"),
+    created: idsSchema.describe('The ids of the nodes the script created'),
+    mutated: idsSchema.describe('The ids of the nodes that existed before and that the script changed'),
+    findings: z.array(findingSchema).describe('What broke a rule, among the nodes the script touched'),
+    untouchable: z.array(z.string()).describe('Changed nodes a rollback could not restore'),
+    findingCounts: z.record(z.string(), z.number().int()).optional().describe('On a cut reply: findings by check'),
+    untouchableCount: z.number().int().optional().describe('On a cut reply: how many untouchable ids there were'),
+    cut: z.literal(true).optional().describe('Set when the reply was cut to stay under its size limit'),
+  })
+  .strict();
+
+/** The plugin dropped, or did not confirm it gave up a timed-out run, so whether the change was kept is not known. */
+export const lostRunSchema = z
+  .object({
+    outcome: z.literal('unknown'),
+    reason: z.literal('timeout').optional(),
+    message: z.string().describe('What to do before retrying'),
+  })
+  .strict();
+
+export type ExecuteResult = z.output<typeof settledRunSchema> | z.output<typeof lostRunSchema>;
 
 const UNKNOWN = { outcome: 'unknown', message: 'read before retrying' } as const;
 
