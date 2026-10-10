@@ -127,7 +127,7 @@
           "{projectRoot}/dist/zaku-mcp"
         ],
         "options": {
-          "command": "bun build --compile --minify --sourcemap src/main.ts --outfile dist/zaku-mcp",
+          "command": "./compile.sh",
           "cwd": "{projectRoot}"
         }
       },
@@ -140,7 +140,7 @@
           "{workspaceRoot}/plugins/zaku/bin"
         ],
         "options": {
-          "command": "cp apps/zaku-mcp/dist/zaku-mcp plugins/zaku/bin/zaku-mcp-$(node -p 'process.platform+\"-\"+process.arch')",
+          "command": "target=plugins/zaku/bin/zaku-mcp-$(node -p 'process.platform+\"-\"+process.arch') && rm -f $target && cp apps/zaku-mcp/dist/zaku-mcp $target",
           "cwd": "{workspaceRoot}"
         }
       }
