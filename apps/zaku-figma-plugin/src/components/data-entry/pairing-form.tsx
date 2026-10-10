@@ -11,7 +11,7 @@ const PAIRING_FORM_REFUSALS = {
   'wrong-code': 'That code is not right. Check it and try again.',
   'expired-code': 'That code has expired. Ask your agent for a new one.',
   'used-up-code': 'This code was used up by wrong attempts. Ask your agent for a new one.',
-  'unknown-token': 'zaku-mcp no longer knows this plugin. Ask your agent to pair with zaku again.',
+  'unknown-token': 'No zaku-mcp running here knows this plugin. Ask your agent to pair with zaku again.',
 } as const satisfies Record<RefusalReason, string>;
 
 type PairingFormProps = {

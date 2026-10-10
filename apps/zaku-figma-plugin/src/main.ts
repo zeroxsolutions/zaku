@@ -117,9 +117,9 @@ async function receive(raw: unknown): Promise<void> {
   const parsed = serverMessageSchema.safeParse(raw);
   if (!parsed.success) return;
   const message = parsed.data;
+  // A refused token is kept: the zaku-mcp that refused it may be a test run's, while the user's own one, which
+  // knows it, is down or on another port. Only Unpair, or the token a new pairing hands back, replaces it.
   if (message.type === 'paired') return figma.clientStorage.setAsync(TOKEN_KEY, message.token);
-  if (message.type === 'refused' && message.reason === 'unknown-token')
-    return figma.clientStorage.deleteAsync(TOKEN_KEY);
   if (message.type === 'run' || message.type === 'decide') return runner.receive(message);
   if (message.type === 'select') {
     const node = await figma.getNodeByIdAsync(message.nodeId);
