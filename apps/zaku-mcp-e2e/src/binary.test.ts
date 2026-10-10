@@ -8,6 +8,9 @@ import assert from 'node:assert/strict';
 
 const BINARY = join(import.meta.dirname, '..', '..', 'zaku-mcp', 'dist', 'zaku-mcp');
 // The ports the plugin's manifest admits; another session's zaku-mcp may hold any of them while this suite runs.
+// A Figma panel open meanwhile can dial the binary this suite starts and have its token refused. Keeping the suite
+// off the range would take a way for the shipped binary to listen outside it, which then reaches every user who
+// sets it by mistake, where the panel can never dial it; so the panel keeps a refused token and tries the other ports.
 const RANGE = [7337, 7338, 7339, 7340, 7341, 7342, 7343, 7344, 7345, 7346];
 
 // macOS scans a binary it has not run before, and a freshly compiled one took from under a second to past ten

@@ -1,4 +1,10 @@
-import { fileHelloSchema, serverMessageSchema, type Credential, type PluginMessage } from '@zeroxsolutions/zaku/schema';
+import {
+  fileHelloSchema,
+  serverMessageSchema,
+  type Credential,
+  type PluginMessage,
+  type ServerMessage,
+} from '@zeroxsolutions/zaku/schema';
 
 export interface SocketLike {
   onopen: (() => void) | null;
@@ -66,6 +72,11 @@ function storedPort(message: unknown): number | null {
  * a credential, and puts that credential on the sandbox's hello, which is the first message the server reads.
  * The first dial for a credential tries the preferred port, then every other port once, unless the user chose
  * the port; a redial tries the preferred port alone.
+ *
+ * A token one zaku-mcp does not know may belong to another on the same machine, such as a test run's
+ * zaku-mcp holding a port of the range while the user's own one holds another. So that refusal sends the
+ * relay on to the ports this round has not dialed, and the panel hears of it only once none admitted the
+ * token. The sandbox keeps the token through it, for the next time the panel opens.
  */
 export function startRelay(options: RelayOptions): Relay {
   let socket: SocketLike | null = null;
@@ -78,6 +89,10 @@ export function startRelay(options: RelayOptions): Relay {
   let scan: number[] = [];
   /** The user picked `preferred`, so a code goes there alone; another zaku-mcp would refuse it as wrong. */
   let chosen = false;
+  /** The ports dialed since the last dial for a credential, or the last redial, began a round. */
+  let round = new Set<number>();
+  /** A token refusal held back while the round still has ports to try; cleared when another socket opens. */
+  let held: Extract<ServerMessage, { type: 'refused' }> | null = null;
   const send = (message: unknown): void => {
     if (socket?.readyState === OPEN) socket.send(JSON.stringify(message));
   };
@@ -100,17 +115,30 @@ export function startRelay(options: RelayOptions): Relay {
     if (!hello.success) return send(message);
     if (credential !== null) send({ ...hello.data, credential });
   });
-  const receive = (message: unknown): void => {
+  /** Reads what the server said, and answers whether the panel and the sandbox hear it now. */
+  const receive = (message: unknown): boolean => {
     const parsed = serverMessageSchema.safeParse(message);
-    if (!parsed.success) return;
+    if (!parsed.success) return true;
     if (parsed.data.type === 'paired') credential = { token: parsed.data.token };
+    if (parsed.data.type !== 'refused') return true;
+    const rest = options.ports.filter((port) => !round.has(port));
+    // The user picked this port, so no other zaku-mcp is the one they meant.
+    if (parsed.data.reason === 'unknown-token' && !chosen && rest.length > 0) {
+      held = parsed.data;
+      scan = rest;
+      return false;
+    }
     // The server closes a refused connection; dialing again would present the same refused credential.
-    if (parsed.data.type === 'refused') credential = null;
+    credential = null;
+    held = null;
+    return true;
   };
   const dial = (port: number): void => {
     const current = options.open(`ws://localhost:${port}`);
     socket = current;
+    round.add(port);
     current.onopen = (): void => {
+      held = null;
       delay = FIRST_DELAY;
       everOpened = true;
       preferred = port;
@@ -125,8 +153,7 @@ export function startRelay(options: RelayOptions): Relay {
       } catch {
         return; // not a bridge message
       }
-      receive(message);
-      options.post(message);
+      if (receive(message)) options.post(message);
     };
     current.onclose = (): void => {
       socket = null;
@@ -136,12 +163,21 @@ export function startRelay(options: RelayOptions): Relay {
       }
       const next = scan.shift();
       if (next !== undefined) return dial(next);
+      if (held !== null) {
+        options.post(held);
+        credential = null;
+        held = null;
+        options.onConnection({ state: 'idle' });
+        return;
+      }
       options.onConnection({
         state: everOpened && delay < LAST_DELAY ? 'reconnecting' : 'disconnected',
         port: preferred,
       });
       options.schedule(() => {
-        if (socket === null && credential !== null) dial(preferred);
+        if (socket !== null || credential === null) return;
+        round = new Set();
+        dial(preferred);
       }, delay);
       delay = Math.min(delay * 2, LAST_DELAY);
     };
@@ -150,6 +186,8 @@ export function startRelay(options: RelayOptions): Relay {
     credential = next;
     hangUp();
     delay = FIRST_DELAY;
+    round = new Set();
+    held = null;
     scan = chosen ? [] : options.ports.filter((port) => port !== preferred);
     dial(preferred);
   };
@@ -169,6 +207,8 @@ export function startRelay(options: RelayOptions): Relay {
       if (credential === null) return;
       hangUp();
       delay = FIRST_DELAY;
+      round = new Set();
+      held = null;
       scan = [];
       dial(port);
     },

@@ -19,9 +19,11 @@ plugin from manifest) and open it in the file you draw in.
 The first time, the panel says it is not paired. Ask your agent to pair with zaku: it shows an
 eight-digit code, and you type that code into the panel. The code works once, for five minutes. The
 panel then keeps a token and connects on its own from then on; Unpair in the panel, or the agent's
-`unpair` tool, revokes it. zaku-mcp keeps only a SHA-256 hash of each token, in
-`zaku/pairings.json` under your config directory (`$XDG_CONFIG_HOME`, else `~/Library/Application
-Support` on macOS, `%APPDATA%` on Windows, `~/.config` elsewhere).
+`unpair` tool, revokes it. A zaku-mcp that never issued the token, such as one a test run started,
+refuses it; the panel keeps the token, tries the rest of the ports, and asks for a code only when none
+admits it, then tries the same token again the next time it opens. zaku-mcp keeps only a SHA-256 hash
+of each token, in `zaku/pairings.json` under your config directory (`$XDG_CONFIG_HOME`, else
+`~/Library/Application Support` on macOS, `%APPDATA%` on Windows, `~/.config` elsewhere).
 
 zaku-mcp listens on the first free port from 7337 to 7346, or on `ZAKU_PORT` when it is set. Figma lets
 the plugin reach only the ports its manifest lists, so a `ZAKU_PORT` outside that range stops zaku-mcp at

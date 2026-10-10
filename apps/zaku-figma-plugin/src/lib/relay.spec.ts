@@ -268,3 +268,72 @@ describe('the relay', () => {
     expect(urls()).toEqual(['ws://localhost:7339', 'ws://localhost:7339']);
   });
 });
+
+/** What a zaku-mcp that never issued the token does: it says so, then closes the socket. */
+const refuseToken = (socket: FakeSocket | undefined): void => {
+  socket?.open();
+  socket?.onmessage?.({ data: '{"type":"refused","reason":"unknown-token"}' });
+  socket?.drop();
+};
+
+const refusals = (toSandbox: unknown[]): unknown[] =>
+  toSandbox.filter((message) => (message as { type?: unknown }).type === 'refused');
+
+describe('a token one zaku-mcp does not know', () => {
+  it('sends the relay on through the rest of the range with the same token, and says nothing yet', () => {
+    const { fromSandbox, sockets, toSandbox, urls } = relayed();
+    fromSandbox({ type: 'stored-token', token: 't1', port: null });
+    refuseToken(sockets[0]);
+    expect(urls()).toEqual(['ws://localhost:7337', 'ws://localhost:7338']);
+    sockets[1]?.open();
+    fromSandbox(sandboxHello);
+    expect(sent(sockets[1])).toEqual([{ ...sandboxHello, credential: { token: 't1' } }]);
+    expect(refusals(toSandbox)).toEqual([]);
+  });
+
+  it('stays with the zaku-mcp that admitted the token, and redials it after a drop', () => {
+    const { fromSandbox, sockets, due, toSandbox, urls } = relayed();
+    fromSandbox({ type: 'stored-token', token: 't1', port: null });
+    refuseToken(sockets[0]);
+    sockets[1]?.open();
+    sockets[1]?.drop();
+    due.shift()?.();
+    expect(urls().at(-1)).toBe('ws://localhost:7338');
+    expect(refusals(toSandbox)).toEqual([]);
+  });
+
+  it('passes the refusal on, and stops dialing, once no port of the range admitted the token', () => {
+    const { fromSandbox, sockets, due, toSandbox, connections } = relayed();
+    fromSandbox({ type: 'stored-token', token: 't1', port: null });
+    refuseToken(sockets[0]);
+    sockets[1]?.drop();
+    refuseToken(sockets[2]);
+    expect(sockets).toHaveLength(3);
+    expect(refusals(toSandbox)).toEqual([{ type: 'refused', reason: 'unknown-token' }]);
+    expect(connections.at(-1)).toEqual({ state: 'idle' });
+    expect(due).toEqual([]);
+  });
+
+  it('on a redial, sends the relay through the rest of the range before it gives up', () => {
+    const { fromSandbox, sockets, due, toSandbox, urls } = relayed();
+    fromSandbox({ type: 'stored-token', token: 't1', port: 7338 });
+    sockets[0]?.open();
+    sockets[0]?.drop();
+    due.shift()?.();
+    refuseToken(sockets[1]);
+    expect(urls().slice(2)).toEqual(['ws://localhost:7337']);
+    sockets[2]?.drop();
+    expect(urls().slice(3)).toEqual(['ws://localhost:7339']);
+    sockets[3]?.drop();
+    expect(refusals(toSandbox)).toEqual([{ type: 'refused', reason: 'unknown-token' }]);
+  });
+
+  it('passes the refusal on at once from the port the user chose, since the user ruled out the others', () => {
+    const { relay, fromSandbox, sockets, toSandbox, urls } = relayed();
+    relay.connect(7339);
+    fromSandbox({ type: 'stored-token', token: 't1', port: null });
+    refuseToken(sockets[0]);
+    expect(urls()).toEqual(['ws://localhost:7339']);
+    expect(refusals(toSandbox)).toEqual([{ type: 'refused', reason: 'unknown-token' }]);
+  });
+});
