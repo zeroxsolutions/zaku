@@ -58,6 +58,57 @@ export const nodeSnapshotSchema = z
     page: z.object({ id: z.string(), name: z.string() }).strict().nullable().optional(),
     /** Whether the node is a component or a component set, or sits inside one. */
     componentSource: z.boolean().optional(),
+    /**
+     * A frame, component, set, instance or text: its place in its parent, its size and how it sizes, and its auto
+     * layout. The documentation rule reads it. Absent from a plugin older than the field.
+     */
+    box: z
+      .object({
+        x: z.number(),
+        y: z.number(),
+        width: z.number(),
+        height: z.number(),
+        /** `layoutSizingHorizontal` and `layoutSizingVertical`: FIXED, HUG or FILL. */
+        sizing: z.object({ horizontal: z.string(), vertical: z.string() }).strict(),
+        /** NONE, HORIZONTAL, VERTICAL or GRID. */
+        layout: z.string(),
+        wrap: z.boolean(),
+        /** Top, right, bottom, left. */
+        padding: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+        /** The gap along the axis: `itemSpacing`, or a grid's column gap. */
+        gap: z.number(),
+        /** The gap across it: a wrapping row's `counterAxisSpacing`, or a grid's row gap. */
+        crossGap: z.number(),
+        /** `primaryAxisAlignItems`, then `counterAxisAlignItems`. */
+        align: z.tuple([z.string(), z.string()]),
+      })
+      .strict()
+      .optional(),
+    /** TEXT only: the type it is set in; `mixed` where ranges differ. */
+    font: z
+      .object({
+        size: z.union([z.number(), z.literal('mixed')]),
+        /** In px; `auto` for Figma's automatic line height. */
+        lineHeight: z.union([z.number(), z.literal('auto'), z.literal('mixed')]),
+        /** The font's style name as the family spells it (`Semi Bold`, `SemiBold`). */
+        style: z.string(),
+      })
+      .strict()
+      .optional(),
+    /** COMPONENT or COMPONENT_SET only: its component properties, by the name a designer reads. */
+    properties: z
+      .array(
+        z
+          .object({
+            name: z.string(),
+            type: z.string(),
+            default: z.union([z.string(), z.boolean()]),
+          })
+          .strict(),
+      )
+      .optional(),
+    /** INSTANCE only: the name of its component, the set's name for a variant. */
+    main: z.string().nullable().optional(),
     /** COMPONENT_SET only: its size and each variant's box, relative to the set. */
     set: z
       .object({

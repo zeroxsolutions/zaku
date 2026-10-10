@@ -119,7 +119,7 @@
           "{workspaceRoot}/plugins/zaku/bin/zaku.mjs"
         ],
         "options": {
-          "command": "cp apps/zaku-cli/dist/zaku.mjs plugins/zaku/bin/zaku.mjs && chmod +x plugins/zaku/bin/zaku.mjs",
+          "command": "cp apps/zaku-cli/dist/zaku.mjs plugins/zaku/bin/zaku.mjs && pnpm exec oxfmt --write plugins/zaku/bin/zaku.mjs && chmod +x plugins/zaku/bin/zaku.mjs",
           "cwd": "{workspaceRoot}"
         }
       }

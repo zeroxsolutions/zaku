@@ -1,4 +1,4 @@
-# The pull-request gate. Three jobs:
+# The pull-request gate. Four jobs:
 #
 #   gate - the `nx-gate` workflow beside this one, same targets as the pre-push hook
 #          but scoped by `affected` (the hook sweeps; the gate re-verifies what
@@ -6,6 +6,7 @@
 #   e2e  - gate-only. The hook's set stays inside the gate's and never the
 #          reverse, so a target that starts a runtime lands here instead.
 #   format - the whole tree through the formatter, which no nx target runs.
+#   bin    - every committed bundle rebuilt from source, failing on any change to the tree.
 #
 # Nothing checks `iac/`: it is outside the nx graph, so no job reaches it,
 # and the pre-commit hook formats with oxfmt, which does not read `.tf`.
@@ -49,6 +50,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/nx-setup
       - run: pnpm nx format:check --all
+
+  # The plugin ships a bundle of zaku-cli committed to the tree, and a merge that changes the CLI's
+  # source merges the bundle as text, so master can carry a bin no source builds. Rebuilt from the
+  # checkout, the tree has to come out unchanged.
+  bin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/nx-setup
+      - run: pnpm nx run-many -t plugin-bin && git diff --exit-code
 
   # Separate from `gate` so its cost is visible and its failure is legible on its
   # own. `affected` runs it only for changes that can reach it, from the base

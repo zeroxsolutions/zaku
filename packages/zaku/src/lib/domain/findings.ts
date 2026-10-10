@@ -26,6 +26,7 @@ export const CHECK_IDS = [
   'frame',
   'system-bars',
   'placement',
+  'documentation',
   'naming',
   'component',
   'prototype',

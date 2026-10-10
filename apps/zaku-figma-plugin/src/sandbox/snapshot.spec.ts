@@ -187,4 +187,127 @@ describe('snapshotNode', () => {
       ],
     });
   });
+
+  describe('what the documentation rule reads', () => {
+    const page = { id: '0:2', name: 'Component for Docs', type: 'PAGE', parent: null };
+
+    it("reads a frame's place, size, sizing and auto layout", async () => {
+      const frame = {
+        id: '1:1',
+        name: 'DS/Table Cell',
+        type: 'COMPONENT_SET',
+        parent: page,
+        fills: [],
+        strokes: [],
+        children: [],
+        x: 0,
+        y: 522,
+        width: 500,
+        height: 84,
+        layoutSizingHorizontal: 'FIXED',
+        layoutSizingVertical: 'HUG',
+        layoutMode: 'HORIZONTAL',
+        layoutWrap: 'WRAP',
+        paddingTop: 24,
+        paddingRight: 24,
+        paddingBottom: 24,
+        paddingLeft: 24,
+        itemSpacing: 24,
+        counterAxisSpacing: 24,
+        primaryAxisAlignItems: 'MIN',
+        counterAxisAlignItems: 'MIN',
+        componentPropertyDefinitions: {
+          'Text#200:4': { type: 'TEXT', defaultValue: 'Cell' },
+          Emphasis: { type: 'VARIANT', defaultValue: 'primary' },
+        },
+      };
+      expect(await snapshotNode(frame as never, false)).toMatchObject({
+        box: {
+          x: 0,
+          y: 522,
+          width: 500,
+          height: 84,
+          sizing: { horizontal: 'FIXED', vertical: 'HUG' },
+          layout: 'HORIZONTAL',
+          wrap: true,
+          padding: [24, 24, 24, 24],
+          gap: 24,
+          crossGap: 24,
+          align: ['MIN', 'MIN'],
+        },
+        properties: [
+          { name: 'Text', type: 'TEXT', default: 'Cell' },
+          { name: 'Emphasis', type: 'VARIANT', default: 'primary' },
+        ],
+      });
+    });
+
+    it("reads a grid's column and row gaps", async () => {
+      const grid = {
+        id: '1:1',
+        name: 'Cards',
+        type: 'FRAME',
+        parent: page,
+        fills: [],
+        strokes: [],
+        layoutMode: 'GRID',
+        gridColumnGap: 16,
+        gridRowGap: 12,
+        itemSpacing: 0,
+      };
+      expect((await snapshotNode(grid as never, false)).box).toMatchObject({ layout: 'GRID', gap: 16, crossGap: 12 });
+    });
+
+    it("reads a text's size, line height in px and style", async () => {
+      const text = {
+        id: '1:2',
+        name: 'Title',
+        type: 'TEXT',
+        parent: page,
+        fills: [],
+        strokes: [],
+        characters: 'Section title',
+        fontSize: 30,
+        lineHeight: { unit: 'PIXELS', value: 36 },
+        fontName: { family: 'Roboto', style: 'SemiBold' },
+        layoutSizingHorizontal: 'FILL',
+        layoutSizingVertical: 'HUG',
+      };
+      expect((await snapshotNode(text as never, false)).font).toEqual({ size: 30, lineHeight: 36, style: 'SemiBold' });
+      const percent = { ...text, lineHeight: { unit: 'PERCENT', value: 150 }, fontSize: 16 };
+      expect((await snapshotNode(percent as never, false)).font).toMatchObject({ lineHeight: 24 });
+      const auto = { ...text, lineHeight: { unit: 'AUTO' } };
+      expect((await snapshotNode(auto as never, false)).font).toMatchObject({ lineHeight: 'auto' });
+    });
+
+    it("names an instance's component, the set's name for a variant", async () => {
+      const set = { id: '5:1', name: 'Badge', type: 'COMPONENT_SET' };
+      const instance = {
+        id: '1:3',
+        name: 'Badge \u00b7 secondary',
+        type: 'INSTANCE',
+        parent: page,
+        fills: [],
+        strokes: [],
+        overrides: [],
+        getMainComponentAsync: async (): Promise<object> => ({ name: 'Variant=secondary', parent: set }),
+      };
+      expect((await snapshotNode(instance as never, false)).main).toBe('Badge');
+    });
+
+    it('reads no properties off a variant, which keeps them on its set', async () => {
+      const variant = {
+        id: '1:4',
+        name: 'Emphasis=primary',
+        type: 'COMPONENT',
+        parent: { id: '1:1', name: 'DS/Table Cell', type: 'COMPONENT_SET', parent: page },
+        fills: [],
+        strokes: [],
+        get componentPropertyDefinitions(): never {
+          throw new Error('Can only get component property definitions of a component set or non-variant component');
+        },
+      };
+      expect(await snapshotNode(variant as never, false)).not.toHaveProperty('properties');
+    });
+  });
 });

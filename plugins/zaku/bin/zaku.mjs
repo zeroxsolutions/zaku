@@ -2278,7 +2278,7 @@ ${indent}`,
         return quotedString(value, ctx);
       }
       const indent = ctx.indent || (ctx.forceBlockIndent || containsDocumentMarker(value) ? '  ' : '');
-      const literal2 =
+      const literal3 =
         blockQuote === 'literal'
           ? true
           : blockQuote === 'folded' || type === Scalar.Scalar.BLOCK_FOLDED
@@ -2286,7 +2286,7 @@ ${indent}`,
             : type === Scalar.Scalar.BLOCK_LITERAL
               ? true
               : !lineLengthOverLimit(value, lineWidth, indent.length);
-      if (!value) return literal2 ? '|\n' : '>\n';
+      if (!value) return literal3 ? '|\n' : '>\n';
       let chomp;
       let endStart;
       for (endStart = value.length; endStart > 0; --endStart) {
@@ -2328,7 +2328,7 @@ ${indent}`,
         header += ' ' + commentString(comment.replace(/ ?[\r\n]+/g, ' '));
         if (onComment) onComment();
       }
-      if (!literal2) {
+      if (!literal3) {
         const foldedValue = value
           .replace(/\n+/g, '\n$&')
           .replace(/(?:^|\n)([\t ].*)(?:([\n\t ]*)\n(?![\n\t ]))?/g, '$1$2')
@@ -16405,8 +16405,8 @@ var base64urlCharset = /^[A-Za-z0-9_-]*$/;
 function isValidBase64URL(data) {
   if (!base64urlCharset.test(data)) return false;
   const base643 = data.replace(/[-_]/g, (c) => (c === '-' ? '+' : '/'));
-  const padded = base643.padEnd(Math.ceil(base643.length / 4) * 4, '=');
-  return isValidBase64(padded);
+  const padded2 = base643.padEnd(Math.ceil(base643.length / 4) * 4, '=');
+  return isValidBase64(padded2);
 }
 var $ZodBase64URL = /* @__PURE__ */ $constructor('$ZodBase64URL', (inst, def) => {
   def.pattern ?? (def.pattern = base64urlCharset);
@@ -34902,6 +34902,7 @@ var CHECK_IDS = [
   'frame',
   'system-bars',
   'placement',
+  'documentation',
   'naming',
   'component',
   'prototype',
@@ -36605,8 +36606,506 @@ function cutReply(reply, limit = REPLY_LIMIT) {
   return cut;
 }
 
-// packages/zaku/dist/lib/domain/snapshot-rules.js
+// packages/zaku/dist/lib/domain/documentation-measures.js
+var DOCUMENTATION_COMPONENTS_PAGE = 'Component for Docs';
+var vertical = (padding, gap, align) => ({ mode: 'VERTICAL', padding, gap, ...(align ? { align } : {}) });
+var horizontal = (padding, gap, align) => ({ mode: 'HORIZONTAL', padding, gap, ...(align ? { align } : {}) });
+var none = [0, 0, 0, 0];
+var DOCUMENTATION_PARTS = [
+  {
+    path: ['DS/Header'],
+    where: 'components',
+    type: 'COMPONENT',
+    at: { x: 0, y: 0 },
+    width: 1440,
+    sizing: { horizontal: 'FIXED', vertical: 'HUG' },
+    layout: horizontal([48, 40, 40, 40], 48, ['SPACE_BETWEEN', 'MAX']),
+    properties: [
+      { name: 'Eyebrow', type: 'TEXT', default: 'Components' },
+      { name: 'Component name', type: 'TEXT', default: 'Button' },
+      { name: 'Show style', type: 'BOOLEAN', default: true },
+      { name: 'Definition', type: 'TEXT', default: 'Short description of the component and when to use it.' },
+    ],
+    paint: 'fill color/background; bottom stroke 1 color/border',
+  },
+  {
+    path: ['DS/Header', 'Glow'],
+    where: 'components',
+    type: 'FRAME',
+    at: { x: 0, y: 0 },
+    width: 1440,
+    height: 193,
+    paint: 'no fill; absolute, not clipping; two radial ellipses, named and placed under the table',
+  },
+  {
+    path: ['DS/Header', 'Title block'],
+    where: 'components',
+    type: 'FRAME',
+    sizing: { horizontal: 'HUG', vertical: 'HUG' },
+    layout: vertical(none, 12),
+  },
+  {
+    path: ['DS/Header', 'Title block', 'Eyebrow'],
+    where: 'components',
+    type: 'TEXT',
+    font: { size: 14, lineHeight: 20, weight: 'Regular' },
+    text: 'Components',
+    paint: 'color/muted-foreground',
+  },
+  {
+    path: ['DS/Header', 'Title block', 'Title'],
+    where: 'components',
+    type: 'TEXT',
+    font: { size: 36, lineHeight: 40, weight: 'ExtraBold' },
+    text: 'Button',
+    paint: 'color/foreground; tracking -2.5%',
+  },
+  {
+    path: ['DS/Header', 'Title block', 'Badges'],
+    where: 'components',
+    type: 'FRAME',
+    sizing: { horizontal: 'HUG', vertical: 'HUG' },
+    layout: horizontal(none, 8),
+    paint: "no fill; holds one instance of the library's Badge, secondary, once it exists",
+  },
+  {
+    path: ['DS/Header', 'Description'],
+    where: 'components',
+    type: 'TEXT',
+    width: 480,
+    font: { size: 16, lineHeight: 28, weight: 'Regular' },
+    text: 'Short description of the component and when to use it.',
+    paint: 'color/muted-foreground',
+  },
+  {
+    path: ['DS/Section Heading'],
+    where: 'components',
+    type: 'COMPONENT',
+    at: { x: 0, y: 273 },
+    width: 1200,
+    height: 81,
+    sizing: { horizontal: 'FIXED', vertical: 'HUG' },
+    layout: vertical(none, 8),
+    properties: [
+      { name: 'Title', type: 'TEXT', default: 'Section title' },
+      { name: 'Description', type: 'TEXT', default: 'Section description.' },
+      { name: 'Show description', type: 'BOOLEAN', default: true },
+    ],
+    paint: 'no fill',
+  },
+  {
+    path: ['DS/Section Heading', 'h2'],
+    where: 'components',
+    type: 'FRAME',
+    width: 1200,
+    height: 45,
+    sizing: { horizontal: 'FILL', vertical: 'HUG' },
+    layout: vertical([0, 0, 8, 0], 0),
+    paint: 'bottom stroke 1 color/border, counted in the layout',
+  },
+  {
+    path: ['DS/Section Heading', 'h2', 'Title'],
+    where: 'components',
+    type: 'TEXT',
+    font: { size: 30, lineHeight: 36, weight: 'SemiBold' },
+    text: 'Section title',
+    paint: 'color/foreground; tracking -2.5%',
+  },
+  {
+    path: ['DS/Section Heading', 'Description'],
+    where: 'components',
+    type: 'TEXT',
+    width: 1200,
+    sizing: { horizontal: 'FILL' },
+    font: { size: 16, lineHeight: 28, weight: 'Regular' },
+    text: 'Section description.',
+    paint: 'color/muted-foreground; visible bound to Show description',
+  },
+  {
+    path: ['DS/Table Head'],
+    where: 'components',
+    type: 'COMPONENT',
+    at: { x: 0, y: 418 },
+    width: 200,
+    height: 40,
+    sizing: { horizontal: 'FIXED', vertical: 'FIXED' },
+    layout: vertical([0, 8, 0, 8], 0, ['CENTER', 'MIN']),
+    properties: [{ name: 'Text', type: 'TEXT', default: 'Head' }],
+    paint: 'no fill',
+  },
+  {
+    path: ['DS/Table Head', 'Text'],
+    where: 'components',
+    type: 'TEXT',
+    sizing: { horizontal: 'FILL' },
+    font: { size: 14, lineHeight: 20, weight: 'Medium' },
+    text: 'Head',
+    paint: 'color/foreground',
+  },
+  {
+    path: ['DS/Table Cell'],
+    where: 'components',
+    type: 'COMPONENT_SET',
+    at: { x: 0, y: 522 },
+    width: 500,
+    height: 84,
+    sizing: { horizontal: 'FIXED', vertical: 'HUG' },
+    layout: { mode: 'HORIZONTAL', padding: [24, 24, 24, 24], gap: 24, crossGap: 24, wrap: true },
+    properties: [
+      { name: 'Text', type: 'TEXT', default: 'Cell' },
+      { name: 'Emphasis', type: 'VARIANT', default: 'primary' },
+    ],
+    paint: 'radius 5; the dashed border Figma gives a set',
+  },
+  ...['primary', 'muted'].flatMap((emphasis, index) => [
+    {
+      path: ['DS/Table Cell', `Emphasis=${emphasis}`],
+      where: 'components',
+      type: 'COMPONENT',
+      at: { x: 24 + index * 224, y: 24 },
+      width: 200,
+      height: 36,
+      sizing: { horizontal: 'FIXED', vertical: 'HUG' },
+      layout: vertical([8, 8, 8, 8], 0),
+      paint: 'no fill',
+    },
+    {
+      path: ['DS/Table Cell', `Emphasis=${emphasis}`, 'Text'],
+      where: 'components',
+      type: 'TEXT',
+      sizing: { horizontal: 'FILL' },
+      font: { size: 14, lineHeight: 20, weight: emphasis === 'primary' ? 'Medium' : 'Regular' },
+      text: 'Cell',
+      paint: emphasis === 'primary' ? 'color/foreground' : 'color/muted-foreground',
+    },
+  ]),
+  {
+    path: ['DS/List Item'],
+    where: 'components',
+    type: 'COMPONENT',
+    at: { x: 0, y: 812 },
+    width: 1176,
+    height: 28,
+    sizing: { horizontal: 'FIXED', vertical: 'HUG' },
+    layout: horizontal(none, 10),
+    properties: [{ name: 'Text', type: 'TEXT', default: 'List item text.' }],
+    paint: 'no fill',
+  },
+  {
+    path: ['DS/List Item', 'Bullet'],
+    where: 'components',
+    type: 'TEXT',
+    sizing: { horizontal: 'HUG' },
+    font: { size: 16, lineHeight: 28, weight: 'Regular' },
+    // U+2022, the list's own marker, as the code's list-disc draws it.
+    text: '\u2022',
+    paint: 'color/foreground',
+  },
+  {
+    path: ['DS/List Item', 'Text'],
+    where: 'components',
+    type: 'TEXT',
+    sizing: { horizontal: 'FILL' },
+    font: { size: 16, lineHeight: 28, weight: 'Regular' },
+    text: 'List item text.',
+    paint: 'color/foreground',
+  },
+  {
+    path: ['DS/Matrix Head'],
+    where: 'components',
+    type: 'COMPONENT',
+    at: { x: 0, y: 988 },
+    width: 120,
+    height: 40,
+    sizing: { horizontal: 'FIXED', vertical: 'FIXED' },
+    layout: vertical([0, 8, 0, 8], 0, ['CENTER', 'CENTER']),
+    properties: [{ name: 'Text', type: 'TEXT', default: 'Prop=value' }],
+    paint: 'no fill',
+  },
+  {
+    path: ['DS/Matrix Head', 'Text'],
+    where: 'components',
+    type: 'TEXT',
+    sizing: { horizontal: 'HUG' },
+    font: { size: 12, lineHeight: 16, weight: 'Medium' },
+    text: 'Prop=value',
+    paint: 'color/muted-foreground',
+  },
+  { path: ['*'], where: 'view', type: 'FRAME', width: 1440, layout: vertical(none, 0), paint: 'fill color/background' },
+  { path: ['*', '*'], where: 'view', type: 'INSTANCE', main: 'DS/Header', width: 1440 },
+  {
+    path: ['*', 'Body'],
+    where: 'view',
+    type: 'FRAME',
+    width: 1440,
+    layout: vertical([48, 120, 96, 120], 64),
+    paint: 'no fill',
+  },
+  { path: ['*', 'Body', '*'], where: 'view', type: 'FRAME', width: 1200, layout: vertical(none, 24), paint: 'no fill' },
+  { path: ['*', 'Body', '*', 'Heading'], where: 'view', type: 'INSTANCE', main: 'DS/Section Heading', width: 1200 },
+  {
+    path: ['*', 'Body', 'Component', 'Preview'],
+    where: 'view',
+    type: 'FRAME',
+    width: 1200,
+    layout: [horizontal(none, 24), vertical(none, 40)],
+    paint: 'fill color/background, radius 14, no stroke; vertical for a set of text styles',
+  },
+  {
+    path: ['*', 'Body', 'Matrix', 'Matrix'],
+    where: 'view',
+    type: 'FRAME',
+    width: 1200,
+    layout: vertical(none, 0),
+    paint: 'stroke 1 color/border, radius 8',
+  },
+  {
+    path: ['*', 'Body', 'Matrix', 'Matrix', 'TableHeader'],
+    where: 'view',
+    type: 'FRAME',
+    height: 40,
+    layout: horizontal(none, 0),
+  },
+  {
+    path: ['*', 'Body', 'Example', 'Preview'],
+    where: 'view',
+    type: 'FRAME',
+    width: 1200,
+    layout: { mode: 'HORIZONTAL', padding: [40, 40, 40, 40], gap: 48, crossGap: 24, wrap: true },
+    paint: 'fill color/background, stroke 1 color/border, radius 14',
+  },
+  ...['Variants', 'Sizes', 'Composition'].flatMap((section) => [
+    {
+      path: ['*', 'Body', section, 'Preview'],
+      where: 'view',
+      type: 'FRAME',
+      width: 1200,
+      layout: horizontal([40, 40, 40, 40], 24),
+      paint: 'fill color/background, stroke 1 color/border, radius 14',
+    },
+    {
+      path: ['*', 'Body', section, 'Preview', section],
+      where: 'view',
+      type: 'FRAME',
+      layout: { mode: 'HORIZONTAL', padding: none, gap: 12, wrap: true },
+    },
+  ]),
+  {
+    path: ['*', 'Body', 'Anatomy', 'Anatomy layout'],
+    where: 'view',
+    type: 'FRAME',
+    width: 1200,
+    layout: horizontal(none, 16),
+  },
+  {
+    path: ['*', 'Body', 'Anatomy', 'Anatomy layout', 'Preview'],
+    where: 'view',
+    type: 'FRAME',
+    width: 744,
+    layout: horizontal([24, 24, 24, 24], 24),
+    paint: 'fill color/background, stroke 1 color/border, radius 14',
+  },
+  {
+    path: ['*', 'Body', 'Anatomy', 'Anatomy layout', 'Cards'],
+    where: 'view',
+    type: 'FRAME',
+    width: 440,
+    layout: { mode: 'GRID', padding: none, gap: 16, crossGap: 16 },
+    paint: 'one column, one Card per part',
+  },
+  {
+    path: ['*', 'Body', '*', 'Table'],
+    where: 'view',
+    type: 'FRAME',
+    width: 1200,
+    layout: vertical(none, 0),
+    paint: 'stroke 1 color/border, radius 8',
+  },
+  {
+    path: ['*', 'Body', '*', 'Table', 'TableHeader'],
+    where: 'view',
+    type: 'FRAME',
+    height: 40,
+    layout: horizontal(none, 0),
+    paint: 'bottom stroke 1 color/border',
+  },
+  {
+    path: ['*', 'Body', '*', 'Table', 'TableRow'],
+    where: 'view',
+    type: 'FRAME',
+    layout: horizontal(none, 0),
+    paint: 'bottom stroke 1 color/border, none on the last',
+  },
+  { path: ['*', 'Body', '*', 'List'], where: 'view', type: 'FRAME', width: 1200, layout: vertical([0, 0, 0, 24], 8) },
+  { path: ['*', 'Body', '*', 'List', 'li'], where: 'view', type: 'INSTANCE', main: 'DS/List Item', width: 1176 },
+  {
+    path: ['*', 'Body', '*', 'Cards'],
+    where: 'view',
+    type: 'FRAME',
+    width: 1200,
+    layout: { mode: 'GRID', padding: none, gap: 16, crossGap: 16 },
+  },
+  {
+    path: ['*', 'Body', '*', 'Cards', 'Card'],
+    where: 'view',
+    type: 'INSTANCE',
+    width: 592,
+    paint: "the library's Card",
+  },
+  {
+    path: ['*', 'Body', 'Preview', 'Theme Preview'],
+    where: 'view',
+    type: 'FRAME',
+    width: 1200,
+    layout: horizontal(none, 16),
+  },
+  {
+    path: ['*', 'Body', 'Preview', 'Theme Preview', 'Preview'],
+    where: 'view',
+    type: 'FRAME',
+    layout: vertical([40, 40, 40, 40], 20),
+    paint: 'fill color/background, stroke 1 color/border, radius 14; no mode of its own',
+  },
+];
+
+// packages/zaku/dist/lib/domain/documentation-rule.js
 var ENTRY_PAGE_PREFIX = '\u2756 ';
+var VIEW_NAME = / \/ /;
+var TOLERANCE = 0.5;
+function locate(node2, byId) {
+  const page = node2.page;
+  if (!page) return null;
+  const where =
+    page.name === DOCUMENTATION_COMPONENTS_PAGE
+      ? 'components'
+      : page.name.startsWith(ENTRY_PAGE_PREFIX)
+        ? 'view'
+        : null;
+  if (where === null) return null;
+  const path2 = [];
+  for (let up = node2; up; up = up.parentId ? byId.get(up.parentId) : void 0) {
+    path2.unshift(up.name);
+    if (up.parentId === page.id) {
+      if (where === 'view' && (up.type !== 'FRAME' || !VIEW_NAME.test(up.name))) return null;
+      return { node: node2, path: path2, where };
+    }
+  }
+  return null;
+}
+var literal2 = (part) => part.path.filter((name) => name !== '*').length;
+function partOf2(located) {
+  const candidates = DOCUMENTATION_PARTS.filter((part) => {
+    if (part.where !== located.where || part.path.length !== located.path.length) return false;
+    if (!part.path.every((name, index) => name === '*' || name === located.path[index])) return false;
+    const picks = part.main !== void 0 && part.path.at(-1) === '*';
+    return !picks || located.node.main === part.main;
+  });
+  return candidates.sort((a, b) => literal2(b) - literal2(a))[0] ?? null;
+}
+var weightOf = (style) => style.replace(/\s+/g, '').toLowerCase();
+var near = (a, b) => Math.abs(a - b) <= TOLERANCE;
+var padded = (padding) => padding.join(' ');
+function layoutDifferences(box, layout) {
+  const differences = [];
+  if (box.layout !== layout.mode) differences.push(`layout ${box.layout}, not ${layout.mode}`);
+  if (!box.padding.every((side, index) => near(side, layout.padding[index] ?? 0)))
+    differences.push(`padding ${padded(box.padding)}, not ${padded(layout.padding)}`);
+  if (!near(box.gap, layout.gap)) differences.push(`gap ${box.gap}, not ${layout.gap}`);
+  if (layout.crossGap !== void 0 && !near(box.crossGap, layout.crossGap))
+    differences.push(`row gap ${box.crossGap}, not ${layout.crossGap}`);
+  if (layout.wrap !== void 0 && box.wrap !== layout.wrap)
+    differences.push(layout.wrap ? 'does not wrap, and it wraps' : 'wraps, and it does not');
+  if (layout.align && (box.align[0] !== layout.align[0] || box.align[1] !== layout.align[1]))
+    differences.push(`aligns ${box.align.join(' ')}, not ${layout.align.join(' ')}`);
+  return differences;
+}
+function partFindings(node2, part, label2) {
+  const findings = [];
+  const add = (field, message) => {
+    findings.push({ nodeId: node2.id, field, message: `${label2}: ${message}` });
+  };
+  if (node2.type !== part.type) add('type', `is a ${node2.type}, and the documentation draws a ${part.type}`);
+  if (part.main !== void 0 && part.path.at(-1) !== '*' && node2.main !== void 0 && node2.main !== part.main)
+    add('main', `is an instance of ${node2.main ?? 'no component'}, not of ${part.main}`);
+  const box = node2.box;
+  if (box) {
+    if (part.at && (!near(box.x, part.at.x) || !near(box.y, part.at.y)))
+      add('at', `sits at ${box.x}, ${box.y}, not ${part.at.x}, ${part.at.y}`);
+    if (part.width !== void 0 && !near(box.width, part.width)) add('width', `is ${box.width} wide, not ${part.width}`);
+    if (part.height !== void 0 && !near(box.height, part.height))
+      add('height', `is ${box.height} high, not ${part.height}`);
+    for (const axis of ['horizontal', 'vertical']) {
+      const sizing = part.sizing?.[axis];
+      if (sizing !== void 0 && box.sizing[axis] !== sizing)
+        add(`sizing.${axis}`, `sizes ${box.sizing[axis]} ${axis}ly, not ${sizing}`);
+    }
+    if (part.layout) {
+      const allowed2 = Array.isArray(part.layout) ? part.layout : [part.layout];
+      const differences = allowed2.map((layout) => layoutDifferences(box, layout));
+      if (differences.every((list) => list.length > 0)) add('layout', (differences[0] ?? []).join('; '));
+    }
+  }
+  if (part.font && node2.font) {
+    const { size: size2, lineHeight, style } = node2.font;
+    if (size2 !== part.font.size || lineHeight !== part.font.lineHeight)
+      add('font', `is set ${size2} / ${lineHeight}, not ${part.font.size} / ${part.font.lineHeight}`);
+    if (weightOf(style) !== weightOf(part.font.weight)) add('weight', `is ${style}, not ${part.font.weight}`);
+  }
+  if (part.text !== void 0 && node2.characters !== void 0 && node2.characters !== part.text)
+    add('text', `reads "${node2.characters}", not "${part.text}"`);
+  if (part.properties && node2.properties) {
+    const have = node2.properties.map((p) => `${p.name} ${p.type} ${String(p.default)}`).sort();
+    const want = part.properties.map((p) => `${p.name} ${p.type} ${String(p.default)}`).sort();
+    if (have.join('|') !== want.join('|'))
+      add('properties', `has the properties [${have.join(', ')}], not [${want.join(', ')}]`);
+  }
+  return findings;
+}
+function documentationFindings(nodes) {
+  const byId = new Map(nodes.map((node2) => [node2.id, node2]));
+  const findings = [];
+  const located = nodes.map((node2) => locate(node2, byId)).filter((at) => at !== null);
+  const roots = /* @__PURE__ */ new Map();
+  for (const at of located) {
+    const part = partOf2(at);
+    const label2 = at.path.join(' / ');
+    if (at.where === 'components' && at.path.length === 1) {
+      roots.set(at.node.name, [...(roots.get(at.node.name) ?? []), at.node]);
+      if (!part && (at.node.type === 'COMPONENT' || at.node.type === 'COMPONENT_SET'))
+        findings.push({
+          nodeId: at.node.id,
+          field: 'name',
+          message: `${label2}: is not one of the documentation components`,
+        });
+    }
+    if (part) findings.push(...partFindings(at.node, part, label2));
+  }
+  for (const [name, same] of roots) {
+    for (const extra of same.slice(1))
+      findings.push({ nodeId: extra.id, field: 'name', message: `${name}: a second component of that name` });
+  }
+  for (const at of located) {
+    if (at.where !== 'components' || at.path.length !== 1) continue;
+    const children = nodes.filter((node2) => node2.parentId === at.node.id);
+    if (children.length === 0) continue;
+    for (const part of DOCUMENTATION_PARTS) {
+      if (part.where !== 'components' || part.path[0] !== at.node.name || part.path.length < 2) continue;
+      const present = located.some(
+        (other) => other.path.length === part.path.length && other.path.every((name, i) => name === part.path[i]),
+      );
+      if (!present)
+        findings.push({
+          nodeId: at.node.id,
+          field: 'layers',
+          message: `${at.node.name}: holds no ${part.path.slice(1).join(' / ')}`,
+        });
+    }
+  }
+  return findings;
+}
+
+// packages/zaku/dist/lib/domain/snapshot-rules.js
+var ENTRY_PAGE_PREFIX2 = '\u2756 ';
 var DOCUMENTATION_PAGES = /* @__PURE__ */ new Set(['Thumbnail', 'Component for Docs']);
 var EDGE_TOLERANCE = 0.01;
 var COMPONENT_KINDS = ['data-entry', 'navigation', 'feedback', 'data-display', 'layout', 'general'];
@@ -36617,7 +37116,7 @@ function isDocumentation(node2) {
   if (page === void 0) return false;
   if (DOCUMENTATION_PAGES.has(page)) return true;
   if (node2.componentSource !== false) return false;
-  return page.startsWith(ENTRY_PAGE_PREFIX) || KIND_PAGE.test(page) || node2.frame === FEATURE_COMPONENTS_SECTION;
+  return page.startsWith(ENTRY_PAGE_PREFIX2) || KIND_PAGE.test(page) || node2.frame === FEATURE_COMPONENTS_SECTION;
 }
 function overlaps(a, b) {
   const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
@@ -36660,7 +37159,7 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
     }
     if (
       (node2.type === 'COMPONENT' || node2.type === 'COMPONENT_SET') &&
-      node2.page?.name.startsWith(ENTRY_PAGE_PREFIX) &&
+      node2.page?.name.startsWith(ENTRY_PAGE_PREFIX2) &&
       node2.parentId === node2.page.id
     )
       finding('placement', void 0, `${label2}: sits on the page, outside its entry's component view`);
@@ -36702,6 +37201,11 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
       }
     }
     if (isDefaultLayerName(node2.type, node2.name)) finding('naming', void 0, `${node2.name} keeps a default name`);
+  }
+  const frames = new Map(nodes.map((node2) => [node2.id, node2.frame]));
+  for (const { nodeId, field, message } of documentationFindings(nodes)) {
+    const frame = frames.get(nodeId);
+    findings.push({ check: 'documentation', nodeId, field, ...(frame ? { frame } : {}), message });
   }
   return findings;
 }

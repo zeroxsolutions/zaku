@@ -28,6 +28,11 @@ export const RULE_GUIDES: Partial<Record<CheckId, RuleGuide>> = {
     why: 'An instance restyled in place is a fork of the component that nobody can update from the library.',
     fix: "Change copy and component properties only; pick another variant, or change the component in the library. Documentation may size the instances it lays out (a table's head and cell to its column).",
   },
+  documentation: {
+    id: 'documentation',
+    why: "The documentation is zaku's frame around every library, chosen once: a documentation component or a view part drawn to other measures reads as another product, and a designer stops finding each header, table and card where the last library had it.",
+    fix: "Draw the part to building-the-library's measures table: its name, size and sizing, auto layout, padding and gap, its text's size, line height and weight, and its component properties and placeholder text. Its type is the documentation's own, never the library's text styles.",
+  },
   naming: {
     id: 'naming',
     why: 'A layer named Frame 12 says nothing to the next reader, the outline or the code.',
