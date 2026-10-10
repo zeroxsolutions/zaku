@@ -80,6 +80,7 @@ hidden from the pickers still ships, and the finding it silenced is still true.
 | "The library file has no key yet; I'll write a placeholder and replace it once it is saved."                                         | Nothing compares the drawing with the code until the key is there, so every value drawn before it goes unchecked. Ask for the key first.                                                 |
 | "I was told not to ask questions, so I decide."                                                                                      | The file's key is not a decision; it is a fact only the person who saved the file has. Say what is missing.                                                                              |
 | "I'll draw the components now and their views later."                                                                                | A run stops partway, and what it leaves is bare sets nobody can read. Draw each entry whole, in the order below.                                                                         |
+| "The page header needs the Badge, so the views go without headers until the Badge exists."                                           | The header is drawn first with its badge row empty; the Badge goes in once its set exists, and every header already placed shows it.                                                     |
 
 ## Red Flags - STOP
 
@@ -105,9 +106,10 @@ hidden from the pickers still ships, and the finding it silenced is still true.
    own, so it shows whichever mode the page is in: a cover pinned to one mode ignores the switch a
    designer makes to see the other. A badge holds a word, not a sentence: what the library leaves out
    is said in the definition of the view it affects.
-2. **The documentation components** every documentation view is built from (below). They are built
-   from the library's own components, so the entries they use come first: the Badge in the header and
-   the Card that holds each criterion are the library's, built and documented before any other
+2. **The documentation components** every documentation view is built from (below), the page header
+   first. They wait on no entry: the header's badge is the library's Badge, placed into the header
+   once the Badge entry exists, and every view drawn before then shows it as soon as it is placed. The
+   Badge and the Card that holds each criterion are then the first entries drawn, before any other
    entry's views. A design system with no component by that name uses the one its code shows a short
    label or a titled panel with (antd: Tag and Card).
 3. **The icon set**: one component per icon the code's components and their demos import, at the code's
@@ -188,6 +190,7 @@ pages the reference names. Only their colours and their family come from the lib
 | Role            | Takes                                                                 | Draws                                                                                                                                       |
 | --------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | page header     | eyebrow, component name, definition (text); whether to show the badge | on the left the eyebrow, the title and a badge; on the right the definition; behind them a glow of two radial gradients in the theme colour |
+| matrix head     | text                                                                  | a Matrix table's column head, naming the property and its value                                                                             |
 | section heading | title, description (text); whether to show the description            | a title in the typography h2 style, with the rule its border draws under it, and a lead line under that                                     |
 | table head      | text                                                                  | a table's column head                                                                                                                       |
 | table cell      | text; primary or muted                                                | a cell: primary for the first column, muted for the rest                                                                                    |
@@ -215,14 +218,13 @@ Each view is 1440 wide, stacked top to bottom: a page header, then a body with 4
 at each side and 64 between sections. Each section stacks a section heading over its content, 24
 apart. Fixed widths and spacing keep every entry scannable in the same place.
 
-**The component view** shows what a designer picks from: one section, Component, whose heading says
-how the variants map to the code's props, and whose demo card holds the component set itself. A set
-with one axis is laid out as one run of its variants, which name themselves, so it carries no labels.
-A set with more than one axis is laid out as a grid, one axis along the columns and the others down
-the rows, and every column and row is labelled with the bare value, `sm` and `Hover`, never
-`Size=sm`: the heading already named the axes. The labels are plain text beside the set, not
-components, because each is read once and never reused. The set is the matrix; no second grid of
-instances repeats it.
+**The component view** shows what a designer picks from. Its first section, Component, has a heading
+saying how the variants map to the code's props, and a demo card holding the component set itself,
+its variants laid out apart and unlabelled: the set is what a designer picks from, and a label inside
+it would ship with it. A set with more than one axis adds a second section, Matrix, that labels them:
+a table of instances, one axis down the rows, read as the bare value under a head naming the axis,
+and another along the columns, each head naming the property and its value, built from the table
+and matrix head components so every entry's matrix reads the same.
 
 **The guidance view** says how to use it. It takes one of two shapes, chosen by whether the component
 has parts, variants and states that need more than a table to show (Button does; Typography and Badge
@@ -290,8 +292,9 @@ the code does. A line the code does not support is a claim nobody can check.
 ## Drawing an entry
 
 An entry is drawn whole, in this order, and the next entry starts only when this one's check is
-clean. A run stopped partway then leaves finished entries behind, never bare sets. The parts the
-documentation components need (antd: Tag and Card) are entries too, drawn first, each in this order.
+clean. A run stopped partway then leaves finished entries behind, never bare sets. The entries the
+views lean on, the Badge and the Card (antd: Tag and Card), are drawn right after the documentation
+components, each in this order; the header's badge goes in once the Badge's set exists.
 Before the first step, read the tool's reference: it names the page, the frames and their measures.
 
 1. **The entry's page**, one per entry, named as the reference names it.
@@ -307,7 +310,7 @@ Before the first step, read the tool's reference: it names the page, the frames 
    measures, no variant over another, and the set hugging them so none reaches past its edge, where
    the set cuts it off. A family's sets stack in the one demo card. Dark is not a second set or a copy
    of one: the page's mode switch shows it.
-5. **The grid's labels**, beside the set, as the component view says.
+5. **The Matrix section**, for a set with more than one axis, as the component view says.
 6. **The guidance view's sections**, in the order of its table.
 7. **The entry's check**: zaku's `check` over the entry's page returns no finding.
 

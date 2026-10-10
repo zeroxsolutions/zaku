@@ -1,4 +1,4 @@
-type Listener = (event: { nodeChanges: { type: string; node: { id: string } }[] }) => void;
+type Listener = (event: { nodeChanges: { type: string; node: { id: string }; properties?: string[] }[] }) => void;
 
 export class FakeNode {
   removed = false;
@@ -14,13 +14,24 @@ export class FakeNode {
   ) {
     this.name = type === 'FRAME' ? 'Frame' : 'Rectangle';
   }
+  /** Figma removes a node with everything inside it. */
   remove(): void {
+    for (const child of [...this.children]) child.remove();
+    if (this.parent) this.parent.children = this.parent.children.filter((node) => node !== this);
+    this.parent = null;
     this.removed = true;
     this.world.nodes.delete(this.id);
   }
+  /** Moves `child` in, as Figma does, and tells the page its parent changed. */
+  appendChild(child: FakeNode): void {
+    if (child.parent) child.parent.children = child.parent.children.filter((node) => node !== child);
+    child.parent = this;
+    this.children.push(child);
+    this.world.fire('PROPERTY_CHANGE', child, ['parent']);
+  }
   rename(name: string): void {
     this.name = name;
-    this.world.fire('PROPERTY_CHANGE', this);
+    this.world.fire('PROPERTY_CHANGE', this, ['name']);
   }
 }
 
@@ -111,8 +122,9 @@ export class FakeFigma {
   async getNodeByIdAsync(id: string): Promise<FakeNode | null> {
     return this.nodes.get(id) ?? null;
   }
-  fire(type: string, node: FakeNode): void {
-    for (const listener of this.listeners) listener({ nodeChanges: [{ type, node }] });
+  fire(type: string, node: FakeNode, properties?: string[]): void {
+    for (const listener of this.listeners)
+      listener({ nodeChanges: [{ type, node, ...(properties ? { properties } : {}) }] });
   }
   private make(type: string): FakeNode {
     const node = new FakeNode(`1:${this.next++}`, type, this);

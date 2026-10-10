@@ -11,11 +11,15 @@ type AnyNode = {
   removed: boolean;
   remove(): void;
   parent?: AnyNode | null;
+  appendChild?(child: AnyNode): void;
+  absoluteTransform?: [[number, number, number], [number, number, number]];
+  x?: number;
+  y?: number;
 };
 
 /** A node on a page. A style a create* call returns has an id and a type, `TEXT` for a text style, and no parent. */
 const onPage = (node: AnyNode): boolean => 'parent' in node;
-type Change = { nodeChanges: { type: string; node: { id: string } }[] };
+type Change = { nodeChanges: { type: string; node: AnyNode; properties?: string[] }[] };
 
 export interface RunnerHost {
   figma: PluginAPI;
@@ -28,6 +32,8 @@ interface Pending {
   runId: string;
   created: AnyNode[];
   mutated: Set<string>;
+  /** Nodes that were there before the run and that it moved; one moved into a node the run made goes when that node does. */
+  moved: Map<string, AnyNode>;
   hold: unknown;
 }
 
@@ -47,9 +53,40 @@ export function createRunner(
   let pending: Pending | null = null;
   const abandoned = new Set<string>();
 
+  /**
+   * Removes what the run made. A node that was there before and that the run moved into one of them is
+   * moved out first, to the nearest ancestor that stays, where it keeps its place on the canvas: removing
+   * a node removes everything inside it, and that node may hold work an earlier run committed.
+   */
+  const discard = (run: Pending): void => {
+    const made = new Set(run.created.map((node) => node.id));
+    for (const node of run.moved.values()) {
+      if (node.removed) continue;
+      let doomed = false;
+      let keeper: AnyNode | null = null;
+      for (let up = node.parent ?? null; up; up = up.parent ?? null) {
+        if (!made.has(up.id)) {
+          keeper = up;
+          break;
+        }
+        doomed = true;
+      }
+      if (!doomed) continue;
+      const target = keeper ?? (figma.currentPage as unknown as AnyNode);
+      const at = node.absoluteTransform;
+      target.appendChild?.(node);
+      if (at) {
+        const origin = target.absoluteTransform;
+        node.x = at[0][2] - (origin ? origin[0][2] : 0);
+        node.y = at[1][2] - (origin ? origin[1][2] : 0);
+      }
+    }
+    for (const node of run.created) if (!node.removed) node.remove();
+  };
+
   const rollback = (run: Pending): void => {
     host.holdTimer.clear(run.hold);
-    for (const node of run.created) if (!node.removed) node.remove();
+    discard(run);
     post({ type: 'settled', runId: run.runId, outcome: 'rolled-back', untouchable: [...run.mutated] });
     if (pending === run) pending = null;
   };
@@ -63,7 +100,7 @@ export function createRunner(
     // A change still held when the next run starts was never decided; it is not kept.
     if (pending) rollback(pending);
     figma.commitUndo();
-    const run: Pending = { runId: message.runId, created: [], mutated: new Set(), hold: null };
+    const run: Pending = { runId: message.runId, created: [], mutated: new Set(), moved: new Map(), hold: null };
     // The API object refuses assignment to its methods, and a proxy over it must hand back its read-only
     // members unchanged, so the script gets a proxy over an empty object that forwards to it and records each create*.
     const api = host.figma as object;
@@ -89,10 +126,13 @@ export function createRunner(
     const madeElsewhere = new Set<string>();
     const onChange = (change: Change): void => {
       const created = createdIds();
-      for (const { type, node } of change.nodeChanges) {
+      for (const { type, node, properties } of change.nodeChanges) {
         if (created.has(node.id)) continue;
         if (type === 'CREATE') madeElsewhere.add(node.id);
-        else if (type === 'PROPERTY_CHANGE' && !madeElsewhere.has(node.id)) run.mutated.add(node.id);
+        else if (type === 'PROPERTY_CHANGE' && !madeElsewhere.has(node.id)) {
+          run.mutated.add(node.id);
+          if (properties?.includes('parent')) run.moved.set(node.id, node);
+        }
       }
     };
     figma.currentPage.on('nodechange', onChange);
@@ -112,7 +152,7 @@ export function createRunner(
       if (node) run.created.push(node);
     }
     if (failure !== null) {
-      for (const node of run.created) if (!node.removed) node.remove();
+      discard(run);
       if (!abandoned.delete(message.runId))
         post({ type: 'threw', runId: message.runId, error: failure, untouchable: [...run.mutated] });
       return;
@@ -141,7 +181,7 @@ export function createRunner(
       }
     } catch (error) {
       // Unanswered, the server would wait out its timeout; a change nobody could check is not kept.
-      for (const node of run.created) if (!node.removed) node.remove();
+      discard(run);
       post({ type: 'threw', runId: message.runId, error: String(error), untouchable: [...run.mutated] });
       return;
     }

@@ -26,7 +26,7 @@ export const RULE_GUIDES: Partial<Record<CheckId, RuleGuide>> = {
   overrides: {
     id: 'overrides',
     why: 'An instance restyled in place is a fork of the component that nobody can update from the library.',
-    fix: 'Change copy and component properties only; pick another variant, or change the component in the library.',
+    fix: "Change copy and component properties only; pick another variant, or change the component in the library. Documentation may size the instances it lays out (a table's head and cell to its column).",
   },
   naming: {
     id: 'naming',
