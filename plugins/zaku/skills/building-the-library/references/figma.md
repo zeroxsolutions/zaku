@@ -223,8 +223,23 @@ A frame holding the composition reaches past the edge only as far as a block in 
   set's name is the component's.
 - The other properties are component properties: `TEXT` for a label, `BOOLEAN` for a part shown or
   hidden, `INSTANCE_SWAP` for an icon with the icon set as preferred values, `SLOT` for `children`.
-  An icon the code places at either end is two pairs, `Show icon start` with `Icon start` and `Show
-  icon end` with `Icon end`.
+- A region the code fills with `children` (a Card's content, a Dialog's footer) is a slot, as Nova's
+  Card holds `Content` and `Footer content`. `component.createSlot()` makes one inside a component and
+  adds its `SLOT` property; the property's key is `slot.componentPropertyReferences.slotContentId`.
+  There is no `figma.createSlot`, and `addComponentProperty(name, 'SLOT', ...)` takes no `null`
+  default, so a probe that called either and failed proves nothing about slot support.
+  - The slot is an auto-layout frame (never `GRID`) named for the region, filling the component's
+    width and hugging its content, with the code's padding: Nova's Card `Content` is vertical, padding
+    0 16 (0 12 at `sm`), no fill. It holds the code's demo text as a TEXT layer, `Card Content`, so an
+    instance reads as a card before a designer drops anything in.
+  - A region the code shows or hides takes a BOOLEAN on the slot's `visible` (`Show content`), and its
+    `description` says what goes in it (`CardContent: drop any components here.`).
+  - In a set, every variant holds the slot under the same name; after `combineAsVariants`, read
+    `componentPropertyDefinitions` on the set and see one `SLOT` property per region.
+  - Content goes into an instance's slot by `appendChild` on the `SLOT` node the instance holds;
+    `setProperties` refuses a slot property.
+    An icon the code places at either end is two pairs, `Show icon start` with `Icon start` and `Show
+    icon end` with `Icon end`.
 - An icon in a variant takes the label's colour as Nova's Button does: the icon component keeps its
   own `color/foreground`, and the variant overrides the paint of the icon's glyph layers, `strokes`
   for a stroked set such as Lucide and `fills` for a filled one, bound to the variable the label's

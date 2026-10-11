@@ -146,3 +146,10 @@ below.
     `I<instance>;<layer>` id. Nova's views are now named `<Component>` and `<Component> / Guidance`
     and its icon section `Icons section`; the names and the documentation check follow, which until
     now skipped any view whose name held no `/`.
+12. From the seventh GREEN run on a live file, antd 6: the run drew Card's content as a TEXT property
+    and reported "this plugin build has no slot support", after calling `figma.createSlot()`, which
+    does not exist, and `addComponentProperty(name, 'SLOT', null)`, which Figma refuses. Figma's Plugin
+    API typings (figma-use plugin 2.2.127) put `createSlot()` on the component. Nova's Card, read
+    2026-10-11, holds `Content` and `Footer content` slots. The reference now spells the slot, its
+    layout and its property as Nova draws them, and the mistakes table says a probe that failed once
+    is not evidence a capability is missing.
