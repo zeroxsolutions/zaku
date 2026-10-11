@@ -230,8 +230,9 @@ A frame holding the composition reaches past the edge only as far as a block in 
   default, so a probe that called either and failed proves nothing about slot support.
   - The slot is an auto-layout frame (never `GRID`) named for the region, filling the component's
     width and hugging its content, with the code's padding: Nova's Card `Content` is vertical, padding
-    0 16 (0 12 at `sm`), no fill. It holds the code's demo text as a TEXT layer, `Card Content`, so an
-    instance reads as a card before a designer drops anything in.
+    0 16 (0 12 at `sm`), no fill: `createSlot()` gives the slot a solid fill of its own, so `fills` is
+    set to `[]`. It holds the code's demo text as a TEXT layer, `Card Content`, so an instance reads as
+    a card before a designer drops anything in.
   - A region the code shows or hides takes a BOOLEAN on the slot's `visible` (`Show content`), and its
     `description` says what goes in it (`CardContent: drop any components here.`).
   - In a set, every variant holds the slot under the same name; after `combineAsVariants`, read
