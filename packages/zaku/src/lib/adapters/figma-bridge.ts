@@ -60,6 +60,9 @@ export class FigmaBridge {
   private readonly queues = new Map<BridgeConnection, Promise<unknown>>();
   private readonly checkListeners: ((session: Session, scope: CheckScope) => void)[] = [];
   private readonly detachListeners: ((connection: BridgeConnection) => void)[] = [];
+  /** Pieces of work queued or running on any file, and who waits for there to be none. */
+  private busy = 0;
+  private idleWaiters: (() => void)[] = [];
 
   constructor(
     private readonly timings: BridgeTimings,
@@ -124,8 +127,15 @@ export class FigmaBridge {
     return found;
   }
 
+  /** Resolves once no script, read or render is queued or running on any file, so the hub can hand over. */
+  idle(): Promise<void> {
+    if (this.busy === 0) return Promise.resolve();
+    return new Promise((resolve) => this.idleWaiters.push(resolve));
+  }
+
   /** One piece of work per file at a time; the next waits, and a closed connection refuses it. */
   exclusive<T>(session: Session, work: () => Promise<T>): Promise<T> {
+    this.busy += 1;
     const previous = this.queues.get(session.connection) ?? Promise.resolve();
     const next = previous
       .catch(() => undefined)
@@ -134,6 +144,12 @@ export class FigmaBridge {
         return work();
       });
     this.queues.set(session.connection, next);
+    const settle = (): void => {
+      this.busy -= 1;
+      if (this.busy > 0) return;
+      for (const resolve of this.idleWaiters.splice(0)) resolve();
+    };
+    next.then(settle, settle);
     return next;
   }
 

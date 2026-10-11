@@ -91,6 +91,24 @@ describe('FigmaBridge', () => {
     expect(() => b.session('Untitled')).toThrow(/f-1.*f-2.*Thumbnail/s);
   });
 
+  it('is idle once no piece of work is queued, and not before', async () => {
+    const b = bridge();
+    const c = new FakeConnection();
+    b.attach(c);
+    c.emit(hello('A'));
+    let finish: () => void = () => undefined;
+    const work = b.exclusive(b.session(), () => new Promise<void>((done) => (finish = done)));
+    let idle = false;
+    const waited = b.idle().then(() => (idle = true));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(idle).toBe(false);
+    finish();
+    await work;
+    await waited;
+    expect(idle).toBe(true);
+    await b.idle();
+  });
+
   it('ignores a message that does not parse', () => {
     const b = bridge();
     const c = new FakeConnection();
