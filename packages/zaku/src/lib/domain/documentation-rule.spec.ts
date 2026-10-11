@@ -84,8 +84,17 @@ describe('the documentation rule', () => {
     const usage = body.children!.find((layer) => layer.name === 'Usage')!;
     usage.children![1]!.box = { ...usage.children![1]!.box, gap: 12 };
     expect(documentation(pageSnapshot(BUTTON, [component!, guidance!]))).toEqual([
-      'Nova / Button / Guidance / Body: padding 40 120 96 120, not 48 120 96 120',
-      'Nova / Button / Guidance / Body / Usage / List: gap 12, not 8',
+      'Button / Guidance / Body: padding 40 120 96 120, not 48 120 96 120',
+      'Button / Guidance / Body / Usage / List: gap 12, not 8',
+    ]);
+  });
+
+  it('measures a component view named for the component alone, as Nova names it', () => {
+    const [component, guidance] = buttonViews();
+    const body = component!.children![1]!;
+    body.box = { ...body.box, padding: [40, 120, 96, 120] };
+    expect(documentation(pageSnapshot(BUTTON, [component!, guidance!]))).toEqual([
+      'Button / Body: padding 40 120 96 120, not 48 120 96 120',
     ]);
   });
 
@@ -101,8 +110,8 @@ describe('the documentation rule', () => {
       sizing: { horizontal: 'FIXED', vertical: 'HUG' },
     };
     expect(documentation(pageSnapshot(BUTTON, [component!, guidance!]))).toEqual([
-      'Nova / Button / Guidance / Body / Variants / Preview: aligns MIN MIN, not CENTER CENTER',
-      'Nova / Button / Guidance / Body / Variants / Preview / Variants: sizes FIXED horizontally, not HUG',
+      'Button / Guidance / Body / Variants / Preview: aligns MIN MIN, not CENTER CENTER',
+      'Button / Guidance / Body / Variants / Preview / Variants: sizes FIXED horizontally, not HUG',
     ]);
   });
 
@@ -112,7 +121,7 @@ describe('the documentation rule', () => {
     const preview = anatomy.children![1]!.children![0]!;
     preview.box = { ...preview.box, height: 330, sizing: { horizontal: 'FILL', vertical: 'FIXED' } };
     expect(documentation(pageSnapshot(BUTTON, [component!, guidance!]))).toEqual([
-      'Nova / Button / Guidance / Body / Anatomy / Anatomy layout / Preview: sizes FIXED vertically, not FILL',
+      'Button / Guidance / Body / Anatomy / Anatomy layout / Preview: sizes FIXED vertically, not FILL',
     ]);
   });
 

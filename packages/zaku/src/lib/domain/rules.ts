@@ -10,8 +10,8 @@ export interface RuleGuide {
 export const RULE_GUIDES: Partial<Record<CheckId, RuleGuide>> = {
   binding: {
     id: 'binding',
-    why: 'A raw colour, padding, gap or unstyled text does not move when the library or the theme changes, so the frame drifts from the code.',
-    fix: "Bind the paint with figma.variables.setBoundVariableForPaint, the padding or gap with node.setBoundVariable to the library's spacing/<step> token for the class's step, and give a text a library text style. Documentation (the library's Thumbnail and Component for Docs pages and an entry page outside its components; a product file's <kind> / <Component> page and a feature's _components Section, outside the components) keeps the measures and type its reference writes as numbers; only its paints are bound.",
+    why: "A raw colour, padding, gap or unstyled text does not move when the library or the theme changes, so the frame drifts from the code. An icon whose glyph lost its component's colour shows a colour the code never renders beside that label.",
+    fix: "Bind the paint with figma.variables.setBoundVariableForPaint, the padding or gap with node.setBoundVariable to the library's spacing/<step> token for the class's step, and give a text a library text style. Setting an icon property on an instance swaps the icon and can drop the colour its component gives the glyph: set the property only to change the icon, and where a swap dropped the colour, bind the glyph's paint to the variable the finding's component layer uses. Documentation (the library's Thumbnail and Component for Docs pages and an entry page outside its components; a product file's <kind> / <Component> page and a feature's _components Section, outside the components) keeps the measures and type its reference writes as numbers; only its paints are bound.",
   },
   overlap: {
     id: 'overlap',

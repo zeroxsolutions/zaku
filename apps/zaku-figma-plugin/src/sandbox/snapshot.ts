@@ -1,13 +1,16 @@
 import type { NodeSnapshot } from '@zeroxsolutions/zaku/schema';
 
-type Paint = { type: string; visible?: boolean; opacity?: number; boundVariables?: { color?: unknown } };
+type Paint = { type: string; visible?: boolean; opacity?: number; boundVariables?: { color?: { id?: unknown } } };
 const SPACING = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing'] as const;
 
 function paints(value: unknown): NodeSnapshot['fills'] {
   if (!Array.isArray(value)) return [];
   return (value as Paint[])
     .filter((paint) => paint.type === 'SOLID' && paint.visible !== false && (paint.opacity ?? 1) > 0)
-    .map((paint) => ({ bound: Boolean(paint.boundVariables?.color) }));
+    .map((paint) => {
+      const variable = paint.boundVariables?.color?.id;
+      return { bound: Boolean(paint.boundVariables?.color), ...(typeof variable === 'string' ? { variable } : {}) };
+    });
 }
 
 /** The layer an override names: the instance itself, or one inside it. */
@@ -48,6 +51,28 @@ function ancestryOf(node: Ancestor, cache: AncestryCache): Ancestry {
   };
   cache.set(node.id, ancestry);
   return ancestry;
+}
+
+/** The layer types a glyph is drawn with. */
+const GLYPH_TYPES: ReadonlySet<string> = new Set([
+  'VECTOR',
+  'BOOLEAN_OPERATION',
+  'ELLIPSE',
+  'RECTANGLE',
+  'LINE',
+  'STAR',
+  'POLYGON',
+]);
+
+/**
+ * The id of the same layer in the outermost instance's component. Figma names a layer inside an instance
+ * `I<instance>;<layer>`, a layer nested deeper `I<instance>;<nested instance>;<layer>`; null for any other id.
+ */
+export function sourceLayerId(id: string): string | null {
+  if (!id.startsWith('I')) return null;
+  const path = id.slice(1).split(';').slice(1);
+  if (path.length === 0) return null;
+  return path.length === 1 ? (path[0] ?? null) : `I${path.join(';')}`;
 }
 
 type Box = { id: string; name: string; x: number; y: number; width: number; height: number };
@@ -167,6 +192,7 @@ export async function snapshotNode(
   created: boolean,
   mixed: symbol = typeof figma === 'undefined' ? Symbol('mixed') : figma.mixed,
   cache: AncestryCache = new Map(),
+  find: (id: string) => Promise<unknown> = (id) => figma.getNodeByIdAsync(id),
 ): Promise<NodeSnapshot> {
   const any = node as unknown as Record<string, unknown> & {
     parent?: Ancestor | null;
@@ -178,6 +204,9 @@ export async function snapshotNode(
   const carried = node.type === 'INSTANCE' ? carriedTexts(node, texted) : [];
   const auto = typeof any['layoutMode'] === 'string' && any['layoutMode'] !== 'NONE';
   const ancestry = ancestryOf(node as unknown as Ancestor, cache);
+  const sourceId =
+    GLYPH_TYPES.has(node.type) && ancestry.insideInstance && !ancestry.componentSource ? sourceLayerId(node.id) : null;
+  const source = sourceId ? ((await find(sourceId)) as Record<string, unknown> | null) : null;
   const properties = propertiesOf(any as Record<string, unknown> & { type: string; parent?: Ancestor | null });
   return {
     id: node.id,
@@ -212,6 +241,7 @@ export async function snapshotNode(
     spacing: auto
       ? SPACING.map((field) => ({ field, value: Number(any[field] ?? 0), bound: Boolean(any.boundVariables?.[field]) }))
       : [],
+    ...(source ? { source: { fills: paints(source['fills']), strokes: paints(source['strokes']) } } : {}),
     page: ancestry.page,
     componentSource: ancestry.componentSource,
     ...(BOXED.has(node.type) ? { box: boxOf(any) } : {}),

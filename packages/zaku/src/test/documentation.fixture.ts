@@ -312,12 +312,12 @@ const cards = (count: number): Layer =>
 /** A component's two views, as the measured library draws Button's. */
 export function buttonViews(): Layer[] {
   return [
-    view('Nova / Button', [
+    view('Button', [
       section('Component', [
         frame('Preview', { width: 1200, ...horizontal(none, 24) }, [frame('Matrix', { width: 1200 })]),
       ]),
     ]),
-    view('Nova / Button / Guidance', [
+    view('Button / Guidance', [
       section('Anatomy', [
         frame('Anatomy layout', { width: 1200, ...horizontal(none, 16) }, [
           frame('Preview', {

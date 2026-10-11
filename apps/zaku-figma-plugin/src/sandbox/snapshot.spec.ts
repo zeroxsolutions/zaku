@@ -1,7 +1,7 @@
-import { snapshotNode } from './snapshot.js';
+import { snapshotNode, sourceLayerId } from './snapshot.js';
 
 describe('snapshotNode', () => {
-  it('reads solid paints and whether a variable colours them', async () => {
+  it('reads solid paints, and which variable colours them', async () => {
     const node = {
       id: '1:1',
       name: 'Card',
@@ -22,7 +22,7 @@ describe('snapshotNode', () => {
     };
     expect(await snapshotNode(node as never, true)).toMatchObject({
       fills: [{ bound: false }],
-      strokes: [{ bound: true }],
+      strokes: [{ bound: true, variable: 'v' }],
       spacing: [
         { field: 'paddingTop', value: 12, bound: true },
         { field: 'paddingRight', value: 0, bound: false },
@@ -308,6 +308,44 @@ describe('snapshotNode', () => {
         },
       };
       expect(await snapshotNode(variant as never, false)).not.toHaveProperty('properties');
+    });
+  });
+
+  describe('a glyph inside an instance outside every component', () => {
+    it("names the same layer in the outermost instance's component", () => {
+      expect(sourceLayerId('I15:24763;15:16245;15:5029')).toBe('I15:16245;15:5029');
+      expect(sourceLayerId('I15:24763;15:16245')).toBe('15:16245');
+      expect(sourceLayerId('15:5029')).toBeNull();
+    });
+
+    it('reads the paints that layer has in the component', async () => {
+      const page = { id: '0:1', name: 'Thumbnail', type: 'PAGE', parent: null };
+      const button = { id: '15:24763', name: 'Button', type: 'INSTANCE', parent: page };
+      const icon = { id: 'I15:24763;15:16245', name: 'Icon', type: 'INSTANCE', parent: button };
+      const glyph = {
+        id: 'I15:24763;15:16245;15:5029',
+        name: 'Glyph',
+        type: 'VECTOR',
+        parent: icon,
+        fills: [{ type: 'SOLID', boundVariables: { color: { id: 'text' } } }],
+      };
+      const variant = { fills: [{ type: 'SOLID', boundVariables: { color: { id: 'text-light-solid' } } }] };
+      const find = async (id: string): Promise<unknown> => (id === 'I15:16245;15:5029' ? variant : null);
+      expect((await snapshotNode(glyph as never, false, Symbol('mixed'), new Map(), find)).source).toEqual({
+        fills: [{ bound: true, variable: 'text-light-solid' }],
+        strokes: [],
+      });
+    });
+
+    it('reads no component layer for a glyph inside a component', async () => {
+      const page = { id: '0:1', name: 'Button', type: 'PAGE', parent: null };
+      const variant = { id: '15:10', name: 'Variant=solid', type: 'COMPONENT', parent: page };
+      const icon = { id: '15:16245', name: 'Icon', type: 'INSTANCE', parent: variant };
+      const glyph = { id: 'I15:16245;15:5029', name: 'Glyph', type: 'VECTOR', parent: icon, fills: [] };
+      const find = async (): Promise<unknown> => {
+        throw new Error('not read');
+      };
+      expect(await snapshotNode(glyph as never, false, Symbol('mixed'), new Map(), find)).not.toHaveProperty('source');
     });
   });
 });

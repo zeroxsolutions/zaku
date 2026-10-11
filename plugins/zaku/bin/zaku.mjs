@@ -35521,7 +35521,9 @@ var ScriptRefused = class extends Error {
 var BRIDGE_PORTS = [7337, 7338, 7339, 7340, 7341, 7342, 7343, 7344, 7345, 7346];
 var BRIDGE_PORT_RANGE = `${BRIDGE_PORTS[0]}-${BRIDGE_PORTS[BRIDGE_PORTS.length - 1]}`;
 var SPACING_FIELDS = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing'];
-var paintSchema = external_exports.object({ bound: external_exports.boolean() }).strict();
+var paintSchema = external_exports
+  .object({ bound: external_exports.boolean(), variable: external_exports.string().optional() })
+  .strict();
 var nodeSnapshotSchema = external_exports
   .object({
     id: external_exports.string(),
@@ -35568,6 +35570,14 @@ var nodeSnapshotSchema = external_exports
         })
         .strict(),
     ),
+    /**
+     * A glyph inside an instance outside every component: the paints the same layer has in the instance's component,
+     * which an icon swap on the instance can drop. Absent where the plugin finds no such layer.
+     */
+    source: external_exports
+      .object({ fills: external_exports.array(paintSchema), strokes: external_exports.array(paintSchema) })
+      .strict()
+      .optional(),
     /** The page that holds the node; null off a page. Absent from a plugin older than the field. */
     page: external_exports
       .object({ id: external_exports.string(), name: external_exports.string() })
@@ -37356,7 +37366,6 @@ var DOCUMENTATION_PARTS = [
 
 // packages/zaku/dist/lib/domain/documentation-rule.js
 var ENTRY_PAGE_PREFIX = '\u2756 ';
-var VIEW_NAME = / \/ /;
 var TOLERANCE = 0.5;
 function locate(node2, byId) {
   const page = node2.page;
@@ -37372,7 +37381,7 @@ function locate(node2, byId) {
   for (let up = node2; up; up = up.parentId ? byId.get(up.parentId) : void 0) {
     path2.unshift(up.name);
     if (up.parentId === page.id) {
-      if (where === 'view' && (up.type !== 'FRAME' || !VIEW_NAME.test(up.name))) return null;
+      if (where === 'view' && up.type !== 'FRAME') return null;
       return { node: node2, path: path2, where };
     }
   }
@@ -37619,6 +37628,8 @@ function isDocumentation(node2) {
   if (node2.componentSource !== false) return false;
   return page.startsWith(ENTRY_PAGE_PREFIX2) || KIND_PAGE.test(page) || node2.frame === FEATURE_COMPONENTS_SECTION;
 }
+var sameColours = (a, b) =>
+  a.map((paint) => paint.variable ?? '').join() === b.map((paint) => paint.variable ?? '').join();
 function overlaps(a, b) {
   const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
   const height = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
@@ -37642,6 +37653,7 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
   );
   const findings = [];
   const byId = new Map(nodes.map((node2) => [node2.id, node2]));
+  const overridden = new Set(nodes.flatMap((node2) => node2.instance?.overrides.map((o) => o.nodeId) ?? []));
   const brandMark = (node2) => {
     if (node2.page?.name !== COVER.page) return false;
     for (let up = byId.get(node2.parentId ?? ''); up; up = byId.get(up.parentId ?? ''))
@@ -37708,6 +37720,10 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
           if (field === 'fills' && override.picture) continue;
           const self2 = override.nodeId === node2.id;
           if (!self2 && (field === 'fills' || field === 'strokes') && node2.componentSource === true) continue;
+          const layer = byId.get(override.nodeId);
+          if (!self2 && (field === 'fills' || field === 'strokes') && layer?.source) {
+            if (sameColours(layer[field], layer.source[field])) continue;
+          }
           if (self2 && (field === 'width' || field === 'height') && documentation) continue;
           if (self2 && field === 'width' && node2.instance.sizing.horizontal !== 'FIXED') continue;
           if (self2 && field === 'height' && node2.instance.sizing.vertical !== 'FIXED') continue;
@@ -37716,6 +37732,15 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
       }
     }
     if (isDefaultLayerName(node2.type, node2.name)) finding('naming', void 0, `${node2.name} keeps a default name`);
+    if (node2.source) {
+      const off = ['fills', 'strokes'].filter((field) => !sameColours(node2[field], node2.source?.[field] ?? []));
+      if (off.length > 0 && !overridden.has(node2.id))
+        finding(
+          'binding',
+          off[0] === 'fills' ? 'fill' : 'stroke',
+          `${label2}: paints with another colour than the same layer in its component (${(node2.source[off[0] ?? 'fills'] ?? []).map((paint) => paint.variable ?? 'raw').join(', ')}), which an icon swap dropped`,
+        );
+    }
   }
   const frames = new Map(nodes.map((node2) => [node2.id, node2.frame]));
   for (const { nodeId, field, message } of documentationFindings(nodes)) {
