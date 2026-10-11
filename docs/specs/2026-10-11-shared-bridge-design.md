@@ -53,7 +53,8 @@ zaku-mcp waited on 7338, and two rounds of pairing failed before the cause was f
 8. **An old zaku-mcp is named, not fought.** A pre-hub zaku-mcp that holds 7337 keeps it; the hub takes
    the next port, and `get_bridge_state` names the process holding 7337 so the person can end it.
 9. **`ZAKU_PORT` pins the hub's port**, not a client's, for a test that needs its own hub; such a test
-   sets `ZAKU_CONFIG_DIR` too, so its hub socket and pairings are its own.
+   sets `XDG_CONFIG_HOME` too, which already moves the pairings file, so its hub socket and pairings
+   are its own.
 
 ## Out of scope
 
