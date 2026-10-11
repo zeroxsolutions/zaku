@@ -103,6 +103,17 @@ describe('the hub core', () => {
     expect((await b.call('run_script', { script: 'return 1' })).error).toBe(false);
   });
 
+  it('leases no file to a client that left before its code was typed', async () => {
+    const { client, plugin } = await hub();
+    const a = await client('a');
+    const b = await client('b');
+    const code = codeOf((await a.call('issue_pairing_code')).body);
+    await a.close();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await plugin('Untitled', code);
+    expect((await b.call('run_script', { script: 'return 1' })).error).toBe(false);
+  });
+
   it("refuses a client's first write to a file paired with another client's code", async () => {
     const { client, plugin } = await hub();
     const a = await client('a');

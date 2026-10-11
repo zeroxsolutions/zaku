@@ -13,6 +13,8 @@ export interface ClientSeams {
   stdout: NodeJS.WritableStream;
   /** How long to keep dialing a hub that was just started. */
   connectMs?: number;
+  /** How long to wait for an older hub to hand over before using it as it is. */
+  handoverMs?: number;
 }
 
 type Message = { id?: number | string; method?: string };
@@ -20,6 +22,11 @@ type Message = { id?: number | string; method?: string };
 const RETRY_MS = 100;
 /** A request in flight when the hub went away is answered with this, so the agent calls again. */
 const RESTARTED = { code: -32000, message: 'zaku hub restarted; call again' };
+/** A call made while no hub could be reached; the next call tries to reach one again. */
+const unreachable = (reason: string): { code: number; message: string } => ({
+  code: -32000,
+  message: `PluginNotConnected: the zaku hub is not reachable: ${reason}`,
+});
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -28,6 +35,8 @@ function dial(socketPath: string): Promise<Socket | null> {
     const socket = connect(socketPath);
     socket.once('connect', () => {
       socket.removeAllListeners('error');
+      // A hub killed under a write raises EPIPE or ECONNRESET; the close that follows reconnects.
+      socket.on('error', () => socket.destroy());
       resolve(socket);
     });
     socket.once('error', () => resolve(null));
@@ -62,6 +71,10 @@ const parse = (line: string): Message => {
  */
 export async function runClient(seams: ClientSeams): Promise<number> {
   const connectMs = seams.connectMs ?? 5000;
+  const handoverMs = seams.handoverMs ?? 10_000;
+  /** The newest build of any hub this client reached; after it goes, its own client starts the next. */
+  let newest = seams.build;
+  let attaching = false;
   let socket: Socket | null = null;
   let ended = false;
   let initialize: string | null = null;
@@ -76,6 +89,9 @@ export async function runClient(seams: ClientSeams): Promise<number> {
   /** Dials the hub, starting one when none answers, and reads its hello; null once stdin has ended. */
   const reach = async (): Promise<{ socket: Socket; hello: HubHello } | null> => {
     let started = false;
+    let askHandover = true;
+    // An older client gives the newer one a window to start its own hub before starting an older one.
+    let mayStart = newest <= seams.build;
     for (;;) {
       if (ended) return null;
       const deadline = Date.now() + connectMs;
@@ -83,19 +99,23 @@ export async function runClient(seams: ClientSeams): Promise<number> {
       while (!next && Date.now() < deadline) {
         next = await dial(seams.socketPath);
         if (next) break;
-        if (!started) {
+        if (!started && mayStart) {
           started = true;
           seams.spawnHub();
         }
         await sleep(RETRY_MS);
       }
-      if (!next) throw new Error(`zaku hub did not answer on ${seams.socketPath} within ${connectMs} ms`);
+      if (!next && !mayStart) {
+        mayStart = true;
+        continue;
+      }
+      if (!next) throw new Error(`no hub answered on ${seams.socketPath} within ${connectMs} ms`);
       const hello: ClientHello = {
         type: 'client',
         cwd: seams.cwd,
         designRoot: seams.designRoot,
         build: seams.build,
-        handover: true,
+        handover: askHandover,
       };
       next.write(`${JSON.stringify(hello)}\n`);
       const answer = await new Promise<HubHello | null>((resolve) => {
@@ -113,15 +133,46 @@ export async function runClient(seams: ClientSeams): Promise<number> {
         next?.on('data', onData);
         next?.once('close', () => resolve(null));
       });
-      if (answer && !answer.handingOver) return { socket: next, hello: answer };
+      if (answer && !answer.handingOver) {
+        newest = Math.max(newest, answer.build);
+        return { socket: next, hello: answer };
+      }
       // The hub is giving way to this build: wait for it to go, then start this one.
-      await new Promise((resolve) => (next.destroyed ? resolve(null) : next.once('close', resolve)));
+      const gone = await new Promise<boolean>((resolve) => {
+        if (next.destroyed) return resolve(true);
+        const timer = setTimeout(() => resolve(false), handoverMs);
+        next.once('close', () => {
+          clearTimeout(timer);
+          resolve(true);
+        });
+      });
+      // Its work has not finished: use it as it is, and take it over on a later reconnect.
+      if (!gone) {
+        next.destroy();
+        askHandover = false;
+      }
       started = false;
+      mayStart = true;
     }
   };
 
   const attach = async (): Promise<void> => {
-    const reached = await reach();
+    attaching = true;
+    let reached: Awaited<ReturnType<typeof reach>>;
+    try {
+      reached = await reach();
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      // What waited for this hub is answered now; the next call tries again.
+      for (const line of queued.splice(0)) {
+        const { id, method } = parse(line);
+        if (id !== undefined && method !== undefined)
+          write(JSON.stringify({ jsonrpc: '2.0', id, error: unreachable(reason) }));
+      }
+      return;
+    } finally {
+      attaching = false;
+    }
     if (!reached) return;
     const current = reached.socket;
     socket = current;
@@ -157,6 +208,7 @@ export async function runClient(seams: ClientSeams): Promise<number> {
     const message = parse(line);
     if (!socket || replayed !== null) {
       queued.push(line);
+      if (!socket && !attaching) void attach();
       return;
     }
     // Kept once a hub has had them, so a hub started later is initialized the same way.

@@ -10,6 +10,7 @@ import {
   portHolders,
   runClient,
   startHubCore,
+  type HubServer,
 } from '@zeroxsolutions/zaku/mcp';
 
 let ports: readonly number[];
@@ -26,30 +27,33 @@ const paths = hubPaths(pairingsFile);
 const build = statSync(process.execPath).mtimeMs;
 
 if (process.argv[2] === 'hub') {
-  const core = await startHubCore({
-    skillsDir: process.env['ZAKU_SKILLS_DIR'] ?? '',
-    ports,
-    pairingsFile,
-    build,
-    portHolders: (hubPort) => portHolders(ports, hubPort),
-  });
+  let server: HubServer | null = null;
   let stopping = false;
+  // Closing the server unlinks the socket, so the next client finds no stale file to race other hubs over.
   const stop = (): void => {
     if (stopping) return;
     stopping = true;
     rmSync(paths.pid, { force: true });
-    void core.close().finally(() => process.exit(0));
+    void (server?.close() ?? Promise.resolve()).then(() => server?.core.close()).finally(() => process.exit(0));
   };
-  const server = await listenHub(core, paths.socket, { onIdle: stop, onHandover: stop });
-  if ('error' in server) {
-    // Another hub started first; its clients reach it.
-    await core.close();
-    process.exit(0);
-  }
+  const listened = await listenHub(
+    () =>
+      startHubCore({
+        skillsDir: process.env['ZAKU_SKILLS_DIR'] ?? '',
+        ports,
+        pairingsFile,
+        build,
+        portHolders: (hubPort) => portHolders(ports, hubPort),
+      }),
+    paths.socket,
+    { onIdle: stop, onHandover: stop },
+  );
+  // Another hub holds the socket; its clients reach it.
+  if ('error' in listened) process.exit(0);
+  server = listened;
   writeFileSync(paths.pid, String(process.pid));
-  const close = (): void => void server.close().then(stop);
-  process.once('SIGTERM', close);
-  process.once('SIGINT', close);
+  process.once('SIGTERM', stop);
+  process.once('SIGINT', stop);
 } else {
   try {
     const code = await runClient({

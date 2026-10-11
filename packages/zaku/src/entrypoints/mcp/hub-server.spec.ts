@@ -68,7 +68,7 @@ describe('the hub server', () => {
   it("answers a client's hello with its own, then serves MCP over the same socket", async () => {
     const { core: hub, dir } = await core();
     const path = join(dir, 'hub.sock');
-    const server = await listenHub(hub, path, { onIdle: () => undefined, onHandover: () => undefined });
+    const server = await listenHub(async () => hub, path, { onIdle: () => undefined, onHandover: () => undefined });
     if ('error' in server) throw new Error('taken');
     opened.push(server);
     const client = await line(path);
@@ -83,7 +83,11 @@ describe('the hub server', () => {
     const { core: hub, dir } = await core();
     const path = join(dir, 'hub.sock');
     let idle = 0;
-    const server = await listenHub(hub, path, { idleMs: 60, onIdle: () => idle++, onHandover: () => undefined });
+    const server = await listenHub(async () => hub, path, {
+      idleMs: 60,
+      onIdle: () => idle++,
+      onHandover: () => undefined,
+    });
     if ('error' in server) throw new Error('taken');
     opened.push(server);
     const client = await line(path);
@@ -99,15 +103,22 @@ describe('the hub server', () => {
   it('answers taken on a socket a live hub holds, and replaces a stale socket file', async () => {
     const { core: hub, dir } = await core();
     const path = join(dir, 'hub.sock');
-    const first = await listenHub(hub, path, { onIdle: () => undefined, onHandover: () => undefined });
+    const first = await listenHub(async () => hub, path, { onIdle: () => undefined, onHandover: () => undefined });
     if ('error' in first) throw new Error('taken');
     opened.push(first);
-    expect(await listenHub(hub, path, { onIdle: () => undefined, onHandover: () => undefined })).toEqual({
+    // A hub that loses the socket must not have taken a panel port first.
+    let started = 0;
+    const second = async (): Promise<HubCore> => {
+      started++;
+      return hub;
+    };
+    expect(await listenHub(second, path, { onIdle: () => undefined, onHandover: () => undefined })).toEqual({
       error: 'taken',
     });
+    expect(started).toBe(0);
     const stale = join(dir, 'stale.sock');
     await writeFile(stale, '');
-    const replaced = await listenHub(hub, stale, { onIdle: () => undefined, onHandover: () => undefined });
+    const replaced = await listenHub(async () => hub, stale, { onIdle: () => undefined, onHandover: () => undefined });
     expect('error' in replaced).toBe(false);
     if (!('error' in replaced)) opened.push(replaced);
   });
@@ -116,7 +127,7 @@ describe('the hub server', () => {
     const { core: hub, dir } = await core(5);
     const path = join(dir, 'hub.sock');
     let handovers = 0;
-    const server = await listenHub(hub, path, { onIdle: () => undefined, onHandover: () => handovers++ });
+    const server = await listenHub(async () => hub, path, { onIdle: () => undefined, onHandover: () => handovers++ });
     if ('error' in server) throw new Error('taken');
     opened.push(server);
     const older = await line(path);

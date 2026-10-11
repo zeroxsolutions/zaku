@@ -62,11 +62,13 @@ export async function startHubCore(seams: HubSeams): Promise<HubCore> {
   const leases = new FileLeases<BridgeConnection>(now);
   bridge.onCheck((session, scope) => void runCheck(bridge, session, scope).catch(() => undefined));
   bridge.onDetach((connection) => leases.drop(connection));
+  /** Clients with an open server; a code's issuer that left is given no file. */
+  const connected = new Set<string>();
   const pairings = new Pairings(new PairingCodes(now), new FilePairingStore(seams.pairingsFile));
   const listen = (): Promise<Listening> =>
-    listenFirstFree(bridge, pairings, seams.ports, seams.admitMs, (connection, issuer) =>
-      leases.grant(connection, issuer),
-    );
+    listenFirstFree(bridge, pairings, seams.ports, seams.admitMs, (connection, issuer) => {
+      if (connected.has(issuer.id)) leases.grant(connection, issuer);
+    });
   let listening: Listening = await listen();
   let retrying = false;
   let closed = false;
@@ -123,8 +125,10 @@ export async function startHubCore(seams: HubSeams): Promise<HubCore> {
         },
       });
       servers.add(server);
+      connected.add(client.id);
       server.server.onclose = (): void => {
         servers.delete(server);
+        connected.delete(client.id);
         leases.release(client.id);
       };
       return server;

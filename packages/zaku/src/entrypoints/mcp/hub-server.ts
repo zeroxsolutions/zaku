@@ -7,6 +7,7 @@ import type { HubCore } from './hub.js';
 import { clientHelloSchema, HUB_IDLE_MS, type ClientHello, type HubHello } from './hub-protocol.js';
 
 export interface HubServer {
+  readonly core: HubCore;
   close(): Promise<void>;
 }
 
@@ -65,7 +66,7 @@ const parse = (line: string): ClientHello | null => {
  * the socket, which is how the second of two hubs started together learns to exit.
  */
 export async function listenHub(
-  core: HubCore,
+  start: () => Promise<HubCore>,
   socketPath: string,
   options: HubServerOptions,
 ): Promise<HubServer | { error: 'taken' }> {
@@ -75,6 +76,8 @@ export async function listenHub(
   const clients = new Set<Socket>();
   let idle: NodeJS.Timeout | undefined;
   let handingOver = false;
+  let resolveCore: (core: HubCore) => void = () => undefined;
+  const ready = new Promise<HubCore>((resolve) => (resolveCore = resolve));
   const armIdle = (): void => {
     clearTimeout(idle);
     if (clients.size === 0) idle = setTimeout(options.onIdle, idleMs);
@@ -88,6 +91,7 @@ export async function listenHub(
     });
     socket.on('error', () => socket.destroy());
     void firstLine(socket).then(async (line): Promise<void> => {
+      const core = await ready;
       const hello = line === null ? null : parse(line);
       if (hello === null) {
         socket.destroy();
@@ -132,8 +136,12 @@ export async function listenHub(
     failed = await bind();
   }
   if (failed) return { error: 'taken' };
+  // The panel port is opened only once the socket is this hub's, so a hub that loses the race never holds one.
+  const core = await start();
+  resolveCore(core);
   armIdle();
   return {
+    core,
     close: (): Promise<void> =>
       new Promise((done) => {
         clearTimeout(idle);
