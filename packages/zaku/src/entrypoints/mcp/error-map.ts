@@ -1,4 +1,5 @@
 import {
+  FileHeldByAnotherSession,
   FileNameShared,
   FileNotConnected,
   FileRequired,
@@ -22,6 +23,7 @@ export function refusalText(error: unknown, portError: string | null): string | 
     error instanceof FileRequired ||
     error instanceof FileNotConnected ||
     error instanceof FileNameShared ||
+    error instanceof FileHeldByAnotherSession ||
     error instanceof PairingNotFound ||
     error instanceof ScriptRefused ||
     error instanceof NodeNotRendered ||

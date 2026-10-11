@@ -2,11 +2,13 @@ import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { PairingNotFound } from '../../lib/domain/errors/index.js';
 import { PairingCodes, type CodeStatus } from '../../lib/domain/pairing-codes.js';
+import type { LeaseClient } from '../../lib/domain/file-leases.js';
 import type { IPairingStore, Pairing } from '../../lib/repositories/pairing-store.js';
 import type { Credential, RefusalReason } from '../../lib/schema/bridge.js';
 
 export type Admission =
-  | { kind: 'admitted'; pairing: Pairing; issued: string | null }
+  /** `issuer` is the client that issued the code redeemed; null for a token, or a code no client issued. */
+  | { kind: 'admitted'; pairing: Pairing; issued: string | null; issuer: LeaseClient | null }
   | { kind: 'refused'; reason: RefusalReason };
 
 /** The code status as the agent reads it from get_bridge_state and list_pairings. */
@@ -34,13 +36,16 @@ const newToken = (): string => randomBytes(32).toString('base64url');
 /** The live code, the stored pairings, and the open connections each pairing admitted. */
 export class Pairings {
   private readonly connections = new Map<string, Set<() => void>>();
+  /** The client that issued the live code, whose file the panel pairing with it becomes. */
+  private issuer: LeaseClient | null = null;
 
   constructor(
     private readonly codes: PairingCodes,
     private readonly store: IPairingStore,
   ) {}
 
-  issueCode(): { code: string; expiresAt: number } {
+  issueCode(issuer: LeaseClient | null = null): { code: string; expiresAt: number } {
+    this.issuer = issuer;
     return this.codes.issue();
   }
 
@@ -56,12 +61,16 @@ export class Pairings {
   async admit(credential: Credential, file: string): Promise<Admission> {
     if ('token' in credential) {
       const pairing = await this.store.find(credential.token);
-      return pairing ? { kind: 'admitted', pairing, issued: null } : { kind: 'refused', reason: 'unknown-token' };
+      return pairing
+        ? { kind: 'admitted', pairing, issued: null, issuer: null }
+        : { kind: 'refused', reason: 'unknown-token' };
     }
     const redeemed = this.codes.redeem(credential.code);
     if (redeemed.kind === 'refused') return redeemed;
+    const issuer = this.issuer;
+    this.issuer = null;
     const token = newToken();
-    return { kind: 'admitted', pairing: await this.store.add(token, file), issued: token };
+    return { kind: 'admitted', pairing: await this.store.add(token, file), issued: token, issuer };
   }
 
   /** Remembers how to close a connection the pairing admitted, so revoking it ends the connection too. */
