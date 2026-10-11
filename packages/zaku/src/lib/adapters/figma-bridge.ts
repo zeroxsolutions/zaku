@@ -63,6 +63,9 @@ export class FigmaBridge {
   private readonly queues = new Map<BridgeConnection, Promise<unknown>>();
   private readonly checkListeners: ((session: Session, scope: CheckScope) => void)[] = [];
   private readonly detachListeners: ((connection: BridgeConnection) => void)[] = [];
+  private readonly attachListeners: (() => void)[] = [];
+  /** Every admitted panel connection, before and after its hello. */
+  private readonly attached = new Set<BridgeConnection>();
   /** Pieces of work queued or running on any file, and who waits for there to be none. */
   private busy = 0;
   private idleWaiters: (() => void)[] = [];
@@ -73,12 +76,15 @@ export class FigmaBridge {
   ) {}
 
   attach(connection: BridgeConnection): void {
+    this.attached.add(connection);
+    for (const listener of this.attachListeners) listener();
     connection.onMessage((raw) => {
       const parsed = pluginMessageSchema.safeParse(raw);
       if (parsed.success) this.receive(connection, parsed.data);
       else this.unreadable(connection, raw, parsed.error);
     });
     connection.onClose(() => {
+      this.attached.delete(connection);
       for (const listener of this.detachListeners) listener(connection);
       this.open.delete(connection);
       this.queues.delete(connection);
@@ -88,6 +94,16 @@ export class FigmaBridge {
         waiter.resolve(null);
       }
     });
+  }
+
+  /** A panel was admitted; the hub stays up while one is connected. */
+  onAttach(listener: () => void): void {
+    this.attachListeners.push(listener);
+  }
+
+  /** How many panels are connected. */
+  panels(): number {
+    return this.attached.size;
   }
 
   /** A panel's connection closed; whatever the hub kept for its file goes with it. */
