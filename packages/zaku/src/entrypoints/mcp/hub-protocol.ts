@@ -26,7 +26,7 @@ export const hubHelloSchema = z
 export type ClientHello = z.output<typeof clientHelloSchema>;
 export type HubHello = z.output<typeof hubHelloSchema>;
 
-/** How long the hub waits after its last client leaves, so a panel is not paired again between two sessions. */
+/** How long the hub waits once no client and no panel is connected. */
 export const HUB_IDLE_MS = 30 * 60_000;
 
 /** The hub's socket and pid file, beside the pairings file, in a directory only the user reads. */

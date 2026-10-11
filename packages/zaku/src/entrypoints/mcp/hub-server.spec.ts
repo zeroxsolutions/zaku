@@ -100,6 +100,30 @@ describe('the hub server', () => {
     expect(idle).toBe(1);
   });
 
+  it('stays up while a panel is connected after the last client left, and goes idle once it leaves', async () => {
+    const { core: hub, dir } = await core();
+    let idle = 0;
+    const server = await listenHub(async () => hub, join(dir, 'hub.sock'), {
+      idleMs: 60,
+      onIdle: () => idle++,
+      onHandover: () => undefined,
+    });
+    if ('error' in server) throw new Error('taken');
+    opened.push(server);
+    let close: () => void = () => undefined;
+    hub.bridge.attach({
+      send: () => undefined,
+      onMessage: () => undefined,
+      onClose: (listener) => (close = listener),
+      isOpen: () => true,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    expect(idle).toBe(0);
+    close();
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(idle).toBe(1);
+  });
+
   it('answers taken on a socket a live hub holds, and replaces a stale socket file', async () => {
     const { core: hub, dir } = await core();
     const path = join(dir, 'hub.sock');

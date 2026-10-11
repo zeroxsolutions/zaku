@@ -29,7 +29,8 @@ One process on the machine, the zaku hub, holds every panel connection. Each age
 zaku-mcp is a client of it: it reaches the hub on `zaku/hub.sock` in the config directory above, and
 starts the hub when nothing answers there. So every session sees every paired file, a panel is paired
 once, and an update reaches the hub when the first session on the new build starts. The hub stops 30
-minutes after its last session ends.
+minutes after its last session ends and its last panel closes; a panel cannot start it, so a panel
+opened with no hub running waits for the next session.
 
 A file is written by one session at a time. The session whose code a panel paired with writes that
 file; otherwise the first session to run a script in it does. Another session's script is refused

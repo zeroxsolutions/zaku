@@ -78,9 +78,11 @@ export async function listenHub(
   let handingOver = false;
   let resolveCore: (core: HubCore) => void = () => undefined;
   const ready = new Promise<HubCore>((resolve) => (resolveCore = resolve));
+  /** Panels connected to the core once it starts; a panel left open keeps the hub up between two sessions. */
+  let panels = (): number => 0;
   const armIdle = (): void => {
     clearTimeout(idle);
-    if (clients.size === 0) idle = setTimeout(options.onIdle, idleMs);
+    if (clients.size === 0 && panels() === 0) idle = setTimeout(options.onIdle, idleMs);
   };
   const server = createServer((socket) => {
     clients.add(socket);
@@ -139,6 +141,9 @@ export async function listenHub(
   // The panel port is opened only once the socket is this hub's, so a hub that loses the race never holds one.
   const core = await start();
   resolveCore(core);
+  panels = (): number => core.bridge.panels();
+  core.bridge.onAttach(() => clearTimeout(idle));
+  core.bridge.onDetach(armIdle);
   armIdle();
   return {
     core,

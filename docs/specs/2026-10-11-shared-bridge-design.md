@@ -27,9 +27,11 @@ zaku-mcp waited on 7338, and two rounds of pairing failed before the cause was f
    the hub detached when nothing answers there. Every tool call goes to the hub over that socket; the
    tools, their input and their output do not change. A local socket in a directory only the user can
    read is the boundary: no other user's process can drive the user's Figma files.
-3. **The hub outlives its clients briefly.** It exits 30 minutes after its last client disconnects, so
-   an open panel is not paired again between two sessions; a panel open with no hub redials until the
-   next client starts one.
+3. **The hub lives while anyone uses it.** It exits 30 minutes after the last client and the last panel
+   have both disconnected, so a panel left open between two sessions keeps its connection, and the next
+   session finds the file at once. A panel cannot start a process, so a panel open with no hub redials
+   until the next client starts one. (Amended 2026-10-11: the hub first exited 30 minutes after its last
+   client alone, and an open panel then waited on "Waiting for zaku-mcp" until a session started.)
 4. **A file is written by one session at a time.** The first `run_script` that writes a file gives the
    calling client a lease on it; a write from another client is refused with `FileHeldByAnotherSession`,
    naming the holder's working directory and when it last wrote. Reads (`read_nodes`, `check_rules`,
@@ -70,7 +72,7 @@ Written first, each seen failing:
 - A `run_script` write from a second client on a file the first holds is refused with
   `FileHeldByAnotherSession`, naming the holder; a `read_nodes` from it is answered.
 - The lease ends when its client disconnects, and 15 minutes after its last write.
-- The hub exits 30 minutes after its last client leaves, and not while one is connected.
+- The hub exits 30 minutes after its last client and its last panel leave, and not while either is connected.
 - A newer client takes the hub over only when no script is running, and the panel redials onto it.
 - Two files named "Untitled" make a call naming "Untitled" refused with both ids and page lists, and
   a call naming one id is answered.
