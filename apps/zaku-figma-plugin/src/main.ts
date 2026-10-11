@@ -3,6 +3,7 @@ import { findByPath } from './sandbox/find.js';
 import { outlineNode } from './sandbox/outline.js';
 import { createRunner } from './sandbox/runner.js';
 import { renderScreenshot, type ScreenshotHost } from './sandbox/screenshot.js';
+import { fileIdOf } from './sandbox/file-id.js';
 import { snapshotNode, type AncestryCache } from './sandbox/snapshot.js';
 
 figma.showUI(__html__, { width: 320, height: 480, themeColors: true });
@@ -160,6 +161,7 @@ function sayHello(): void {
   post({
     type: 'hello',
     file: figma.root.name,
+    fileId: fileIdOf(figma.root),
     pages: figma.root.children.map((page) => ({ id: page.id, name: page.name })),
     currentPage: figma.currentPage.id,
     selection: figma.currentPage.selection.map((node) => node.id),

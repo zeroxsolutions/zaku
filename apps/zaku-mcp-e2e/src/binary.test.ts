@@ -1,9 +1,9 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { test } from 'vitest';
+import { afterEach, test } from 'vitest';
 import assert from 'node:assert/strict';
 
 const BINARY = join(import.meta.dirname, '..', '..', 'zaku-mcp', 'dist', 'zaku-mcp');
@@ -150,7 +150,39 @@ const hello = (credential?: object): object => ({
   ...(credential ? { credential } : {}),
 });
 
-const configHome = (): string => mkdtempSync(join(tmpdir(), 'zaku-config-'));
+const homes: string[] = [];
+/** A config directory of the test's own, so its hub, its socket and its pairings are its own. */
+const configHome = (): string => {
+  const home = mkdtempSync(join(tmpdir(), 'zaku-config-'));
+  homes.push(home);
+  return home;
+};
+
+/** Stops the hub a test's clients started, which would otherwise hold a panel port for 30 minutes. */
+async function stopHub(home: string): Promise<void> {
+  const pid = join(home, 'zaku', 'hub.pid');
+  if (!existsSync(pid)) return;
+  const id = Number(readFileSync(pid, 'utf8'));
+  try {
+    process.kill(id, 'SIGTERM');
+  } catch {
+    return;
+  }
+  const until = Date.now() + REPLY_MS;
+  while (Date.now() < until) {
+    try {
+      process.kill(id, 0);
+    } catch {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  process.kill(id, 'SIGKILL');
+}
+
+afterEach(async () => {
+  for (const home of homes.splice(0)) await stopHub(home);
+});
 
 /** Whether nothing holds `port` on loopback; the probe lets go of it at once. */
 const isFree = (port: number): Promise<boolean> =>
@@ -189,11 +221,39 @@ test(
 );
 
 test(
-  'the compiled zaku-mcp exits and frees its port when stdin closes',
+  'the compiled zaku-mcp exits when stdin closes, and its hub keeps the port until it is stopped',
   async () => {
-    const binary = new Binary(configHome(), await firstFree());
+    const home = configHome();
+    const port = await firstFree();
+    const binary = new Binary(home, port);
     await binary.start();
     assert.equal(await binary.stop(), 0);
+    assert.equal(await isFree(port), false);
+    await stopHub(home);
+    assert.equal(await isFree(port), true);
+  },
+  TEST_MS,
+);
+
+test(
+  'two compiled zaku-mcp sessions on one machine reach one hub and see the same port',
+  async () => {
+    const home = configHome();
+    const port = await firstFree();
+    const a = new Binary(home, port);
+    const b = new Binary(home, port);
+    try {
+      await a.start();
+      await b.start();
+      const seenA = (await a.call('get_bridge_state')) as { port: number; hub: { build: number } };
+      const seenB = (await b.call('get_bridge_state')) as { port: number; hub: { build: number } };
+      assert.equal(seenA.port, port);
+      assert.equal(seenB.port, port);
+      assert.equal(seenA.hub.build, seenB.hub.build);
+    } finally {
+      await a.stop();
+      await b.stop();
+    }
   },
   TEST_MS,
 );

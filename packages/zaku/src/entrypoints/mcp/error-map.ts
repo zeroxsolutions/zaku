@@ -1,4 +1,6 @@
 import {
+  FileHeldByAnotherSession,
+  FileNameShared,
   FileNotConnected,
   FileRequired,
   NodeNotRendered,
@@ -20,6 +22,8 @@ export function refusalText(error: unknown, portError: string | null): string | 
     error instanceof PluginNotConnected ||
     error instanceof FileRequired ||
     error instanceof FileNotConnected ||
+    error instanceof FileNameShared ||
+    error instanceof FileHeldByAnotherSession ||
     error instanceof PairingNotFound ||
     error instanceof ScriptRefused ||
     error instanceof NodeNotRendered ||

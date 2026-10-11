@@ -1,5 +1,5 @@
 import type { PluginMessage, ServerMessage } from '../schema/bridge.js';
-import { FileNotConnected, FileRequired, PluginNotConnected } from '../domain/errors/index.js';
+import { FileNameShared, FileNotConnected, FileRequired, PluginNotConnected } from '../domain/errors/index.js';
 import { FigmaBridge, type BridgeConnection } from './figma-bridge.js';
 
 class FakeConnection implements BridgeConnection {
@@ -76,6 +76,37 @@ describe('FigmaBridge', () => {
     expect(() => b.session()).toThrow(FileRequired);
     expect(() => b.session('C')).toThrow(FileNotConnected);
     expect(b.session('B').file).toBe('B');
+  });
+
+  it('finds a file by its id, and refuses a name two files share with both ids and pages', () => {
+    const b = bridge();
+    const one = new FakeConnection();
+    const two = new FakeConnection();
+    b.attach(one);
+    b.attach(two);
+    one.emit({ ...hello('Untitled'), fileId: 'f-1' } as PluginMessage);
+    two.emit({ ...hello('Untitled'), fileId: 'f-2', pages: [{ id: '0:1', name: 'Thumbnail' }] } as PluginMessage);
+    expect(b.session('f-2').fileId).toBe('f-2');
+    expect(() => b.session('Untitled')).toThrow(FileNameShared);
+    expect(() => b.session('Untitled')).toThrow(/f-1.*f-2.*Thumbnail/s);
+  });
+
+  it('is idle once no piece of work is queued, and not before', async () => {
+    const b = bridge();
+    const c = new FakeConnection();
+    b.attach(c);
+    c.emit(hello('A'));
+    let finish: () => void = () => undefined;
+    const work = b.exclusive(b.session(), () => new Promise<void>((done) => (finish = done)));
+    let idle = false;
+    const waited = b.idle().then(() => (idle = true));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(idle).toBe(false);
+    finish();
+    await work;
+    await waited;
+    expect(idle).toBe(true);
+    await b.idle();
   });
 
   it('ignores a message that does not parse', () => {

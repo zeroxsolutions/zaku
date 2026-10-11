@@ -35715,6 +35715,8 @@ var fileHelloSchema = external_exports
   .object({
     type: external_exports.literal('hello'),
     file: external_exports.string(),
+    /** The id zaku keeps in the file's plugin data, since a public plugin cannot read the file's key. */
+    fileId: external_exports.string().max(64).optional(),
     pages: external_exports.array(
       external_exports.object({ id: external_exports.string(), name: external_exports.string() }).strict(),
     ),

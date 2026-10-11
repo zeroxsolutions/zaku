@@ -1,4 +1,5 @@
 import {
+  FileNameShared,
   FileNotConnected,
   FileRequired,
   NodeNotRendered,
@@ -58,6 +59,10 @@ export class FigmaBridge {
   private readonly waiters = new Map<string, { connection: BridgeConnection; resolve: Waiter }>();
   private readonly queues = new Map<BridgeConnection, Promise<unknown>>();
   private readonly checkListeners: ((session: Session, scope: CheckScope) => void)[] = [];
+  private readonly detachListeners: ((connection: BridgeConnection) => void)[] = [];
+  /** Pieces of work queued or running on any file, and who waits for there to be none. */
+  private busy = 0;
+  private idleWaiters: (() => void)[] = [];
 
   constructor(
     private readonly timings: BridgeTimings,
@@ -71,6 +76,7 @@ export class FigmaBridge {
       this.receive(connection, parsed.data);
     });
     connection.onClose(() => {
+      for (const listener of this.detachListeners) listener(connection);
       this.open.delete(connection);
       this.queues.delete(connection);
       for (const [id, waiter] of this.waiters) {
@@ -79,6 +85,11 @@ export class FigmaBridge {
         waiter.resolve(null);
       }
     });
+  }
+
+  /** A panel's connection closed; whatever the hub kept for its file goes with it. */
+  onDetach(listener: (connection: BridgeConnection) => void): void {
+    this.detachListeners.push(listener);
   }
 
   /** The panel asked for a check; the entrypoint runs it and pushes the findings. */
@@ -90,24 +101,41 @@ export class FigmaBridge {
     return [...this.open.values()].map(({ connection: _connection, ...view }) => view);
   }
 
+  /** Each connected file's view beside the connection it came on, which the leases are keyed by. */
+  sessionsWithConnection(): { view: SessionView; connection: BridgeConnection }[] {
+    return [...this.open.values()].map(({ connection, ...view }) => ({ view, connection }));
+  }
+
   session(file?: string): Session {
     const all = [...this.open.values()];
     if (all.length === 0) throw new PluginNotConnected();
+    const label = (s: Session): string => (s.fileId ? `${s.file} (${s.fileId})` : s.file);
     if (file === undefined) {
-      if (all.length > 1) throw new FileRequired(all.map((s) => s.file));
+      if (all.length > 1) throw new FileRequired(all.map(label));
       return all[0] as Session;
     }
-    const found = all.find((s) => s.file === file);
-    if (!found)
-      throw new FileNotConnected(
+    const byId = all.find((s) => s.fileId === file);
+    if (byId) return byId;
+    const named = all.filter((s) => s.file === file);
+    if (named.length > 1)
+      throw new FileNameShared(
         file,
-        all.map((s) => s.file),
+        named.map((s) => ({ fileId: s.fileId ?? null, pages: s.pages.map((page) => page.name) })),
       );
+    const [found] = named;
+    if (!found) throw new FileNotConnected(file, all.map(label));
     return found;
+  }
+
+  /** Resolves once no script, read or render is queued or running on any file, so the hub can hand over. */
+  idle(): Promise<void> {
+    if (this.busy === 0) return Promise.resolve();
+    return new Promise((resolve) => this.idleWaiters.push(resolve));
   }
 
   /** One piece of work per file at a time; the next waits, and a closed connection refuses it. */
   exclusive<T>(session: Session, work: () => Promise<T>): Promise<T> {
+    this.busy += 1;
     const previous = this.queues.get(session.connection) ?? Promise.resolve();
     const next = previous
       .catch(() => undefined)
@@ -116,6 +144,12 @@ export class FigmaBridge {
         return work();
       });
     this.queues.set(session.connection, next);
+    const settle = (): void => {
+      this.busy -= 1;
+      if (this.busy > 0) return;
+      for (const resolve of this.idleWaiters.splice(0)) resolve();
+    };
+    next.then(settle, settle);
     return next;
   }
 

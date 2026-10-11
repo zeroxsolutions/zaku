@@ -2,7 +2,8 @@ import type { MessageBus } from '@zeroxsolutions/cosmic';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
-import type { FigmaBridge } from '../../lib/adapters/figma-bridge.js';
+import type { BridgeConnection, FigmaBridge } from '../../lib/adapters/figma-bridge.js';
+import type { FileLeases, LeaseClient } from '../../lib/domain/file-leases.js';
 import { ExecuteScript } from '../../lib/commands/index.js';
 import { findingSchema } from '../../lib/domain/findings.js';
 import { CODE_LIFETIME_MS, displayCode } from '../../lib/domain/pairing-codes.js';
@@ -32,6 +33,17 @@ export interface ToolSeams {
   listening: () => { port: number | null; portError: string | null };
   /** How long a script may run before the bridge rolls it back, as run_script's script field states it. */
   runTimeoutMs: number;
+  /** The agent session these tools answer; run_script writes under its lease. */
+  client: LeaseClient;
+  leases: FileLeases<BridgeConnection>;
+  hub: { build: number; portHolders: () => Promise<PortHolder[]> };
+}
+
+/** A process holding a panel port below the hub's, such as a zaku-mcp from before the hub. */
+export interface PortHolder {
+  port: number;
+  pid: number;
+  command: string;
 }
 
 /** A tool's answer, as the structured content its output schema declares. */
@@ -65,7 +77,7 @@ async function answerWith(body: () => Promise<Body>, portError: string | null): 
 const file = z
   .string()
   .optional()
-  .describe("A connected file's name from get_bridge_state; needed only when more than one is open");
+  .describe("A connected file's fileId or name from get_bridge_state; needed only when more than one is open");
 const port = z
   .number()
   .int()
@@ -84,7 +96,26 @@ const configSchema = z
  */
 const OUTPUTS = {
   get_bridge_state: {
-    files: z.array(sessionViewSchema).describe('The files with the zaku plugin open and paired'),
+    files: z
+      .array(
+        sessionViewSchema.extend({
+          heldBy: z
+            .object({ cwd: z.string(), lastWrite: z.string().describe('ISO 8601') })
+            .strict()
+            .nullable()
+            .describe('The agent session that writes the file, by its working directory; null while none does'),
+        }),
+      )
+      .describe('The files with the zaku plugin open and paired'),
+    hub: z
+      .object({
+        build: z.number().describe("The hub binary's build stamp"),
+        portHolders: z
+          .array(z.object({ port: z.number().int(), pid: z.number().int(), command: z.string() }).strict())
+          .describe('Processes holding a panel port below the hub, which a panel may dial first'),
+      })
+      .strict()
+      .describe('The one process on this machine that holds every panel connection'),
     port,
     portError: z.string().nullable().describe('Why zaku-mcp is not listening; null while it is'),
     pairing: codeReportSchema,
@@ -171,8 +202,15 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
         } catch (error) {
           config = { loaded: false, error: error instanceof Error ? error.message : String(error) };
         }
+        const holders = new Map(
+          seams.bridge.sessionsWithConnection().map(({ view, connection }) => [view, seams.leases.holder(connection)]),
+        );
         return {
-          files: seams.bridge.sessions(),
+          files: [...holders].map(([view, lease]) => ({
+            ...view,
+            heldBy: lease ? { cwd: lease.client.cwd, lastWrite: new Date(lease.lastWrite).toISOString() } : null,
+          })),
+          hub: { build: seams.hub.build, portHolders: await seams.hub.portHolders() },
           ...seams.listening(),
           pairing: seams.pairings.codeReport(),
           designRoot: seams.designRoot,
@@ -254,12 +292,14 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
       outputSchema: OUTPUTS.run_script,
     },
     ({ file: name, script, mode }) =>
-      answer(
-        async () =>
-          (await seams.bus.send(
-            new ExecuteScript({ file: name, script, mode, designRoot: seams.designRoot }),
-          )) as ExecuteResult,
-      ),
+      answer(async () => {
+        // Refused before the plugin hears of it, so nothing is drawn and rolled back in another session's file.
+        const session = seams.bridge.session(name);
+        seams.leases.write(session.connection, session.file, seams.client);
+        return (await seams.bus.send(
+          new ExecuteScript({ file: name, script, mode, designRoot: seams.designRoot }),
+        )) as ExecuteResult;
+      }),
   );
 
   server.registerTool(
@@ -350,7 +390,7 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
     },
     () =>
       answer(async () => {
-        const { code, expiresAt } = seams.pairings.issueCode();
+        const { code, expiresAt } = seams.pairings.issueCode(seams.client);
         const minutes = CODE_LIFETIME_MS / 60_000;
         const { port } = seams.listening();
         const where =

@@ -1,7 +1,11 @@
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { BridgeConnection, FigmaBridge } from '../../lib/adapters/figma-bridge.js';
 import { helloSchema, type ServerMessage } from '../../lib/schema/bridge.js';
+import type { LeaseClient } from '../../lib/domain/file-leases.js';
 import type { Pairings } from './pairings.js';
+
+/** Called when a panel pairs with a code a client issued, so that client's session writes the file. */
+export type OnPaired = (connection: BridgeConnection, issuer: LeaseClient) => void;
 
 export type Listening = { port: number; close(): Promise<void> } | { error: string };
 
@@ -46,7 +50,7 @@ function connectionOf(socket: WebSocket, first: unknown): BridgeConnection {
  * the plugin. The first message has to carry a code or a token; until it does, the server sends the
  * connection nothing and the bridge does not know it exists.
  */
-function admit(socket: WebSocket, bridge: FigmaBridge, pairings: Pairings, admitMs: number): void {
+function admit(socket: WebSocket, bridge: FigmaBridge, pairings: Pairings, admitMs: number, onPaired?: OnPaired): void {
   const deadline = setTimeout(() => socket.close(), admitMs);
   const first = async (data: unknown): Promise<void> => {
     const hello = helloSchema.safeParse(parse(data));
@@ -71,7 +75,9 @@ function admit(socket: WebSocket, bridge: FigmaBridge, pairings: Pairings, admit
     });
     if (admission.issued !== null)
       socket.send(JSON.stringify({ type: 'paired', token: admission.issued } satisfies ServerMessage));
-    bridge.attach(connectionOf(socket, hello.data));
+    const connection = connectionOf(socket, hello.data);
+    bridge.attach(connection);
+    if (admission.issuer !== null) onPaired?.(connection, admission.issuer);
   };
   // The pairings file could not be read or written; the plugin dials again.
   socket.once('message', (data) => void first(data).catch(() => socket.close()));
@@ -87,9 +93,10 @@ export async function listenFirstFree(
   pairings: Pairings,
   ports: readonly number[],
   admitMs: number = ADMIT_MS,
+  onPaired?: OnPaired,
 ): Promise<Listening> {
   for (const port of ports) {
-    const listening = await listenBridge(bridge, pairings, port, admitMs);
+    const listening = await listenBridge(bridge, pairings, port, admitMs, onPaired);
     if (!('error' in listening) || listening.error !== IN_USE) return listening;
   }
   const [first] = ports;
@@ -108,6 +115,7 @@ function listenBridge(
   pairings: Pairings,
   port: number,
   admitMs: number = ADMIT_MS,
+  onPaired?: OnPaired,
 ): Promise<Listening> {
   return new Promise((resolve) => {
     const server = new WebSocketServer({
@@ -119,7 +127,7 @@ function listenBridge(
       resolve({ error: error.code === 'EADDRINUSE' ? IN_USE : error.message }),
     );
     server.once('listening', () => {
-      server.on('connection', (socket) => admit(socket, bridge, pairings, admitMs));
+      server.on('connection', (socket) => admit(socket, bridge, pairings, admitMs, onPaired));
       const address = server.address();
       resolve({
         port: typeof address === 'object' && address ? address.port : port,

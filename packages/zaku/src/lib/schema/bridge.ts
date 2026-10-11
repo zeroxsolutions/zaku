@@ -196,6 +196,8 @@ export const fileHelloSchema = z
   .object({
     type: z.literal('hello'),
     file: z.string(),
+    /** The id zaku keeps in the file's plugin data, since a public plugin cannot read the file's key. */
+    fileId: z.string().max(64).optional(),
     pages: z.array(z.object({ id: z.string(), name: z.string() }).strict()),
     currentPage: z.string(),
     selection: z.array(z.string()),

@@ -6,6 +6,8 @@ export { FigmaTokenMissing } from './figma-token-missing.js';
 export { PlaywrightMissing } from './playwright-missing.js';
 export { RecipePageFailed } from './recipe-page-failed.js';
 export { RecipeUrlRequired } from './recipe-url-required.js';
+export { FileHeldByAnotherSession } from './file-held-by-another-session.js';
+export { FileNameShared } from './file-name-shared.js';
 export { FileNotConnected } from './file-not-connected.js';
 export { FileRequired } from './file-required.js';
 export { PairingNotFound } from './pairing-not-found.js';
