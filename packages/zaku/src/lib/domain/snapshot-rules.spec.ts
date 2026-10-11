@@ -144,6 +144,51 @@ describe('snapshotFindings', () => {
     expect(findings).toEqual([expect.objectContaining({ check: 'overrides', field: 'fills' })]);
   });
 
+  it("lets a component size a nested icon, as Nova's Button sets its 16 px icon to 12 at xs", () => {
+    const icon = (componentSource: boolean): NodeSnapshot =>
+      node({
+        id: '11:1248',
+        type: 'INSTANCE',
+        name: 'Icon start',
+        componentSource,
+        instance: {
+          overrides: [{ nodeId: '11:1248', fields: ['width', 'height'] }],
+          sizing: { horizontal: 'FIXED', vertical: 'FIXED' },
+        },
+      });
+    expect(snapshotFindings([icon(true)])).toEqual([]);
+    expect(snapshotFindings([icon(false)]).map((f) => f.field)).toEqual(['width', 'height']);
+  });
+
+  it('finds an empty frame that takes room and shows nothing, and passes a spacer and a painted frame', () => {
+    const box = (width: number, height: number, horizontal = 'FIXED'): NonNullable<NodeSnapshot['box']> => ({
+      x: 0,
+      y: 0,
+      width,
+      height,
+      sizing: { horizontal, vertical: 'FIXED' },
+      layout: 'HORIZONTAL',
+      wrap: false,
+      padding: [0, 0, 0, 0],
+      gap: 8,
+      crossGap: 0,
+      align: ['MIN', 'MIN'],
+      children: 0,
+    });
+    const empty = (patch: Partial<NodeSnapshot>): string[] =>
+      snapshotFindings([node({ name: 'Badges', ...patch })])
+        .filter((f) => f.check === 'empty')
+        .map((f) => f.message);
+    expect(empty({ box: box(100, 100) })).toEqual([
+      'Badges: an empty frame 100x100 that shows nothing; it holds no layer, so remove it or put in what it was made for',
+    ]);
+    // Nova's flex-1 and ml-auto spacers are 1 px high and fill their row.
+    expect(empty({ box: box(160, 1) })).toEqual([]);
+    expect(empty({ box: box(100, 40, 'FILL') })).toEqual([]);
+    expect(empty({ box: box(100, 100), fills: [{ bound: true }] })).toEqual([]);
+    expect(empty({ box: { ...box(100, 100), children: 1 } })).toEqual([]);
+  });
+
   it('lets an instance be stretched when it is not fixed on that axis', () => {
     const instance = {
       overrides: [{ nodeId: '1:1', fields: ['width', 'height'] }],

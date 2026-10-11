@@ -144,6 +144,82 @@ describe('FigmaBridge', () => {
     expect(outcome).toMatchObject({ kind: 'ran', value: 1, created: ['1:1'] });
   });
 
+  it('answers a run whose reply it cannot read with why, rather than waiting out the budget, and rolls it back', async () => {
+    const b = new FigmaBridge({ timeoutMs: 5000, holdMs: 100, readMs: 50 }, () => `r${++ids}`);
+    const c = new FakeConnection();
+    b.attach(c);
+    c.emit(hello('A'));
+    c.reply = (m): void => {
+      if (m.type === 'run')
+        queueMicrotask(() =>
+          c.emit({
+            type: 'ran',
+            runId: m.runId,
+            ok: true,
+            value: 1,
+            created: ['1:2'],
+            mutated: [],
+            snapshot: [{ id: '1:2', type: 'SLOT', unknownField: true }],
+          } as unknown as PluginMessage),
+        );
+    };
+    const started = Date.now();
+    const outcome = await b.run(b.session(), 'return 1');
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(outcome).toMatchObject({ kind: 'threw', error: expect.stringContaining('snapshot.0') });
+    expect(c.sent.at(-1)).toMatchObject({ type: 'decide', decision: 'rollback' });
+  });
+
+  it("reads a component's slot property, which has no default, as Nova's Card's Content has none", async () => {
+    const b = bridge();
+    const c = new FakeConnection();
+    b.attach(c);
+    c.emit(hello('A'));
+    const card = {
+      id: '1:2',
+      name: 'Card',
+      type: 'COMPONENT',
+      parentId: '0:1',
+      frame: 'Card',
+      created: true,
+      fills: [],
+      strokes: [],
+      textStyleId: null,
+      instance: null,
+      spacing: [],
+      properties: [{ name: 'Content', type: 'SLOT' }],
+    };
+    c.reply = (m): void => {
+      if (m.type === 'run')
+        queueMicrotask(() =>
+          c.emit({
+            type: 'ran',
+            runId: m.runId,
+            ok: true,
+            value: null,
+            created: ['1:2'],
+            mutated: [],
+            snapshot: [card],
+          } as unknown as PluginMessage),
+        );
+    };
+    expect(await b.run(b.session(), 'card.createSlot()')).toMatchObject({ kind: 'ran' });
+  });
+
+  it('refuses a read whose reply it cannot read with why', async () => {
+    const b = new FigmaBridge({ timeoutMs: 50, holdMs: 100, readMs: 5000 }, () => `r${++ids}`);
+    const c = new FakeConnection();
+    b.attach(c);
+    c.emit(hello('A'));
+    c.reply = (m): void => {
+      if (m.type === 'snapshot')
+        queueMicrotask(() =>
+          c.emit({ type: 'read-result', requestId: m.requestId, snapshot: [{ id: 1 }] } as unknown as PluginMessage),
+        );
+    };
+    await expect(b.snapshot(b.session(), { all: true })).rejects.toThrow(/snapshot\.0/);
+  });
+
   it('times out a run the plugin never answers, and tells the plugin to roll it back', async () => {
     const b = bridge();
     const c = new FakeConnection();

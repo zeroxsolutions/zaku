@@ -34902,6 +34902,7 @@ var CHECK_IDS = [
   'frame',
   'system-bars',
   'placement',
+  'empty',
   'documentation',
   'naming',
   'component',
@@ -35616,6 +35617,8 @@ var nodeSnapshotSchema = external_exports
         crossGap: external_exports.number(),
         /** `primaryAxisAlignItems`, then `counterAxisAlignItems`. */
         align: external_exports.tuple([external_exports.string(), external_exports.string()]),
+        /** How many layers it holds; absent from a plugin older than the field. */
+        children: external_exports.number().optional(),
       })
       .strict()
       .optional(),
@@ -35641,7 +35644,8 @@ var nodeSnapshotSchema = external_exports
           .object({
             name: external_exports.string(),
             type: external_exports.string(),
-            default: external_exports.union([external_exports.string(), external_exports.boolean()]),
+            /** Absent on a SLOT, whose content has no default value, as Nova's Card's Content has none. */
+            default: external_exports.union([external_exports.string(), external_exports.boolean()]).optional(),
           })
           .strict(),
       )
@@ -35895,6 +35899,8 @@ var serverMessageSchema = external_exports.discriminatedUnion('type', [
   external_exports.object({ type: external_exports.literal('select'), nodeId: external_exports.string() }).strict(),
   /** The answer to a valid code: the token the plugin presents from then on. */
   external_exports.object({ type: external_exports.literal('paired'), token: external_exports.string() }).strict(),
+  /** The panel's token was admitted; the panel keeps this port for its next dial. */
+  external_exports.object({ type: external_exports.literal('admitted') }).strict(),
   external_exports
     .object({ type: external_exports.literal('refused'), reason: external_exports.enum(REFUSAL_REASONS) })
     .strict(),
@@ -37637,6 +37643,13 @@ function overlaps(a, b) {
   const height = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
   return width > EDGE_TOLERANCE && height > EDGE_TOLERANCE;
 }
+function isEmptyRoom(node2) {
+  const box = node2.box;
+  if (node2.type !== 'FRAME' || !box || box.children !== 0) return false;
+  if (node2.fills.length > 0 || node2.strokes.length > 0) return false;
+  if (box.sizing.horizontal !== 'FIXED' || box.sizing.vertical !== 'FIXED') return false;
+  return box.width > 1 && box.height > 1;
+}
 function outside(box, width, height) {
   return (
     box.x < -EDGE_TOLERANCE ||
@@ -37727,12 +37740,19 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
             if (sameColours(layer[field], layer.source[field])) continue;
           }
           if (self2 && (field === 'width' || field === 'height') && documentation) continue;
+          if (self2 && (field === 'width' || field === 'height') && node2.componentSource === true) continue;
           if (self2 && field === 'width' && node2.instance.sizing.horizontal !== 'FIXED') continue;
           if (self2 && field === 'height' && node2.instance.sizing.vertical !== 'FIXED') continue;
           finding('overrides', field, `${field} overridden inside an instance of ${node2.name}`, override.nodeId);
         }
       }
     }
+    if (isEmptyRoom(node2))
+      finding(
+        'empty',
+        void 0,
+        `${node2.name}: an empty frame ${Math.round(node2.box?.width ?? 0)}x${Math.round(node2.box?.height ?? 0)} that shows nothing; it holds no layer, so remove it or put in what it was made for`,
+      );
     if (isDefaultLayerName(node2.type, node2.name)) finding('naming', void 0, `${node2.name} keeps a default name`);
     if (node2.source) {
       const off = ['fills', 'strokes'].filter((field) => !sameColours(node2[field], node2.source?.[field] ?? []));

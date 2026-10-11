@@ -23,10 +23,15 @@ export const RULE_GUIDES: Partial<Record<CheckId, RuleGuide>> = {
     why: 'An item outside the container the skill names is one nobody finds there: a screen frame outside its Sections, a library component on its page outside its component view, with no documentation and no page surface behind it.',
     fix: "Move it in: a screen frame into its screen and state Sections, a component set into the demo card of its entry's component view.",
   },
+  empty: {
+    id: 'empty',
+    why: 'An empty frame left at the size it was made at takes room and shows nothing: it pushes its neighbours apart and grows every view that holds it, and a reader of the screenshot cannot tell what is missing.',
+    fix: 'Remove the frame, or put in it what it was made for; a frame that only holds room fills its row and is 1 px across the other axis, as a spacer is.',
+  },
   overrides: {
     id: 'overrides',
     why: 'An instance restyled in place is a fork of the component that nobody can update from the library.',
-    fix: "Change copy and component properties only; pick another variant, or change the component in the library. Documentation may size the instances it lays out (a table's head and cell to its column).",
+    fix: "Change copy and component properties only; pick another variant, or change the component in the library. Documentation may size the instances it lays out (a table's head and cell to its column), and a component may size an instance inside it (an icon to the size its code draws at).",
   },
   documentation: {
     id: 'documentation',

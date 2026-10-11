@@ -132,6 +132,7 @@ function boxOf(any: Record<string, unknown>): NonNullable<NodeSnapshot['box']> {
     gap: grid ? number(any['gridColumnGap']) : number(any['itemSpacing']),
     crossGap: grid ? number(any['gridRowGap']) : number(any['counterAxisSpacing']),
     align: [String(any['primaryAxisAlignItems'] ?? 'MIN'), String(any['counterAxisAlignItems'] ?? 'MIN')],
+    children: Array.isArray(any['children']) ? (any['children'] as unknown[]).length : 0,
   };
 }
 

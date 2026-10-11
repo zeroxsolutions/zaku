@@ -258,6 +258,20 @@ describe('snapshotNode', () => {
       expect((await snapshotNode(grid as never, false)).box).toMatchObject({ layout: 'GRID', gap: 16, crossGap: 12 });
     });
 
+    it('counts the layers a frame holds, which the empty-frame rule reads', async () => {
+      const frame = (children: unknown[]): unknown => ({
+        id: '1:1',
+        name: 'Badges',
+        type: 'FRAME',
+        parent: page,
+        fills: [],
+        strokes: [],
+        children,
+      });
+      expect((await snapshotNode(frame([]) as never, false)).box?.children).toBe(0);
+      expect((await snapshotNode(frame([{}, {}]) as never, false)).box?.children).toBe(2);
+    });
+
     it("reads a text's size, line height in px and style", async () => {
       const text = {
         id: '1:2',

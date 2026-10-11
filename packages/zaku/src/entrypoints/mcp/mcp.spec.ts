@@ -404,11 +404,11 @@ describe('zaku-mcp over a real socket', () => {
     expect((await call('list_pairings')).body).toMatchObject({ pairings: [{ id: expect.any(String), file: 'Evil' }] });
   });
 
-  it('admits a later socket by its token alone, and refuses a token it never issued', async () => {
+  it('admits a later socket by its token alone, telling it so, and refuses a token it never issued', async () => {
     const { call, dial, newCode } = await setup();
     const first = await dial(hello({ code: await newCode() }));
     const { token } = first.messages[0] as { token: string };
-    expect(await dial(hello({ token }))).toEqual({ messages: [], closed: false });
+    expect(await dial(hello({ token }))).toEqual({ messages: [{ type: 'admitted' }], closed: false });
     expect((await call('get_bridge_state')).body.files).toHaveLength(2);
     expect(await dial(hello({ token: 'forged' }))).toEqual({
       messages: [{ type: 'refused', reason: 'unknown-token' }],
@@ -469,7 +469,7 @@ describe('zaku-mcp over a real socket', () => {
     const first = await setup();
     const { token } = (await first.dial(hello({ code: await first.newCode() }))).messages[0] as { token: string };
     const second = await setup(undefined, { pairingsFile: first.pairingsFile });
-    expect(await second.dial(hello({ token }))).toEqual({ messages: [], closed: false });
+    expect(await second.dial(hello({ token }))).toEqual({ messages: [{ type: 'admitted' }], closed: false });
   });
 
   it('shows the code in the tool result to a client without elicitation', async () => {

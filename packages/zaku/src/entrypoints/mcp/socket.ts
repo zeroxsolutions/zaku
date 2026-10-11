@@ -73,8 +73,13 @@ function admit(socket: WebSocket, bridge: FigmaBridge, pairings: Pairings, admit
       const message = parse(raw) as { type?: unknown } | undefined;
       if (message?.type === 'unpair') void pairings.revoke(id).catch(() => socket.close());
     });
-    if (admission.issued !== null)
-      socket.send(JSON.stringify({ type: 'paired', token: admission.issued } satisfies ServerMessage));
+    socket.send(
+      JSON.stringify(
+        (admission.issued !== null
+          ? { type: 'paired', token: admission.issued }
+          : { type: 'admitted' }) satisfies ServerMessage,
+      ),
+    );
     const connection = connectionOf(socket, hello.data);
     bridge.attach(connection);
     if (admission.issuer !== null) onPaired?.(connection, admission.issuer);

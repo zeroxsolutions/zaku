@@ -153,3 +153,14 @@ below.
     2026-10-11, holds `Content` and `Footer content` slots. The reference now spells the slot, its
     layout and its property as Nova draws them, and the mistakes table says a probe that failed once
     is not evidence a capability is missing.
+13. From the eighth GREEN run on a live file, antd 6, on 2026-10-11: the person watching saw the page
+    header grow by 80 px mid-run, from an empty `Badges` frame left at the 100 x 100 a new frame
+    takes; every view placed the header before the run rendered it. The documentation components are
+    now rendered and read before any view places them, and zaku's check reports an empty frame that
+    holds room (`empty`); Nova's empty frames, read 2026-10-11, are 1 px spacers, which it passes. The
+    same run gave Card's content a TEXT property after every script calling `createSlot()` timed out:
+    the call returned at once, and zaku-mcp dropped the run's reply because a SLOT property carries no
+    default, as Nova's Card's `Content` carries none, and its schema required one; a reply zaku-mcp
+    cannot read now answers the call with why. The run also kept large Buttons' icons at 14 px
+    where antd draws 16, because the override check refused a size set on an instance inside a
+    component; Nova's Button sets its 16 px icon to 12 at xs and 14 at sm, and the check now allows it.
