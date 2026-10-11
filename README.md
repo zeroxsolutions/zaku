@@ -25,13 +25,25 @@ admits it, then tries the same token again the next time it opens. zaku-mcp keep
 of each token, in `zaku/pairings.json` under your config directory (`$XDG_CONFIG_HOME`, else
 `~/Library/Application Support` on macOS, `%APPDATA%` on Windows, `~/.config` elsewhere).
 
-zaku-mcp listens on the first free port from 7337 to 7346, or on `ZAKU_PORT` when it is set. Figma lets
+One process on the machine, the zaku hub, holds every panel connection. Each agent session's
+zaku-mcp is a client of it: it reaches the hub on `zaku/hub.sock` in the config directory above, and
+starts the hub when nothing answers there. So every session sees every paired file, a panel is paired
+once, and an update reaches the hub when the first session on the new build starts. The hub stops 30
+minutes after its last session ends.
+
+A file is written by one session at a time. The session whose code a panel paired with writes that
+file; otherwise the first session to run a script in it does. Another session's script is refused
+with `FileHeldByAnotherSession` until that session ends or 15 minutes pass after its last write; reads,
+checks and screenshots are open to every session. `get_bridge_state` shows each file's writer, and the
+id zaku keeps in the file, by which a session names one of two files that share a name.
+
+The hub listens on the first free port from 7337 to 7346, or on `ZAKU_PORT` when it is set. Figma lets
 the plugin reach only the ports its manifest lists, so a `ZAKU_PORT` outside that range stops zaku-mcp at
 startup. The panel dials the port it last connected on, then tries the rest of the range once. If it
-says Not connected, ask your agent which port zaku-mcp is on (`get_bridge_state` and `issue_pairing_code` report it), enter it
-in the panel's Port field and press Connect. With two agent sessions open, a code can reach the other
-session's zaku-mcp and be refused as wrong; press Use another port under the code, enter the port the
-agent reports, and type the code again.
+says Not connected, ask your agent which port the hub is on (`get_bridge_state` and
+`issue_pairing_code` report it), enter it in the panel's Port field and press Connect.
+`get_bridge_state` also names any other process holding a lower port of the range, such as a zaku-mcp
+from before the hub, which a panel dials first.
 
 ## Workspace
 
