@@ -49,14 +49,14 @@ function overlaps(a: Box, b: Box): boolean {
 }
 
 /**
- * A frame that holds no layer and paints nothing, fixed at a size on both axes: the leftover of a frame made and never
- * filled. A spacer fills its row and is 1 px across, as Nova's flex-1 and ml-auto are, so it passes.
+ * A frame that holds no layer and paints nothing, more than 1 px on both axes: the leftover of a frame made and never
+ * filled, which keeps the size it was made at however it sizes, a new auto layout frame hugging included. A spacer is
+ * 1 px across, as Nova's flex-1 and ml-auto are, so it passes.
  */
 function isEmptyRoom(node: NodeSnapshot): boolean {
   const box = node.box;
   if (node.type !== 'FRAME' || !box || box.children !== 0) return false;
   if (node.fills.length > 0 || node.strokes.length > 0) return false;
-  if (box.sizing.horizontal !== 'FIXED' || box.sizing.vertical !== 'FIXED') return false;
   return box.width > 1 && box.height > 1;
 }
 

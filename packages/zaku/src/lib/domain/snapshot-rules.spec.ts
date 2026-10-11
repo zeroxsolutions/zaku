@@ -160,7 +160,7 @@ describe('snapshotFindings', () => {
     expect(snapshotFindings([icon(false)]).map((f) => f.field)).toEqual(['width', 'height']);
   });
 
-  it('finds an empty frame that takes room and shows nothing, and passes a spacer and a painted frame', () => {
+  it('finds an empty frame that takes room and shows nothing, however it sizes, and passes a spacer and a painted frame', () => {
     const box = (width: number, height: number, horizontal = 'FIXED'): NonNullable<NodeSnapshot['box']> => ({
       x: 0,
       y: 0,
@@ -184,7 +184,8 @@ describe('snapshotFindings', () => {
     ]);
     // Nova's flex-1 and ml-auto spacers are 1 px high and fill their row.
     expect(empty({ box: box(160, 1) })).toEqual([]);
-    expect(empty({ box: box(100, 40, 'FILL') })).toEqual([]);
+    // A new auto layout frame hugs its main axis, and an empty one keeps the size it was made at.
+    expect(empty({ box: box(100, 100, 'HUG') })).toHaveLength(1);
     expect(empty({ box: box(100, 100), fills: [{ bound: true }] })).toEqual([]);
     expect(empty({ box: { ...box(100, 100), children: 1 } })).toEqual([]);
   });

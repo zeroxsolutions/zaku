@@ -26,7 +26,7 @@ export const RULE_GUIDES: Partial<Record<CheckId, RuleGuide>> = {
   empty: {
     id: 'empty',
     why: 'An empty frame left at the size it was made at takes room and shows nothing: it pushes its neighbours apart and grows every view that holds it, and a reader of the screenshot cannot tell what is missing.',
-    fix: 'Remove the frame, or put in it what it was made for; a frame that only holds room fills its row and is 1 px across the other axis, as a spacer is.',
+    fix: 'Remove the frame, or put in it what it was made for; a frame that only holds room is 1 px across one axis, as a spacer is.',
   },
   overrides: {
     id: 'overrides',

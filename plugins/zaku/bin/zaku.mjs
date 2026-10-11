@@ -37647,7 +37647,6 @@ function isEmptyRoom(node2) {
   const box = node2.box;
   if (node2.type !== 'FRAME' || !box || box.children !== 0) return false;
   if (node2.fills.length > 0 || node2.strokes.length > 0) return false;
-  if (box.sizing.horizontal !== 'FIXED' || box.sizing.vertical !== 'FIXED') return false;
   return box.width > 1 && box.height > 1;
 }
 function outside(box, width, height) {
