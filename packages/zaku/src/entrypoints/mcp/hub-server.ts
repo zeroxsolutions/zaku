@@ -71,8 +71,6 @@ export async function listenHub(
 ): Promise<HubServer | { error: 'taken' }> {
   await mkdir(dirname(socketPath), { recursive: true, mode: 0o700 });
   await chmod(dirname(socketPath), 0o700);
-  if (await answers(socketPath)) return { error: 'taken' };
-  await rm(socketPath, { force: true });
   const idleMs = options.idleMs ?? HUB_IDLE_MS;
   const clients = new Set<Socket>();
   let idle: NodeJS.Timeout | undefined;
@@ -117,11 +115,23 @@ export async function listenHub(
       socket.resume();
     });
   });
-  const listened = await new Promise<boolean>((resolve) => {
-    server.once('error', () => resolve(false));
-    server.listen(socketPath, () => resolve(true));
-  });
-  if (!listened) return { error: 'taken' };
+  const bind = (): Promise<NodeJS.ErrnoException | null> =>
+    new Promise((resolve) => {
+      server.once('error', resolve);
+      server.listen(socketPath, () => {
+        server.off('error', resolve);
+        resolve(null);
+      });
+    });
+  // Binding first lets the second of two hubs started together see the first one's socket in use.
+  let failed = await bind();
+  if (failed?.code === 'EADDRINUSE') {
+    if (await answers(socketPath)) return { error: 'taken' };
+    // A hub that died left the file; nothing listens on it.
+    await rm(socketPath, { force: true });
+    failed = await bind();
+  }
+  if (failed) return { error: 'taken' };
   armIdle();
   return {
     close: (): Promise<void> =>
