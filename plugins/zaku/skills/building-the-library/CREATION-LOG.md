@@ -130,3 +130,19 @@ below.
     more than 20 screenshots in a run; the 1568 px default is the standard tier's long edge, and a
     high-resolution model reads up to 2576 px; the docs' 8000 x 8000 px single-image limit is never
     reached.
+11. From the sixth GREEN run on a live file, antd 6, with the Nova library read again on 2026-10-11:
+    the run drew Button as 1296 variants (Color 3 x Variant 6 x Size 3 x Shape 4 x State 6, 8533
+    nodes) where Nova's Button is 192 (Variant 6 x Size 8 x State 4, 768 nodes), following the rule
+    that every combination the code renders is a variant, with an invented `icon-only` shape, a
+    pressed state and each icon wrapped in a frame. Figma's own guide
+    (https://www.figma.com/best-practices/creating-and-organizing-variants/, read 2026-10-11) says
+    adding variants that create "an unmanageable number of permutations" calls for nested instances
+    instead. The rule now keeps only axis values a prop takes, drops `:active`, and places each icon
+    straight in the component with Nova's BOOLEAN and INSTANCE_SWAP pair. The same run's cover set
+    each Button's `Icon start` to the icon the variant already showed, and every such glyph painted in
+    the icon component's `color/text` instead of the variant's `text-light-solid`: the swap dropped the
+    variant's override. The references now say so, and the rule check compares each glyph in an
+    instance outside a component with the same layer in its component, reading the layer by Figma's
+    `I<instance>;<layer>` id. Nova's views are now named `<Component>` and `<Component> / Guidance`
+    and its icon section `Icons section`; the names and the documentation check follow, which until
+    now skipped any view whose name held no `/`.

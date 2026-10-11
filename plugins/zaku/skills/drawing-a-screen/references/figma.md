@@ -17,6 +17,10 @@ frames left to right 160 apart, state Sections top to bottom 240 apart, screen S
   component in; `.createInstance()` places it. Keys come from the library snapshot, `docs/design/library.json`, which `zaku library save` writes.
 - `instance.setProperties({ 'Variant': 'outline', 'Label#12:0': 'Save' })` changes properties. Text
   properties carry a `#id` suffix in their key; read `componentProperties` for the exact keys.
+- Setting an `INSTANCE_SWAP` property swaps the nested instance, even to the icon it already shows, and
+  the swapped glyph paints in the icon component's colour instead of the variant's. Set it only to
+  change the icon; a glyph a swap left in another colour is a `binding` finding naming the variable the
+  variant uses, and binding the glyph's paint to it is an override the rules allow.
 - A slot is a `SlotNode` inside the instance; content is appended to it, not to the instance.
 - Fonts used by an instance's text are loaded with `figma.loadFontAsync` before any text change.
 

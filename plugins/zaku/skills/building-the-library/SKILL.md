@@ -282,14 +282,22 @@ the code does. A line the code does not support is a claim nobody can check.
 
 - **Its variant axes are the code's variant props**, named and valued as the code names them, **plus a
   State axis** where the code styles a state: Default, then the pseudo-classes and data states the
-  classes name (Hover, Focus, Disabled, Invalid, Open, Checked, Loading), in that order. A designer
-  drawing a disabled form needs the disabled variant the code renders, not a guess at its opacity.
-- **The axes are the props that style it, every one of them.** Where the code offers a shorthand that
-  sets two props at once (antd's `type`, which sets `color` and `variant`), the axes are the props it
-  sets, so every combination the code renders has a variant. A shape the code offers (round, circle,
-  icon-only) is a value of its axis, an icon the code places at either end is two icon properties, one
-  per end, and a state the code renders (loading) is a State value. A prop left out with a line in the
-  description is a variant a designer cannot pick, and draws by hand.
+  classes give a style of their own (Hover, Focus, Disabled, Invalid, Open, Checked, Loading), in that
+  order. A designer drawing a disabled form needs the disabled variant the code renders, not a guess at
+  its opacity. A pressed state (`:active`) is no State value: it lasts as long as a press, and no
+  screen is drawn mid-press.
+- **An axis value is a value the code's prop takes.** Where the code offers a shorthand that sets two
+  props at once (antd's `type`, which sets `color` and `variant`), the axes are the props it sets. A
+  shape is a value of the code's shape prop (round, circle); a component shown with only its icon is the
+  same variant with its label hidden, unless the code has a prop value for it (shadcn's `size="icon"`,
+  a value of Size). A value invented to name a look the code reaches another way multiplies every
+  other axis by one more, and the set grows past what a designer can pick from.
+- **An icon is an instance placed straight in the component**, beside the label, with a BOOLEAN that
+  shows it and an INSTANCE_SWAP that swaps it, one pair per end the code places an icon at: `Icon
+  start` and `Show icon start`, `Icon end` and `Show icon end`. A frame around the instance is one
+  more layer in every variant and one more step for a designer reaching the icon. Each variant paints
+  the icon's glyph with its label's colour variable, because the code's icon paints with
+  `currentColor`.
 - **Its other properties are the code's**: a short label is text, an optional part is shown or hidden,
   an icon is swapped from the icon set, `children` is a content region, as `writing-a-design-component`
   maps them.

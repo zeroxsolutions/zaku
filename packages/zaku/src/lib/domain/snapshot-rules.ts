@@ -34,6 +34,12 @@ function isDocumentation(node: NodeSnapshot): boolean {
   return page.startsWith(ENTRY_PAGE_PREFIX) || KIND_PAGE.test(page) || node.frame === FEATURE_COMPONENTS_SECTION;
 }
 
+type Paints = NodeSnapshot['fills'];
+
+/** Whether two layers paint with the same variables, in the same order. */
+const sameColours = (a: Paints, b: Paints): boolean =>
+  a.map((paint) => paint.variable ?? '').join() === b.map((paint) => paint.variable ?? '').join();
+
 type Box = { x: number; y: number; width: number; height: number };
 
 function overlaps(a: Box, b: Box): boolean {
@@ -65,6 +71,8 @@ export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfi
   );
   const findings: Finding[] = [];
   const byId = new Map(nodes.map((node) => [node.id, node]));
+  /** The layers an instance overrides; the overrides rule, not this one, judges a recolour. */
+  const overridden = new Set(nodes.flatMap((node) => node.instance?.overrides.map((o) => o.nodeId) ?? []));
   /** Whether the node is the brand's mark, placed from its SVG inside the cover's Logo frame in the brand's colours. */
   const brandMark = (node: NodeSnapshot): boolean => {
     if (node.page?.name !== COVER.page) return false;
@@ -134,6 +142,10 @@ export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfi
           // A component recolours a nested icon to its label by the glyph's paint, as Nova's Button does; the
           // binding rule still holds that paint to a variable, and a product frame never recolours an instance.
           if (!self && (field === 'fills' || field === 'strokes') && node.componentSource === true) continue;
+          // An icon swap drops the colour the component gives its glyph; painting it back restyles nothing.
+          const layer = byId.get(override.nodeId);
+          if (!self && (field === 'fills' || field === 'strokes') && layer?.source)
+            if (sameColours(layer[field], layer.source[field])) continue;
           // Documentation lays out its own components: a table sizes each column's head and cell to the column.
           if (self && (field === 'width' || field === 'height') && documentation) continue;
           if (self && field === 'width' && node.instance.sizing.horizontal !== 'FIXED') continue;
@@ -143,6 +155,17 @@ export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfi
       }
     }
     if (isDefaultLayerName(node.type, node.name)) finding('naming', undefined, `${node.name} keeps a default name`);
+    if (node.source) {
+      const off = (['fills', 'strokes'] as const).filter(
+        (field) => !sameColours(node[field], node.source?.[field] ?? []),
+      );
+      if (off.length > 0 && !overridden.has(node.id))
+        finding(
+          'binding',
+          off[0] === 'fills' ? 'fill' : 'stroke',
+          `${label}: paints with another colour than the same layer in its component (${(node.source[off[0] ?? 'fills'] ?? []).map((paint) => paint.variable ?? 'raw').join(', ')}), which an icon swap dropped`,
+        );
+    }
   }
   const frames = new Map(nodes.map((node) => [node.id, node.frame]));
   for (const { nodeId, field, message } of documentationFindings(nodes)) {

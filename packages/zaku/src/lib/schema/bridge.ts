@@ -14,8 +14,8 @@ export const PAIRING_CODE_LENGTH = 8;
 
 const SPACING_FIELDS = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing'] as const;
 
-/** One solid paint; only a solid colour is a raw value a variable should carry. */
-const paintSchema = z.object({ bound: z.boolean() }).strict();
+/** One solid paint; only a solid colour is a raw value a variable should carry. `variable` is the bound one's id. */
+const paintSchema = z.object({ bound: z.boolean(), variable: z.string().optional() }).strict();
 
 /** What the rules read of one node the script created or changed. */
 export const nodeSnapshotSchema = z
@@ -54,6 +54,14 @@ export const nodeSnapshotSchema = z
       .strict()
       .nullable(),
     spacing: z.array(z.object({ field: z.enum(SPACING_FIELDS), value: z.number(), bound: z.boolean() }).strict()),
+    /**
+     * A glyph inside an instance outside every component: the paints the same layer has in the instance's component,
+     * which an icon swap on the instance can drop. Absent where the plugin finds no such layer.
+     */
+    source: z
+      .object({ fills: z.array(paintSchema), strokes: z.array(paintSchema) })
+      .strict()
+      .optional(),
     /** The page that holds the node; null off a page. Absent from a plugin older than the field. */
     page: z.object({ id: z.string(), name: z.string() }).strict().nullable().optional(),
     /** Whether the node is a component or a component set, or sits inside one. */

@@ -182,7 +182,7 @@ One run on a live file, the library's address given in the prompt, against the s
 - GREEN on a live file needs a Figma file with the zaku plugin open, which only the user can provide.
   It has to check: the run stops at step 0 without a key and asks for the address; with the key, no
   `mode: "report"` in any script; the text styles commit in strict mode with no finding; no `docs/` or
-  `DS/` variable or style; each entry page holds `<Style> / <Entry>` and `<Style> / <Entry> /
+  `DS/` variable or style; each entry page holds `<Entry>` and `<Entry> /
   Guidance`, the set inside the first one's demo card; a forced overlap and a set left on the page are
   refused by `execute` as `overlap` and `placement`; the Disabled Tags read on the view's surface in
   Light and in Dark; the reply carries the REQUIRED lines.

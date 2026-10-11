@@ -66,6 +66,50 @@ describe('snapshotFindings', () => {
     expect(findings).toEqual([expect.objectContaining({ check: 'overrides', nodeId: '1:1;2:3', field: 'fills' })]);
   });
 
+  describe("an icon glyph's colour in an instance", () => {
+    const glyph = (fills: NodeSnapshot['fills']): NodeSnapshot =>
+      node({
+        id: 'I15:24763;15:16245;15:5029',
+        name: 'Glyph',
+        type: 'VECTOR',
+        fills,
+        source: { fills: [{ bound: true, variable: 'text-light-solid' }], strokes: [] },
+      });
+
+    it('finds a glyph an icon swap left in the icon set colour, naming the colour its component gives it', () => {
+      expect(snapshotFindings([glyph([{ bound: true, variable: 'text' }])])).toEqual([
+        expect.objectContaining({
+          check: 'binding',
+          field: 'fill',
+          nodeId: 'I15:24763;15:16245;15:5029',
+          message: expect.stringContaining('(text-light-solid)'),
+        }),
+      ]);
+    });
+
+    it('passes a glyph in its component colour', () => {
+      expect(snapshotFindings([glyph([{ bound: true, variable: 'text-light-solid' }])])).toEqual([]);
+    });
+
+    it('lets an instance paint a swapped glyph back in its component colour, and no other', () => {
+      const button = (variable: string): NodeSnapshot[] => [
+        node({
+          id: '15:24763',
+          type: 'INSTANCE',
+          name: 'Button',
+          componentSource: false,
+          instance: {
+            overrides: [{ nodeId: 'I15:24763;15:16245;15:5029', fields: ['fills'] }],
+            sizing: { horizontal: 'HUG', vertical: 'FIXED' },
+          },
+        }),
+        glyph([{ bound: true, variable }]),
+      ];
+      expect(snapshotFindings(button('text-light-solid'))).toEqual([]);
+      expect(snapshotFindings(button('error')).map((f) => f.check)).toEqual(['overrides']);
+    });
+  });
+
   it("lets a component recolour a nested icon's glyph, as Nova's Button recolours its icon to the label", () => {
     const icon = (componentSource: boolean): NodeSnapshot =>
       node({

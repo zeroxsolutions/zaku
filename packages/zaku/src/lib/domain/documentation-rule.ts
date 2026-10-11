@@ -9,8 +9,6 @@ import {
 
 /** A library page holding one entry opens with U+2756 and a space. */
 const ENTRY_PAGE_PREFIX = '\u2756 ';
-/** A view's frame is named `<Style> / <Component>`, or that and ` / Guidance`. */
-const VIEW_NAME = / \/ /;
 /** A size this close to the measure is the measure. */
 const TOLERANCE = 0.5;
 
@@ -40,7 +38,8 @@ function locate(node: NodeSnapshot, byId: ReadonlyMap<string, NodeSnapshot>): Lo
   for (let up: NodeSnapshot | undefined = node; up; up = up.parentId ? byId.get(up.parentId) : undefined) {
     path.unshift(up.name);
     if (up.parentId === page.id) {
-      if (where === 'view' && (up.type !== 'FRAME' || !VIEW_NAME.test(up.name))) return null;
+      // Every frame on an entry page is one of its views, `<Component>` or `<Component> / Guidance`.
+      if (where === 'view' && up.type !== 'FRAME') return null;
       return { node, path, where };
     }
   }
