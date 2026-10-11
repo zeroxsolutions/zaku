@@ -65,7 +65,7 @@ async function answerWith(body: () => Promise<Body>, portError: string | null): 
 const file = z
   .string()
   .optional()
-  .describe("A connected file's name from get_bridge_state; needed only when more than one is open");
+  .describe("A connected file's fileId or name from get_bridge_state; needed only when more than one is open");
 const port = z
   .number()
   .int()

@@ -1,4 +1,5 @@
 import {
+  FileNameShared,
   FileNotConnected,
   FileRequired,
   NodeNotRendered,
@@ -93,16 +94,21 @@ export class FigmaBridge {
   session(file?: string): Session {
     const all = [...this.open.values()];
     if (all.length === 0) throw new PluginNotConnected();
+    const label = (s: Session): string => (s.fileId ? `${s.file} (${s.fileId})` : s.file);
     if (file === undefined) {
-      if (all.length > 1) throw new FileRequired(all.map((s) => s.file));
+      if (all.length > 1) throw new FileRequired(all.map(label));
       return all[0] as Session;
     }
-    const found = all.find((s) => s.file === file);
-    if (!found)
-      throw new FileNotConnected(
+    const byId = all.find((s) => s.fileId === file);
+    if (byId) return byId;
+    const named = all.filter((s) => s.file === file);
+    if (named.length > 1)
+      throw new FileNameShared(
         file,
-        all.map((s) => s.file),
+        named.map((s) => ({ fileId: s.fileId ?? null, pages: s.pages.map((page) => page.name) })),
       );
+    const [found] = named;
+    if (!found) throw new FileNotConnected(file, all.map(label));
     return found;
   }
 
