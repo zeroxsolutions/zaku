@@ -1,17 +1,8 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { resolve } from 'node:path';
-import { DEFAULT_TIMINGS, FigmaBridge, type BridgeTimings } from '../../lib/adapters/figma-bridge.js';
-import { PairingCodes } from '../../lib/domain/pairing-codes.js';
-import { DesignConfigRepository } from '../../lib/repositories/design-config-repository.js';
-import { GuideRepository } from '../../lib/repositories/guide-repository.js';
-import { FilePairingStore } from '../../lib/repositories/pairing-store.js';
-import { PLUGIN_VERSION } from '../../lib/schema/bridge.js';
-import { runCheck } from './check.js';
-import { compose } from './dependencies.js';
-import { Pairings } from './pairings.js';
-import { listenFirstFree, type Listening } from './socket.js';
-import { registerTools } from './tools.js';
+import type { BridgeTimings } from '../../lib/adapters/figma-bridge.js';
+import { startHubCore } from './hub.js';
 
 export interface McpSeams {
   cwd: string;
@@ -35,64 +26,34 @@ export interface McpRuntime {
   close(): Promise<void>;
 }
 
-/** Wires the bridge, the bus and the tools, and opens the socket the plugin dials. Stdio is attached by the caller. */
+/**
+ * The hub core with one client in this process: the spec's way in, and a server for a caller that wants no hub.
+ * Stdio is attached by the caller.
+ */
 export async function startMcp(seams: McpSeams): Promise<McpRuntime> {
-  const timings = seams.timings ?? DEFAULT_TIMINGS;
-  const bridge = new FigmaBridge(timings);
-  const guides = new GuideRepository(seams.skillsDir);
-  const bus = compose(bridge, guides);
-  // A failed panel check has nobody waiting on it; the panel keeps its last findings.
-  bridge.onCheck((session, scope) => void runCheck(bridge, session, scope).catch(() => undefined));
-  const pairings = new Pairings(new PairingCodes(Date.now), new FilePairingStore(seams.pairingsFile));
-  const listen = (): Promise<Listening> => listenFirstFree(bridge, pairings, seams.ports, seams.admitMs);
-  let listening: Listening = await listen();
-  let retrying = false;
-  let closed = false;
-  // Other sessions' zaku-mcp may hold every port until one exits; listen as soon as one lets go.
-  const retry =
-    'error' in listening
-      ? setInterval(() => {
-          if (retrying) return;
-          retrying = true;
-          void listen().then((next) => {
-            retrying = false;
-            if (closed || !('error' in listening)) {
-              if ('close' in next) void next.close();
-              return;
-            }
-            listening = next;
-            if ('port' in next) clearInterval(retry);
-          });
-        }, seams.retryListenMs ?? 5000)
-      : undefined;
-  retry?.unref();
-  const port = (): number | null => ('port' in listening ? listening.port : null);
-  const portError = (): string | null => ('error' in listening ? listening.error : null);
-  const server = new McpServer({ name: 'zaku', version: PLUGIN_VERSION });
-  registerTools(server, {
-    bus,
-    bridge,
-    guides,
-    pairings,
-    config: new DesignConfigRepository(),
+  const core = await startHubCore({
+    skillsDir: seams.skillsDir,
+    ports: seams.ports,
+    pairingsFile: seams.pairingsFile,
+    build: 0,
+    ...(seams.timings ? { timings: seams.timings } : {}),
+    ...(seams.retryListenMs !== undefined ? { retryListenMs: seams.retryListenMs } : {}),
+    ...(seams.admitMs !== undefined ? { admitMs: seams.admitMs } : {}),
+  });
+  const server = core.serve({
+    id: 'local',
+    cwd: seams.cwd,
     designRoot: resolve(seams.cwd, seams.env['ZAKU_DESIGN_ROOT'] ?? 'docs/design'),
-    listening: () => ({ port: port(), portError: portError() }),
-    runTimeoutMs: timings.timeoutMs,
   });
   return {
     server,
     get port(): number | null {
-      return port();
+      return core.port;
     },
     get portError(): string | null {
-      return portError();
+      return core.portError;
     },
-    close: async (): Promise<void> => {
-      closed = true;
-      clearInterval(retry);
-      await server.close();
-      if ('close' in listening) await listening.close();
-    },
+    close: () => core.close(),
   };
 }
 

@@ -59,6 +59,7 @@ export class FigmaBridge {
   private readonly waiters = new Map<string, { connection: BridgeConnection; resolve: Waiter }>();
   private readonly queues = new Map<BridgeConnection, Promise<unknown>>();
   private readonly checkListeners: ((session: Session, scope: CheckScope) => void)[] = [];
+  private readonly detachListeners: ((connection: BridgeConnection) => void)[] = [];
 
   constructor(
     private readonly timings: BridgeTimings,
@@ -72,6 +73,7 @@ export class FigmaBridge {
       this.receive(connection, parsed.data);
     });
     connection.onClose(() => {
+      for (const listener of this.detachListeners) listener(connection);
       this.open.delete(connection);
       this.queues.delete(connection);
       for (const [id, waiter] of this.waiters) {
@@ -82,6 +84,11 @@ export class FigmaBridge {
     });
   }
 
+  /** A panel's connection closed; whatever the hub kept for its file goes with it. */
+  onDetach(listener: (connection: BridgeConnection) => void): void {
+    this.detachListeners.push(listener);
+  }
+
   /** The panel asked for a check; the entrypoint runs it and pushes the findings. */
   onCheck(listener: (session: Session, scope: CheckScope) => void): void {
     this.checkListeners.push(listener);
@@ -89,6 +96,11 @@ export class FigmaBridge {
 
   sessions(): SessionView[] {
     return [...this.open.values()].map(({ connection: _connection, ...view }) => view);
+  }
+
+  /** Each connected file's view beside the connection it came on, which the leases are keyed by. */
+  sessionsWithConnection(): { view: SessionView; connection: BridgeConnection }[] {
+    return [...this.open.values()].map(({ connection, ...view }) => ({ view, connection }));
   }
 
   session(file?: string): Session {
