@@ -383,14 +383,16 @@ person to publish and names the change for them; the reference says where the co
 
 ## Common Mistakes
 
-| Mistake                                             | Instead                                                      |
-| --------------------------------------------------- | ------------------------------------------------------------ |
-| Component sources on a canvas, called a library     | The parts above, each component with its two views           |
-| One variant, or no State axis                       | Every variant prop's value, by every state the classes style |
-| Light only, or colours flattened into one set       | The axes, their values, and the semantic layer over them     |
-| A view drawn from loose text and rectangles         | The documentation components                                 |
-| Names and pages copied from one tool into another   | The tool's reference: its names, its places, its stand-ins   |
-| Guidance written from what a button usually does    | Each line from the code: props, classes, states              |
-| Fixing the background and calling the variant right | Every item, label and icon included                          |
-| A colour typed in by eye from the stylesheet        | Converted from the stylesheet's value                        |
-| A new axis for one product's colour                 | A value in `project`                                         |
+| Mistake                                             | Instead                                                       |
+| --------------------------------------------------- | ------------------------------------------------------------- |
+| Component sources on a canvas, called a library     | The parts above, each component with its two views            |
+| One variant, or no State axis                       | Every variant prop's value, by every state the classes style  |
+| Light only, or colours flattened into one set       | The axes, their values, and the semantic layer over them      |
+| A view drawn from loose text and rectangles         | The documentation components                                  |
+| Names and pages copied from one tool into another   | The tool's reference: its names, its places, its stand-ins    |
+| Guidance written from what a button usually does    | Each line from the code: props, classes, states               |
+| Fixing the background and calling the variant right | Every item, label and icon included                           |
+| A colour typed in by eye from the stylesheet        | Converted from the stylesheet's value                         |
+| A new axis for one product's colour                 | A value in `project`                                          |
+| `children` drawn as a text property                 | A slot, as the tool's reference spells it                     |
+| A capability called missing after one failed call   | The call the tool's reference spells, then the error it gives |
