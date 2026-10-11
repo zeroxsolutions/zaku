@@ -83,7 +83,7 @@ export function startRelay(options: RelayOptions): Relay {
   let credential: Credential | null = null;
   let delay = FIRST_DELAY;
   let everOpened = false;
-  /** The port dialed first and redialed after a drop: the last one connected on, or the one the user asked for. */
+  /** The port dialed first and redialed after a drop: the last one that admitted the panel, or the one the user asked for. */
   let preferred = options.ports[0];
   /** The ports the first dial for a credential still has to try before it reports nothing answered. */
   let scan: number[] = [];
@@ -141,7 +141,6 @@ export function startRelay(options: RelayOptions): Relay {
       held = null;
       delay = FIRST_DELAY;
       everOpened = true;
-      preferred = port;
       scan = [];
       options.onConnection({ state: 'connected', port });
       options.post({ type: 'connected', port });
@@ -153,6 +152,10 @@ export function startRelay(options: RelayOptions): Relay {
       } catch {
         return; // not a bridge message
       }
+      // A port is kept once its zaku-mcp admits the panel: one of an older build opens the socket and closes it on a
+      // hello it cannot read, and redialing it would never connect.
+      const type = (message as { type?: unknown } | null)?.type;
+      if (type === 'admitted' || type === 'paired') preferred = port;
       if (receive(message)) options.post(message);
     };
     current.onclose = (): void => {

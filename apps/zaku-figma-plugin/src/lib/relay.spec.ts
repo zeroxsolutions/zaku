@@ -226,6 +226,30 @@ describe('the relay', () => {
     sockets[1]?.open();
     expect(connections.at(-1)).toEqual({ state: 'connected', port: 7338 });
     expect(toSandbox).toEqual([{ type: 'connected', port: 7338 }]);
+    sockets[1]?.onmessage?.({ data: JSON.stringify({ type: 'paired', token: 't1' }) });
+    sockets[1]?.drop();
+    due.shift()?.();
+    expect(urls().at(-1)).toBe('ws://localhost:7338');
+  });
+
+  it('keeps the port it was admitted on when another port opens and closes without admitting it', () => {
+    const { fromSandbox, sockets, due, urls } = relayed();
+    fromSandbox({ type: 'stored-token', token: 't1', port: 7337 });
+    sockets[0]?.drop();
+    sockets[1]?.drop();
+    // A zaku-mcp of an older build opens the socket and closes it on a hello it cannot read.
+    sockets[2]?.open();
+    sockets[2]?.drop();
+    due.shift()?.();
+    expect(urls().at(-1)).toBe('ws://localhost:7337');
+  });
+
+  it('keeps the port that admitted it, and redials it after a drop', () => {
+    const { fromSandbox, sockets, due, urls } = relayed();
+    fromSandbox({ type: 'stored-token', token: 't1', port: 7337 });
+    sockets[0]?.drop();
+    sockets[1]?.open();
+    sockets[1]?.onmessage?.({ data: JSON.stringify({ type: 'admitted' }) });
     sockets[1]?.drop();
     due.shift()?.();
     expect(urls().at(-1)).toBe('ws://localhost:7338');
@@ -296,6 +320,7 @@ describe('a token one zaku-mcp does not know', () => {
     fromSandbox({ type: 'stored-token', token: 't1', port: null });
     refuseToken(sockets[0]);
     sockets[1]?.open();
+    sockets[1]?.onmessage?.({ data: JSON.stringify({ type: 'admitted' }) });
     sockets[1]?.drop();
     due.shift()?.();
     expect(urls().at(-1)).toBe('ws://localhost:7338');

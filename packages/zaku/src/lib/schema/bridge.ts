@@ -89,6 +89,8 @@ export const nodeSnapshotSchema = z
         crossGap: z.number(),
         /** `primaryAxisAlignItems`, then `counterAxisAlignItems`. */
         align: z.tuple([z.string(), z.string()]),
+        /** How many layers it holds; absent from a plugin older than the field. */
+        children: z.number().optional(),
       })
       .strict()
       .optional(),
@@ -110,7 +112,8 @@ export const nodeSnapshotSchema = z
           .object({
             name: z.string(),
             type: z.string(),
-            default: z.union([z.string(), z.boolean()]),
+            /** Absent on a SLOT, whose content has no default value, as Nova's Card's Content has none. */
+            default: z.union([z.string(), z.boolean()]).optional(),
           })
           .strict(),
       )
@@ -373,6 +376,8 @@ export const serverMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('select'), nodeId: z.string() }).strict(),
   /** The answer to a valid code: the token the plugin presents from then on. */
   z.object({ type: z.literal('paired'), token: z.string() }).strict(),
+  /** The panel's token was admitted; the panel keeps this port for its next dial. */
+  z.object({ type: z.literal('admitted') }).strict(),
   z.object({ type: z.literal('refused'), reason: z.enum(REFUSAL_REASONS) }).strict(),
 ]);
 

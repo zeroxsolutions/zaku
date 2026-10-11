@@ -119,6 +119,12 @@ hidden from the pickers still ships, and the finding it silenced is still true.
    Badge and the Card that holds each criterion are then the first entries drawn, before any other
    entry's views. A design system with no component by that name uses the one its code shows a short
    label or a titled panel with (antd: Tag and Card).
+
+   Each documentation component is rendered with zaku's `get_screenshot` and read with `read_nodes`
+   once it is drawn, before any view places it, and held to the reference's measures table: its size,
+   its sizing and every frame in it. Every view repeats it, so a frame left at the size it was made at
+   is on every page before anyone sees it; a header grown by an empty frame grows every view.
+
 3. **The icon set**: one component per icon the code's components and their demos import, at the code's
    default icon size, named for the icon, its description naming the code export and the size class. The
    components themselves sit in one documentation view, none of them outside it: a page header (eyebrow

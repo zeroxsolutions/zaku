@@ -48,6 +48,18 @@ function overlaps(a: Box, b: Box): boolean {
   return width > EDGE_TOLERANCE && height > EDGE_TOLERANCE;
 }
 
+/**
+ * A frame that holds no layer and paints nothing, fixed at a size on both axes: the leftover of a frame made and never
+ * filled. A spacer fills its row and is 1 px across, as Nova's flex-1 and ml-auto are, so it passes.
+ */
+function isEmptyRoom(node: NodeSnapshot): boolean {
+  const box = node.box;
+  if (node.type !== 'FRAME' || !box || box.children !== 0) return false;
+  if (node.fills.length > 0 || node.strokes.length > 0) return false;
+  if (box.sizing.horizontal !== 'FIXED' || box.sizing.vertical !== 'FIXED') return false;
+  return box.width > 1 && box.height > 1;
+}
+
 function outside(box: Box, width: number, height: number): boolean {
   return (
     box.x < -EDGE_TOLERANCE ||
@@ -148,12 +160,21 @@ export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfi
             if (sameColours(layer[field], layer.source[field])) continue;
           // Documentation lays out its own components: a table sizes each column's head and cell to the column.
           if (self && (field === 'width' || field === 'height') && documentation) continue;
+          // A component sizes an icon inside it to the size its code draws at, as Nova's Button sets its 16 px icon
+          // to 12 at xs; a product frame sizes no instance.
+          if (self && (field === 'width' || field === 'height') && node.componentSource === true) continue;
           if (self && field === 'width' && node.instance.sizing.horizontal !== 'FIXED') continue;
           if (self && field === 'height' && node.instance.sizing.vertical !== 'FIXED') continue;
           finding('overrides', field, `${field} overridden inside an instance of ${node.name}`, override.nodeId);
         }
       }
     }
+    if (isEmptyRoom(node))
+      finding(
+        'empty',
+        undefined,
+        `${node.name}: an empty frame ${Math.round(node.box?.width ?? 0)}x${Math.round(node.box?.height ?? 0)} that shows nothing; it holds no layer, so remove it or put in what it was made for`,
+      );
     if (isDefaultLayerName(node.type, node.name)) finding('naming', undefined, `${node.name} keeps a default name`);
     if (node.source) {
       const off = (['fills', 'strokes'] as const).filter(

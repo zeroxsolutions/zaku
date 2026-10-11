@@ -285,7 +285,7 @@ test(
     try {
       await second.start();
       const again = await dial(port, hello({ token }));
-      assert.deepEqual(again.messages, []);
+      assert.deepEqual(again.messages, [{ type: 'admitted' }]);
       assert.equal(again.closed, false);
       assert.equal(((await second.call('get_bridge_state')) as { files: unknown[] }).files.length, 1);
       again.socket.close();

@@ -1,3 +1,4 @@
+import type { z } from 'zod';
 import {
   FileNameShared,
   FileNotConnected,
@@ -51,7 +52,9 @@ export interface BridgeTimings {
 
 export const DEFAULT_TIMINGS: BridgeTimings = { timeoutMs: 30_000, holdMs: 60_000, readMs: 10_000 };
 
-type Waiter = (message: PluginMessage | null) => void;
+/** A reply this build could not read carries why in place of the message. */
+type Reply = PluginMessage | { unreadable: string } | null | 'timeout';
+type Waiter = (message: Exclude<Reply, 'timeout'>) => void;
 
 /** The connected plugins, one session per open file, and the request and reply over each. */
 export class FigmaBridge {
@@ -72,8 +75,8 @@ export class FigmaBridge {
   attach(connection: BridgeConnection): void {
     connection.onMessage((raw) => {
       const parsed = pluginMessageSchema.safeParse(raw);
-      if (!parsed.success) return;
-      this.receive(connection, parsed.data);
+      if (parsed.success) this.receive(connection, parsed.data);
+      else this.unreadable(connection, raw, parsed.error);
     });
     connection.onClose(() => {
       for (const listener of this.detachListeners) listener(connection);
@@ -165,6 +168,16 @@ export class FigmaBridge {
     });
     const message = await reply;
     if (message === null) return { kind: 'dropped' };
+    if (message !== 'timeout' && 'unreadable' in message) {
+      // The plugin holds the run for a decision it would otherwise wait the hold out for.
+      const given = await this.decide(session, runId, 'rollback');
+      return {
+        kind: 'threw',
+        error: message.unreadable,
+        untouchable: given.kind === 'settled' ? given.untouchable : [],
+        left: given.kind === 'settled' ? given.left : [],
+      };
+    }
     if (message === 'timeout') {
       const given = await this.decide(session, runId, 'rollback');
       return {
@@ -185,7 +198,8 @@ export class FigmaBridge {
     const reply = this.await(session.connection, `settled:${runId}`, this.timings.readMs);
     session.connection.send({ type: 'decide', runId, decision });
     const message = await reply;
-    if (message === null || message === 'timeout' || message.type !== 'settled') return { kind: 'dropped' };
+    if (message === null || message === 'timeout' || 'unreadable' in message || message.type !== 'settled')
+      return { kind: 'dropped' };
     return { kind: 'settled', outcome: message.outcome, untouchable: message.untouchable, left: message.left };
   }
 
@@ -216,6 +230,7 @@ export class FigmaBridge {
     if (message === null) throw new PluginNotConnected();
     if (message === 'timeout')
       throw new NodeNotRendered(nodeId, 'failed', `the plugin did not answer within ${this.timings.timeoutMs} ms`);
+    if ('unreadable' in message) throw new NodeNotRendered(nodeId, 'failed', message.unreadable);
     if (message.type === 'exported') {
       const { name, width, height, scale, png } = message;
       return { nodeId, name, width, height, scale, png };
@@ -241,12 +256,33 @@ export class FigmaBridge {
     const message = await reply;
     if (message === null) throw new PluginNotConnected();
     if (message === 'timeout') throw new Error(`the plugin did not answer within ${ms} ms`);
+    if ('unreadable' in message) throw new Error(message.unreadable);
     if (message.type !== 'read-result') throw new Error(`unexpected ${message.type}`);
     if (message.error) throw new Error(message.error);
     return message;
   }
 
-  private await(connection: BridgeConnection, id: string, ms: number): Promise<PluginMessage | null | 'timeout'> {
+  /**
+   * A reply this build cannot read answers its call with why, rather than leaving it to wait out its budget: the
+   * plugin is of another build, or read a node this schema does not model.
+   */
+  private unreadable(connection: BridgeConnection, raw: unknown, error: z.ZodError): void {
+    const { type, runId, requestId } = (raw ?? {}) as { type?: unknown; runId?: unknown; requestId?: unknown };
+    const id = typeof requestId === 'string' ? requestId : type === 'ran' && typeof runId === 'string' ? runId : null;
+    if (id === null) return;
+    const waiter = this.waiters.get(id);
+    if (!waiter || waiter.connection !== connection) return;
+    this.waiters.delete(id);
+    const where = error.issues
+      .slice(0, 3)
+      .map((issue) => `${issue.path.join('.')}: ${issue.message}`)
+      .join('; ');
+    waiter.resolve({
+      unreadable: `the plugin answered with a ${String(type)} zaku-mcp cannot read (${where}); the plugin and zaku-mcp are of different builds, or the plugin read a node zaku-mcp does not model`,
+    });
+  }
+
+  private await(connection: BridgeConnection, id: string, ms: number): Promise<Reply> {
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
         this.waiters.delete(id);
