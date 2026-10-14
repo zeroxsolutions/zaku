@@ -337,9 +337,11 @@ describe('zaku rules script', () => {
       expect(await main(['rules', 'script', '--root', root, '--page', 'Screens'], io)).toBe(0);
       const script = io.lines.join('\n');
       expect(script.startsWith('var zakuRulesLib=')).toBe(true);
-      expect(script).toContain(
-        'return await zakuRulesLib.zakuRules(figma, {"scope":{"page":"Screens"},"copy":{"locales":["en","vi","ja"],"currencies":["VND"]}});',
-      );
+      // The copy arrives resolved: the use_figma sandbox has no Intl to resolve a locale with.
+      expect(script).toContain('return await zakuRulesLib.zakuRules(figma, {"scope":{"page":"Screens"},"copy":{');
+      expect(script).toContain('"scripts":["Latn","Han","Hiragana","Katakana"]');
+      expect(script).toContain('"languages":["en","vi","ja"]');
+      expect(script).toContain('\u20ab');
     } finally {
       runners.rulesLibrary = saved;
     }
@@ -352,7 +354,9 @@ describe('zaku rules script', () => {
     try {
       const io = captureIo(root);
       expect(await main(['rules', 'script', '--root', root, '--node', '1:2'], io)).toBe(0);
-      expect(io.lines.join('\n')).toContain('{"scope":{"nodeId":"1:2"},"copy":{"locales":["en"],"currencies":[]}}');
+      expect(io.lines.join('\n')).toContain(
+        '{"scope":{"nodeId":"1:2"},"copy":{"scripts":["Latn"],"symbols":[],"languages":["en"]}}',
+      );
       const none = captureIo(root);
       expect(await main(['rules', 'script', '--root', root], none)).toBe(3);
       expect(none.errors.join('\n')).toContain('zaku rules script needs --page or --node');

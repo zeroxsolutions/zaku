@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { createFigmaRest } from '../adapters/figma-rest.js';
+import type { RestNode } from '../adapters/figma-rest-types.js';
 import { FigmaFileKeyMissing } from '../domain/errors/index.js';
 import { runOutline } from './write-outline.js';
 
@@ -212,6 +213,22 @@ describe('runOutline, frames that resolve badly', () => {
     });
     const unmapped = parse(await readFile(join(root, 'outline', 'unmapped.yaml'), 'utf8'));
     expect(unmapped.frames.map((frame: { nodeId: string }) => frame.nodeId)).toEqual(['1:5', '1:6']);
+  });
+
+  it('lists no frame on a page that holds no screens: the library, the product components, the directions', async () => {
+    const root = await design();
+    const frame = (id: string, name: string): RestNode => ({ id, name, type: 'FRAME' });
+    const pages: RestNode[] = [
+      { id: '0:1', name: 'Thumbnail', type: 'CANVAS', children: [frame('1:1', 'Thumbnail / Cover')] },
+      { id: '0:2', name: 'Component for Docs', type: 'CANVAS', children: [frame('1:2', 'DS/Header')] },
+      { id: '0:3', name: '\u2756 Button', type: 'CANVAS', children: [frame('1:3', 'Button / Guidance')] },
+      { id: '0:4', name: 'Patterns / Trip Card', type: 'CANVAS', children: [frame('1:4', 'Trip Card / Guidance')] },
+      { id: '0:5', name: 'Visual direction', type: 'CANVAS', children: [frame('1:5', 'Direction / Lotus')] },
+      { id: '0:6', name: 'Trips', type: 'CANVAS', children: [frame('1:6', 'Trips / Default / Desktpo')] },
+    ];
+    await runOutline({ root, rest: createFigmaRest({ token: 't', fetch: fetchFor(pages) }), frames: null });
+    const unmapped = parse(await readFile(join(root, 'outline', 'unmapped.yaml'), 'utf8'));
+    expect(unmapped.frames.map((listed: { nodeId: string }) => listed.nodeId)).toEqual(['1:6']);
   });
 
   it('does not give a frame on a feature page to another feature that shares its title', async () => {

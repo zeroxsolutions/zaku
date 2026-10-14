@@ -71,10 +71,17 @@ function currencySymbols(locales: readonly string[], currency: string): string[]
 }
 
 /**
- * The policy for one run. `carried` is the text the library's components show as their own defaults, whose
- * characters are allowed in authored copy too.
+ * A copy section with every locale resolved to the scripts it is written in, its currencies to the
+ * symbols they display, and its languages. Resolving needs Intl, which the use_figma sandbox does not
+ * have, so the CLI resolves it before it prints the rules script.
  */
-export function copyPolicy(copy: CopyConfig, carried: readonly string[]): CopyPolicy {
+export interface ResolvedCopy {
+  scripts: string[];
+  symbols: string[];
+  languages: string[];
+}
+
+export function resolveCopy(copy: CopyConfig): ResolvedCopy {
   // maximize() fills in the likely script from CLDR's likely subtags: vi becomes vi-Latn-VN.
   const scripts = new Set(
     copy.locales.flatMap((locale) => {
@@ -82,12 +89,23 @@ export function copyPolicy(copy: CopyConfig, carried: readonly string[]): CopyPo
       return WRITTEN_IN[script] ?? [script];
     }),
   );
-  const symbols = copy.currencies.flatMap((currency) => currencySymbols(copy.locales, currency));
-  const languages = new Set(copy.locales.map((locale) => new Intl.Locale(locale).language));
   return {
-    scripts: [...scripts].filter(Boolean).map((script) => new RegExp(`^\\p{Script_Extensions=${script}}$`, 'u')),
-    extra: new Set([...symbols, ...carried].flatMap((text) => [...text.normalize('NFC')])),
-    tells: [...languages].flatMap((language) => COPY_TELLS[language] ?? []),
+    scripts: [...scripts].filter(Boolean),
+    symbols: [...new Set(copy.currencies.flatMap((currency) => currencySymbols(copy.locales, currency)))],
+    languages: [...new Set(copy.locales.map((locale) => new Intl.Locale(locale).language))],
+  };
+}
+
+/**
+ * The policy for one run. `carried` is the text the library's components show as their own defaults, whose
+ * characters are allowed in authored copy too.
+ */
+export function copyPolicy(copy: CopyConfig | ResolvedCopy, carried: readonly string[]): CopyPolicy {
+  const resolved = 'scripts' in copy ? copy : resolveCopy(copy);
+  return {
+    scripts: resolved.scripts.map((script) => new RegExp(`^\\p{Script_Extensions=${script}}$`, 'u')),
+    extra: new Set([...resolved.symbols, ...carried].flatMap((text) => [...text.normalize('NFC')])),
+    tells: resolved.languages.flatMap((language) => COPY_TELLS[language] ?? []),
   };
 }
 

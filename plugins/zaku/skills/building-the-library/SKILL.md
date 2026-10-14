@@ -59,14 +59,17 @@ commands that read it say so when it is missing.
 ## The Iron Law
 
 ```
-EVERY LIBRARY CHANGE RUNS IN STRICT MODE. A FINDING IS FIXED IN THE DRAWING, OR IT STOPS THAT CHANGE AND THE REPLY NAMES IT.
+EVERY LIBRARY CHANGE PASSES THE RULES BEFORE THE NEXT ONE STARTS. A FINDING IS FIXED IN THE DRAWING, OR IT STOPS THAT CHANGE AND THE REPLY NAMES IT.
 ```
 
-zaku's `run_script` checks every node a script touched and, in strict mode, rolls the change back on a
-finding. It is the only reader that looks at every item, so a change it did not pass is a change
-nobody checked. Report mode keeps the whole change with every finding in it, not only the one you
-judged wrong, and nothing later records that it was kept. Strict mode returns the same findings, so a
-probe gains nothing from report mode and leaves nothing behind without it.
+zaku's rules check every node a change touched, and they are the only reader that looks at every
+item, so a change they did not pass is a change nobody checked. Over zaku's server they run inside
+every write: in strict mode the change is rolled back on a finding, while report mode keeps the whole
+change with every finding in it, not only the one you judged wrong, and nothing later records that it
+was kept. Strict mode returns the same findings, so a probe gains nothing from report mode and leaves
+nothing behind without it. Over Figma's server no write is rolled back, so the rules run over the page
+after every write, and a change with a finding is fixed or removed before the next change starts. The
+tool's reference spells both.
 
 A finding that misreads the drawing (it names a node that is not what the rule says) is a defect in
 the checker. Show it: the finding, the node id, and what that node really is. Then that change
@@ -84,6 +87,7 @@ hidden from the pickers still ships, and the finding it silenced is still true.
 | "Check misreads the new text styles as unstyled text nodes (a false positive), so I'm creating them in report mode."                 | The misreading was real, and report mode kept the whole batch with it, `DS/` styles the documentation never asks for among them. Name the node and what it is, and let that change wait. |
 | "Check flags raw padding, gaps and unstyled text, so the documentation gets its own hidden spacing variables and `DS/` text styles." | Documentation keeps the measures the reference writes as numbers, and the checks leave its spacing and type alone where the reference places it. A hidden variable is still published.   |
 | "I'll run a probe in report mode to see what the check flags."                                                                       | Strict mode returns the same findings and rolls the probe back.                                                                                                                          |
+| "Figma's server has no strict mode, so I build every entry and check once at the end."                                               | A finding found at the end sits in every entry built after it. The rules run over the page after each write.                                                                             |
 | "The library file has no key yet; I'll write a placeholder and replace it once it is saved."                                         | Nothing compares the drawing with the code until the key is there, so every value drawn before it goes unchecked. With no library file, the product file's key is the library's.         |
 | "I was told not to ask questions, so I decide."                                                                                      | The file's key is not a decision; it is a fact only the person who saved the file has. Say what is missing.                                                                              |
 | "I'll draw the components now and their views later."                                                                                | A run stops partway, and what it leaves is bare sets nobody can read. Draw each entry whole, in the order below.                                                                         |

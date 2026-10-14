@@ -1,4 +1,4 @@
-import { snapshotFindings, type Finding } from '@zeroxsolutions/zaku/rules';
+import { snapshotFindings, type Finding, type ResolvedCopy } from '@zeroxsolutions/zaku/rules';
 import { snapshotNode, type AncestryCache } from './sandbox/snapshot.js';
 
 /** use_figma cuts a reply at 20 KB; the result keeps a margin under it for the envelope the tool adds. */
@@ -7,7 +7,8 @@ export const REPLY_BYTES = 18_000;
 export interface RulesOptions {
   /** A page by id or name, or one node and everything inside it. */
   scope: { page: string } | { nodeId: string };
-  copy: { locales: string[]; currencies: string[] };
+  /** zaku.yaml's copy section, resolved by the CLI: the sandbox has no Intl to resolve a locale with. */
+  copy: ResolvedCopy;
 }
 
 export interface RulesResult {

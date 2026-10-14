@@ -19,6 +19,7 @@ import {
 } from '../../lib/commands/index.js';
 import { ALL_CHECKS } from '../../lib/domain/checks/index.js';
 import { variablePartSchema, type LibrarySnapshot } from '../../lib/domain/library.js';
+import { resolveCopy } from '../../lib/domain/copy-rules.js';
 import { leftOut, rulesResultSchema } from '../../lib/domain/rules-result.js';
 import { exitCode, formatReport, runChecks, type CheckReport } from '../../lib/domain/run-checks.js';
 import type { RecipeWritten, TokensWritten } from '../../lib/handlers/index.js';
@@ -335,7 +336,7 @@ const rulesCommand: CommandSpec = (program, io, finish) => {
       const config = await readDesignFile(designPaths(resolve(io.cwd, options.root)).config, zakuConfigSchema);
       const scope = options.node !== undefined ? { nodeId: options.node } : { page: options.page };
       io.out(
-        `${await runners.rulesLibrary()}\nreturn await zakuRulesLib.zakuRules(figma, ${JSON.stringify({ scope, copy: config.copy })});`,
+        `${await runners.rulesLibrary()}\nreturn await zakuRulesLib.zakuRules(figma, ${JSON.stringify({ scope, copy: resolveCopy(config.copy) })});`,
       );
       finish(0);
     });

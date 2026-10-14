@@ -38,7 +38,8 @@ function fakeFigma(pages: FakePage[]): Record<string, unknown> {
   };
 }
 
-const english = { locales: ['en'], currencies: [] };
+/** English with no currency, resolved as the CLI resolves it before printing the script. */
+const english = { scripts: ['Latn'], symbols: [], languages: ['en'] };
 
 describe('zakuRules', () => {
   it('checks the page it is named, by name or id, under the copy it is given', async () => {
@@ -63,6 +64,16 @@ describe('zakuRules', () => {
     expect(result.cut).toBe(true);
     expect(result.findings.length).toBeGreaterThan(0);
     expect(new TextEncoder().encode(JSON.stringify(result)).length).toBeLessThanOrEqual(REPLY_BYTES);
+  });
+
+  it('runs with no Intl, as the use_figma sandbox has none', async () => {
+    vi.stubGlobal('Intl', undefined);
+    try {
+      const figma = fakeFigma([page('0:2', 'Screens', [unbound('1:1')])]);
+      expect((await zakuRules(figma, { scope: { page: 'Screens' }, copy: english })).total).toBe(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('refuses a page it cannot find, naming the pages there are', async () => {
