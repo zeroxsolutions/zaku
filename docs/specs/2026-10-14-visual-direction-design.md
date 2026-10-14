@@ -16,6 +16,13 @@ brand yet. Two runs had zaku's skills and zaku-mcp; two had only the Figma MCP s
   the State Bank rules), and the Figma MCP runs weaker, because the comparison switched the skills off
   with the tool. zaku-mcp and the Figma MCP server are two ways to reach the same file, and the skills
   are what makes the work right on either.
+- The Figma MCP runs were run again with zaku's skills enabled and its tools refused. Both drew real
+  screens with the profile, the map and a decision record, so the skills carry over. Neither drew
+  from the product's own design system: travel took Simple Design System, a sample library the team
+  happened to have, over the app's shadcn tokens, and Sen Wallet took Nova's defaults again. Neither
+  could check its drawing: one said `zaku check` was not installed, the other ran it and got 45 "no
+  frame drawn" findings, because `zaku outline` wants a `FIGMA_TOKEN` and the rule checks want a
+  library snapshot, so the overrides, colour and contrast checks never ran.
 
 So three things are missing: a way to draw without a separate library file, a way to give a product
 with no brand a design system, and skills that hold on either transport.
