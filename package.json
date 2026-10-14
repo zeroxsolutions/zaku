@@ -46,7 +46,7 @@
     "nx": "23.3.0",
     "oxfmt": "^0.72.0",
     "tslib": "^2.3.0",
-    "typescript": "~5.9.2",
+    "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.1",
     "vite": "^8.0.0",
     "vitest": "~5.0.1"
