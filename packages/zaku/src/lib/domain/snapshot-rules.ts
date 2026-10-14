@@ -1,5 +1,6 @@
 import type { NodeSnapshot } from '../schema/bridge.js';
-import { DEFAULT_COPY, type CopyConfig } from '../schema/zaku-config.js';
+import type { CopyConfig } from '../schema/zaku-config.js';
+import { DEFAULT_COPY } from './copy-defaults.js';
 import { ALLOWED_OVERRIDES } from './checks/overrides.js';
 import { copyIssues, copyPolicy } from './copy-rules.js';
 import { COVER } from './documentation-measures.js';
