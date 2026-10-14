@@ -23,6 +23,11 @@
       "import": "./dist/lib/schema/index.js",
       "default": "./dist/lib/schema/index.js"
     },
+    "./rules": {
+      "types": "./dist/lib/rules/index.d.ts",
+      "import": "./dist/lib/rules/index.js",
+      "default": "./dist/lib/rules/index.js"
+    },
     "./mcp": {
       "types": "./dist/entrypoints/mcp/index.d.ts",
       "import": "./dist/entrypoints/mcp/index.js",

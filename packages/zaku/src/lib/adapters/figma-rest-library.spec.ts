@@ -133,66 +133,73 @@ const set = {
   ],
 };
 
-function fakeFetch(): typeof fetch {
+/** `published: false` answers the published lists empty, as Figma does for a file never published. */
+function fakeFetch(options: { published?: boolean } = {}): typeof fetch {
   return async (url) => {
     const href = String(url);
-    const body = href.endsWith('/component_sets')
-      ? {
-          meta: {
-            component_sets: [
-              {
-                node_id: '1:1',
-                key: 'ks-badge',
-                name: 'Badge',
-                description: 'code: components/ui/badge.tsx\nprops: Variant=variant',
-                containing_frame: { pageName: '❖ Badge' },
-              },
-            ],
-          },
-        }
-      : href.endsWith('/components')
-        ? {
-            meta: {
-              components: [
-                {
-                  node_id: '1:2',
-                  key: 'k-default',
-                  name: 'Variant=default',
-                  description: '',
-                  containing_frame: { containingComponentSet: { nodeId: '1:1' } },
+    const listed = options.published !== false;
+    const body =
+      !listed && href.endsWith('/component_sets')
+        ? { meta: { component_sets: [] } }
+        : !listed && href.endsWith('/components')
+          ? { meta: { components: [] } }
+          : href.endsWith('/component_sets')
+            ? {
+                meta: {
+                  component_sets: [
+                    {
+                      node_id: '1:1',
+                      key: 'ks-badge',
+                      name: 'Badge',
+                      description: 'code: components/ui/badge.tsx\nprops: Variant=variant',
+                      containing_frame: { pageName: '❖ Badge' },
+                    },
+                  ],
                 },
-                {
-                  node_id: '9:1',
-                  key: 'k-header',
-                  name: 'DS/Header',
-                  description: '',
-                  containing_frame: {},
-                },
-              ],
-            },
-          }
-        : href.includes('/nodes?')
-          ? {
-              version: '77',
-              nodes: {
-                '1:1': {
-                  document: set,
-                  components: {
-                    '1:2': { key: 'k-default', name: 'Variant=default' },
-                    '1:4': { key: 'k-destructive', name: 'Variant=destructive' },
+              }
+            : href.endsWith('/components')
+              ? {
+                  meta: {
+                    components: [
+                      {
+                        node_id: '1:2',
+                        key: 'k-default',
+                        name: 'Variant=default',
+                        description: '',
+                        containing_frame: { containingComponentSet: { nodeId: '1:1' } },
+                      },
+                      {
+                        node_id: '9:1',
+                        key: 'k-header',
+                        name: 'DS/Header',
+                        description: '',
+                        containing_frame: {},
+                      },
+                    ],
                   },
-                  componentSets: {},
-                  styles: {},
-                },
-              },
-            }
-          : {
-              version: '77',
-              document: { id: '0:0', name: 'D', type: 'DOCUMENT', children: [] },
-              components: {},
-              componentSets: {},
-              styles: {},
-            };
+                }
+              : href.includes('/nodes?')
+                ? {
+                    version: '77',
+                    nodes: {
+                      '1:1': {
+                        document: set,
+                        components: {
+                          '1:2': { key: 'k-default', name: 'Variant=default' },
+                          '1:4': { key: 'k-destructive', name: 'Variant=destructive' },
+                        },
+                        componentSets: {},
+                        styles: {},
+                      },
+                    },
+                  }
+                : {
+                    version: '77',
+                    document: { id: '0:0', name: 'D', type: 'DOCUMENT', children: [] },
+                    components: {},
+                    componentSets: {},
+                    styles: {},
+                  };
     return new Response(JSON.stringify(body), { status: 200 });
   };
 }
@@ -226,6 +233,30 @@ describe('readLibrary', () => {
     });
     expect(dark?.items[0]?.fill).toEqual({ r: 0, g: 0.3765, b: 0.2706, a: 1 });
     expect(snapshot.tokens[0]?.values['radius/4xl']).toBe(26);
+  });
+
+  it('reads the components the file holds when the variables export lists them, published or not', async () => {
+    const local: VariablePart = {
+      ...part,
+      components: [
+        {
+          id: '1:1',
+          key: 'ks-badge',
+          name: 'Badge',
+          page: 'Badge',
+          description: 'code: components/ui/badge.tsx\nprops: Variant=variant',
+          set: true,
+        },
+      ],
+    };
+    const snapshot = await readLibrary({
+      rest: createFigmaRest({ token: 't', fetch: fakeFetch({ published: false }) }),
+      fileKey: 'PROD',
+      part: local,
+    });
+    expect(snapshot.components.map((component) => [component.name, component.page, component.codePath])).toEqual([
+      ['Badge', 'Badge', 'components/ui/badge.tsx'],
+    ]);
   });
 
   it('reads the colour an icon instance draws its glyph in, which its own frame does not carry', async () => {

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_COPY } from '../domain/copy-defaults.js';
 
 /**
  * The platforms whose guideline a target is drawn to. A web target is a page in a browser at any width,
@@ -169,8 +170,7 @@ export const copySchema = z
   })
   .strict();
 
-/** The copy section a zaku.yaml without one reads as. */
-export const DEFAULT_COPY: z.output<typeof copySchema> = { locales: ['en'], currencies: [] };
+export { DEFAULT_COPY };
 
 export const zakuConfigSchema = z
   .object({

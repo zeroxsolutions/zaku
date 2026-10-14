@@ -37,12 +37,23 @@
             "outExtension": {
               ".js": ".mjs"
             }
-          }
+          },
+          "assets": [
+            {
+              "input": "apps/zaku-figma-plugin/dist-rules",
+              "glob": "rules.js",
+              "output": "."
+            }
+          ]
         },
         "configurations": {
           "development": {},
           "production": {}
-        }
+        },
+        "dependsOn": [
+          "^build",
+          "zaku-figma-plugin:build-rules-script"
+        ]
       },
       "prune-lockfile": {
         "dependsOn": [
@@ -116,10 +127,11 @@
           "build"
         ],
         "outputs": [
-          "{workspaceRoot}/plugins/zaku/bin/zaku.mjs"
+          "{workspaceRoot}/plugins/zaku/bin/zaku.mjs",
+          "{workspaceRoot}/plugins/zaku/bin/rules.js"
         ],
         "options": {
-          "command": "cp apps/zaku-cli/dist/zaku.mjs plugins/zaku/bin/zaku.mjs && pnpm exec oxfmt --write plugins/zaku/bin/zaku.mjs && chmod +x plugins/zaku/bin/zaku.mjs",
+          "command": "cp apps/zaku-cli/dist/zaku.mjs plugins/zaku/bin/zaku.mjs && cp apps/zaku-cli/dist/rules.js plugins/zaku/bin/rules.js && pnpm exec oxfmt --write plugins/zaku/bin/zaku.mjs && chmod +x plugins/zaku/bin/zaku.mjs",
           "cwd": "{workspaceRoot}"
         }
       }

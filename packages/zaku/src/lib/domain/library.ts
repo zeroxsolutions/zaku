@@ -99,6 +99,21 @@ export const variablePartSchema = z
         })
         .strict(),
     ),
+    /** The components the file itself holds, for a library that lives in the product file and is not published. */
+    components: z
+      .array(
+        z
+          .object({
+            id: z.string(),
+            key: z.string(),
+            name: z.string(),
+            page: z.string(),
+            description: z.string(),
+            set: z.boolean(),
+          })
+          .strict(),
+      )
+      .optional(),
   })
   .strict();
 

@@ -6,7 +6,7 @@ import {
   type FigmaPluginApi,
 } from './figma-variables-script.js';
 
-function fakeFigma(): FigmaPluginApi {
+function fakeFigma(pages: FigmaPluginApi[] = []): FigmaPluginApi {
   const value =
     (light: unknown, dark: unknown): ((consumer: { modes: Record<string, string> }) => { value: unknown }) =>
     (consumer) => ({ value: consumer.modes['C:sem'] === 'm:d' ? dark : light });
@@ -51,6 +51,7 @@ function fakeFigma(): FigmaPluginApi {
     name: '',
   };
   return {
+    root: { children: pages },
     createFrame: () => holder,
     getLocalTextStylesAsync: async () => [
       {
@@ -88,6 +89,48 @@ describe('exportVariables', () => {
       'V:axis': 'light/primary',
     });
     expect(part.textStyles[0]?.key).toBe('k-sm');
+  });
+
+  it("lists the file's own components with --local, each set once and no variant on its own, and none without it", async () => {
+    const set = { id: '9:1', type: 'COMPONENT_SET', key: 'k-set', name: 'Badge', description: '', parent: null };
+    const variant = { id: '9:2', type: 'COMPONENT', key: 'k-v', name: 'Variant=default', description: '', parent: set };
+    const loose = { id: '9:3', type: 'COMPONENT', key: 'k-logo', name: 'Logo', description: 'mark', parent: null };
+    let loaded = false;
+    const page = {
+      name: 'Badge',
+      loadAsync: async (): Promise<void> => {
+        loaded = true;
+      },
+      findAllWithCriteria: (): unknown[] => (loaded ? [set, variant, loose] : []),
+    };
+    const part = variablePartSchema.parse(await exportVariables(fakeFigma([page]), { ...options, local: true }));
+    expect(part.components).toEqual([
+      { id: '9:1', key: 'k-set', name: 'Badge', page: 'Badge', description: '', set: true },
+      { id: '9:3', key: 'k-logo', name: 'Logo', page: 'Badge', description: 'mark', set: false },
+    ]);
+    expect(await exportVariables(fakeFigma([page]), options)).not.toHaveProperty('components');
+  });
+
+  it('lists only the page it is given, loading no other, so each page is one use_figma call', async () => {
+    const loaded: string[] = [];
+    const pageOf = (name: string, id: string): FigmaPluginApi => ({
+      name,
+      loadAsync: async (): Promise<void> => {
+        loaded.push(name);
+      },
+      findAllWithCriteria: (): unknown[] => [
+        { id, type: 'COMPONENT', key: `k-${id}`, name, description: '', parent: null },
+      ],
+    });
+    const part = variablePartSchema.parse(
+      await exportVariables(fakeFigma([pageOf('Badge', '9:1'), pageOf('Button', '9:2')]), {
+        ...options,
+        local: true,
+        page: 'Button',
+      }),
+    );
+    expect(loaded).toEqual(['Button']);
+    expect(part.components?.map((component) => component.id)).toEqual(['9:2']);
   });
 
   it('refuses a mode the library does not have', async () => {

@@ -9,7 +9,23 @@ an entry per component built from the documentation components.
 The key is the part of the file's address after `/design/`: in
 `https://www.figma.com/design/<key>/<name>`, `<key>`. The plugin cannot read it, because the Plugin
 API gives `figma.fileKey` only to private plugins, so it comes from the person, from the address of a
-file saved in the team. `figma.library` in `zaku.yaml` holds it before the first drawing.
+file saved in the team. `figma.library` in `zaku.yaml` holds it before the first drawing; for a
+library built into the product file, it is the product file's key, the same as `figma.product`.
+
+## Reaching the file
+
+A run reaches the file through zaku's MCP server, which drives the zaku plugin open in the file, or
+through Figma's MCP server:
+
+| Step                 | zaku's server                                             | Figma's server                                                                                            |
+| -------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Draw an entry        | `run_script`, `mode: "strict"`                            | `use_figma`, then the rules script for the page drawn                                                     |
+| Check a page         | `check_rules`, `scope: "page"`                            | `zaku rules script --page <page>` run through `use_figma`, its answer read by `zaku check --input <file>` |
+| Render a part        | `get_screenshot`                                          | `get_screenshot`                                                                                          |
+| Export the variables | `run_script` with the script `zaku library script` prints | `use_figma` with the same script                                                                          |
+
+Strict mode rolls a finding back; `use_figma` keeps every write, so over Figma's server a finding the
+rules script answers is fixed in the next write before the entry goes on.
 
 ## Drawing an entry
 
@@ -333,6 +349,9 @@ A `use_figma` reply is cut at 20 KB, so the Plugin API exports only what REST ca
 Professional plan: the variables. `zaku library script` prints that export; run it with `use_figma` on
 the library file and save the reply as a JSON file. `zaku library save --input <file>`, with
 `FIGMA_TOKEN` set, then reads the published components over REST, which names each paint's bound
-variable, and resolves every item in every mode from the export. The library has to be published for
-REST to list its components. Without `figma.library` in `zaku.yaml` it exits 3, naming the field, and
-reads nothing.
+variable, and resolves every item in every mode from the export. REST lists only published
+components, so for a library in the product file, which is not published, run
+`zaku library script --local --page <page>` once per page that holds components, each through its own
+`use_figma` call (a call that loads every page in turn runs past its time on a file with screens), and
+pass every answer to `zaku library save`, one `--input` each: the save joins their components. A save that reads no component exits 1 and names `--local`. Without
+`figma.library` in `zaku.yaml` it exits 3, naming the field, and reads nothing.

@@ -28,9 +28,28 @@
           "minify": true
         }
       },
+      "build-rules-script": {
+        "executor": "nx:run-commands",
+        "dependsOn": [
+          "^build"
+        ],
+        "cache": true,
+        "inputs": [
+          "production",
+          "^production"
+        ],
+        "outputs": [
+          "{projectRoot}/dist-rules"
+        ],
+        "options": {
+          "command": "esbuild apps/zaku-figma-plugin/src/rules-script.ts --bundle --minify --format=iife --global-name=zakuRulesLib --platform=browser --target=es2020 --outfile=apps/zaku-figma-plugin/dist-rules/rules.js --log-level=warning",
+          "cwd": "{workspaceRoot}"
+        }
+      },
       "build": {
         "dependsOn": [
           "build-sandbox",
+          "build-rules-script",
           "^build"
         ]
       }

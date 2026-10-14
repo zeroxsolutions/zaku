@@ -22,7 +22,7 @@ describe('main', () => {
   it('answers an unknown command with usage and exit 3', async () => {
     const io = captureIo(process.cwd());
     expect(await main(['paint'], io)).toBe(3);
-    expect(io.errors.join('\n')).toContain('usage: zaku <check|outline|tokens|recipe|library|budget|schema>');
+    expect(io.errors.join('\n')).toContain('usage: zaku <check|outline|tokens|recipe|library|rules|budget|schema>');
   });
 
   it('answers an unknown option with usage and exit 3', async () => {
@@ -184,6 +184,43 @@ describe('zaku budget and library save, against the ledger', () => {
   });
 });
 
+describe('zaku library save', () => {
+  it('refuses a library it read no component from, naming --local', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'zaku-'));
+    await writeFile(
+      join(root, 'zaku.yaml'),
+      'product: acme\ndesignSystem: { shadcn: { preset: x } }\nfigma: { library: P, product: P }\ntargets:\n  - { id: web-desktop, family: web, name: Desktop }\n',
+    );
+    await writeFile(
+      join(root, 'variables.json'),
+      JSON.stringify({ exportedAt: '2026-10-14T00:00:00.000Z', variables: {}, textStyles: [], tokens: [] }),
+    );
+    const fetch = (async (url: string | URL | Request) =>
+      new Response(
+        JSON.stringify(
+          String(url).endsWith('/component_sets')
+            ? { meta: { component_sets: [] } }
+            : String(url).endsWith('/components')
+              ? { meta: { components: [] } }
+              : {
+                  version: '1',
+                  document: { id: '0:0', name: 'D', type: 'DOCUMENT', children: [] },
+                  components: {},
+                  componentSets: {},
+                  styles: {},
+                },
+        ),
+        { status: 200 },
+      )) as typeof globalThis.fetch;
+    const io = captureIo(root, {
+      env: { XDG_CACHE_HOME: root, FIGMA_TOKEN: 't', ZAKU_SEAT: 's', ZAKU_RUN: 'r' },
+      fetch,
+    });
+    expect(await main(['library', 'save', '--root', root, '--input', join(root, 'variables.json')], io)).toBe(1);
+    expect(io.errors.join('\n')).toContain('zaku library script --local');
+  });
+});
+
 describe('zaku outline', () => {
   it('needs FIGMA_TOKEN for a Figma file', async () => {
     const root = join(await mkdtemp(join(tmpdir(), 'zaku-')), 'design');
@@ -277,5 +314,80 @@ describe('zaku recipe', { timeout: 60_000 }, () => {
     const url = `data:text/html,${encodeURIComponent('<p>nothing</p>')}`;
     expect(await withPlaywright(playwright, () => main(['recipe', '--root', io.cwd, '--url', url], io))).toBe(2);
     expect(io.errors).toEqual([`zaku recipe: ${url} marks no element with data-zaku-component`]);
+  });
+});
+
+describe('zaku rules script', () => {
+  const design = async (copy = ''): Promise<string> => {
+    const root = join(await mkdtemp(join(tmpdir(), 'zaku-')), 'design');
+    await mkdir(root, { recursive: true });
+    await writeFile(
+      join(root, 'zaku.yaml'),
+      `product: acme\ndesignSystem: { shadcn: { preset: x } }\nfigma: { product: P }\ntargets:\n  - { id: web-desktop, family: web, name: Desktop }\n${copy}`,
+    );
+    return root;
+  };
+
+  it('prints the rules and one call over the page, under the copy zaku.yaml names', async () => {
+    const root = await design('copy: { locales: [en, vi, ja], currencies: [VND] }\n');
+    const saved = runners.rulesLibrary;
+    runners.rulesLibrary = async (): Promise<string> => 'var zakuRulesLib=(()=>({zakuRules:async()=>({})}))();';
+    try {
+      const io = captureIo(root);
+      expect(await main(['rules', 'script', '--root', root, '--page', 'Screens'], io)).toBe(0);
+      const script = io.lines.join('\n');
+      expect(script.startsWith('var zakuRulesLib=')).toBe(true);
+      // The copy arrives resolved: the use_figma sandbox has no Intl to resolve a locale with.
+      expect(script).toContain('return await zakuRulesLib.zakuRules(figma, {"scope":{"page":"Screens"},"copy":{');
+      expect(script).toContain('"scripts":["Latn","Han","Hiragana","Katakana"]');
+      expect(script).toContain('"languages":["en","vi","ja"]');
+      expect(script).toContain('\u20ab');
+    } finally {
+      runners.rulesLibrary = saved;
+    }
+  });
+
+  it('holds copy to English with no currency when zaku.yaml has no copy section, and needs a page or a node', async () => {
+    const root = await design();
+    const saved = runners.rulesLibrary;
+    runners.rulesLibrary = async (): Promise<string> => '';
+    try {
+      const io = captureIo(root);
+      expect(await main(['rules', 'script', '--root', root, '--node', '1:2'], io)).toBe(0);
+      expect(io.lines.join('\n')).toContain(
+        '{"scope":{"nodeId":"1:2"},"copy":{"scripts":["Latn"],"symbols":[],"languages":["en"]}}',
+      );
+      const none = captureIo(root);
+      expect(await main(['rules', 'script', '--root', root], none)).toBe(3);
+      expect(none.errors.join('\n')).toContain('zaku rules script needs --page or --node');
+    } finally {
+      runners.rulesLibrary = saved;
+    }
+  });
+});
+
+describe('zaku check --input', () => {
+  it('reports what the rules script returned beside the design checks, and fails on its findings', async () => {
+    const root = join(await mkdtemp(join(tmpdir(), 'zaku-')), 'design');
+    await mkdir(join(root, 'map'), { recursive: true });
+    await writeFile(
+      join(root, 'zaku.yaml'),
+      'product: acme\ndesignSystem: { shadcn: { preset: x } }\nfigma: { product: P }\ntargets:\n  - { id: web-desktop, family: web, name: Desktop }\n',
+    );
+    const input = join(root, 'rules.json');
+    await writeFile(
+      input,
+      JSON.stringify({
+        checked: 3,
+        total: 2,
+        counts: { binding: 2 },
+        findings: [{ check: 'binding', field: 'fill', nodeId: '1:1', message: 'Card: fill is a raw value' }],
+        cut: true,
+      }),
+    );
+    const io = captureIo(root);
+    expect(await main(['check', '--root', root, '--input', input], io)).toBe(1);
+    expect(io.lines.join('\n')).toContain('Card: fill is a raw value');
+    expect(io.lines).toContain('1 more binding finding the reply left out; fix these and run the script again');
   });
 });

@@ -3,6 +3,10 @@ import type { VariablePart } from '../domain/library.js';
 export interface ExportOptions {
   /** The non-semantic modes to resolve under, one entry per product. Each is resolved in Light and Dark. */
   combos: Record<string, string>[];
+  /** List the file's own components too, for a library in the product file, which nothing publishes. */
+  local?: boolean;
+  /** With `local`, list only this page's components, so each page is one call and no call loads them all. */
+  page?: string;
 }
 
 // The Plugin API runs inside Figma and has no typings in this package.
@@ -63,7 +67,33 @@ export async function exportVariables(figma: FigmaPluginApi, options: ExportOpti
       fontStyle: style.fontName.style,
       fontSize: style.fontSize,
     }));
-    return { exportedAt: new Date().toISOString(), variables, textStyles, tokens };
+    const components: NonNullable<VariablePart['components']> = [];
+    if (options.local) {
+      for (const page of figma.root.children.filter(
+        (candidate: { name: string }) => options.page === undefined || candidate.name === options.page,
+      )) {
+        // use_figma refuses loadAllPagesAsync, so each page loads on its own.
+        await page.loadAsync();
+        for (const node of page.findAllWithCriteria({ types: ['COMPONENT_SET', 'COMPONENT'] })) {
+          if (node.type === 'COMPONENT' && node.parent?.type === 'COMPONENT_SET') continue;
+          components.push({
+            id: node.id,
+            key: node.key,
+            name: node.name,
+            page: page.name,
+            description: node.description ?? '',
+            set: node.type === 'COMPONENT_SET',
+          });
+        }
+      }
+    }
+    return {
+      exportedAt: new Date().toISOString(),
+      variables,
+      textStyles,
+      tokens,
+      ...(options.local ? { components } : {}),
+    };
   } finally {
     holder.remove();
   }

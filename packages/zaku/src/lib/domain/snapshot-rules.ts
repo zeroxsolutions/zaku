@@ -1,7 +1,8 @@
 import type { NodeSnapshot } from '../schema/bridge.js';
-import { DEFAULT_COPY, type CopyConfig } from '../schema/zaku-config.js';
+import type { CopyConfig } from '../schema/zaku-config.js';
+import { DEFAULT_COPY } from './copy-defaults.js';
 import { ALLOWED_OVERRIDES } from './checks/overrides.js';
-import { copyIssues, copyPolicy } from './copy-rules.js';
+import { copyIssues, copyPolicy, type ResolvedCopy } from './copy-rules.js';
 import { COVER } from './documentation-measures.js';
 import { DOCUMENTATION_COMPONENT_NAMES, documentationFindings, holdsReferenceText } from './documentation-rule.js';
 import type { Finding } from './findings.js';
@@ -73,7 +74,10 @@ function outside(box: Box, width: number, height: number): boolean {
  * The rules a `run_script` is held to, over what the script touched. `copy` is zaku.yaml's copy section; the
  * library copy the touched instances carry is allowed beside it, as zaku check allows it.
  */
-export function snapshotFindings(nodes: readonly NodeSnapshot[], copy: CopyConfig = DEFAULT_COPY): Finding[] {
+export function snapshotFindings(
+  nodes: readonly NodeSnapshot[],
+  copy: CopyConfig | ResolvedCopy = DEFAULT_COPY,
+): Finding[] {
   const policy = copyPolicy(
     copy,
     // A documentation component's texts are the reference's own, such as DS/List Item's bullet, not library copy.

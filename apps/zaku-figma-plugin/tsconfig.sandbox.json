@@ -9,6 +9,6 @@
     "module": "esnext",
     "moduleResolution": "bundler"
   },
-  "include": ["src/main.ts", "src/sandbox/**/*.ts"],
+  "include": ["src/main.ts", "src/sandbox/**/*.ts", "src/rules-script.ts"],
   "exclude": ["src/**/*.spec.ts", "src/**/*.testing.ts"]
 }

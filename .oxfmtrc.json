@@ -41,6 +41,7 @@
     "**/next-env.d.ts",
     "/AGENTS.md",
     "/AGENTS.template.md",
-    "/.github/SECURITY.md"
+    "/.github/SECURITY.md",
+    "plugins/zaku/bin/rules.js"
   ]
 }

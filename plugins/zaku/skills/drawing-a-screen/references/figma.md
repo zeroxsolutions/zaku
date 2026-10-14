@@ -3,6 +3,26 @@
 What has to survive a swap of drawing tool: frames sit in Sections by screen and state, hold instances
 of published components, and change those instances only through their properties.
 
+## Reaching the file
+
+A run reaches the file through zaku's MCP server, which drives the zaku plugin open in the file, or
+through Figma's MCP server. Each step is one call either way:
+
+| Step              | zaku's server                  | Figma's server                                                                                                      |
+| ----------------- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| Write a state     | `run_script`, `mode: "strict"` | `use_figma`, then the rules script for the page written                                                             |
+| Check a page      | `check_rules`, `scope: "page"` | `zaku rules script --page <page>` run through `use_figma`, its answer saved and read by `zaku check --input <file>` |
+| Read nodes        | `read_nodes`                   | `use_figma` returning what it read                                                                                  |
+| Render a frame    | `get_screenshot`               | `get_screenshot`                                                                                                    |
+| Bring an image in | the steps under Images         | the steps under Images                                                                                              |
+
+`run_script` rolls a write back when the rules find something; `use_figma` keeps it, so over Figma's
+server the run fixes each finding in a further write. The rules script switches to the page it is
+given with `setCurrentPageAsync`; `use_figma` starts every call on the first page and refuses
+`loadAllPagesAsync`, so a run checks one page per call. Its answer gives the total and the count per
+check, and as many findings as fit the reply; `zaku check --input` names each check whose findings it
+left out.
+
 ## Sections
 
 A Section is `figma.createSection()`, named with `.name`. A screen Section contains its state Sections,

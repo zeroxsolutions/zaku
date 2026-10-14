@@ -4,6 +4,20 @@ What has to survive a swap of drawing tool: a component is its variants named as
 its content regions are filled by a designer, its mapping lines travel with it, and it lives with its
 feature until a second feature needs it.
 
+## Reaching the file
+
+A run reaches the file through zaku's MCP server, which drives the zaku plugin open in the file, or
+through Figma's MCP server:
+
+| Step          | zaku's server                  | Figma's server                                                                                        |
+| ------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Write         | `run_script`, `mode: "strict"` | `use_figma`, then the rules script for the page written                                               |
+| Check a page  | `check_rules`, `scope: "page"` | `zaku rules script --page <page>` through `use_figma`, its answer read by `zaku check --input <file>` |
+| Render a node | `get_screenshot`               | `get_screenshot`                                                                                      |
+
+Strict mode rolls a finding back; `use_figma` keeps every write, so over Figma's server a finding is
+fixed in the next write.
+
 ## Making the set
 
 - Draw each variant as a `ComponentNode` (`figma.createComponent()` or `figma.createComponentFromNode`),

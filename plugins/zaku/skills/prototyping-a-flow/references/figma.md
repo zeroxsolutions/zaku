@@ -3,6 +3,20 @@
 What has to survive a swap of drawing tool: connections that mirror the map, overlays for sheets and
 dialogs, component states as variants, and transitions recorded as named tokens.
 
+## Reaching the file
+
+A run reaches the file through zaku's MCP server, which drives the zaku plugin open in the file, or
+through Figma's MCP server:
+
+| Step          | zaku's server                  | Figma's server                                                                                        |
+| ------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| Write         | `run_script`, `mode: "strict"` | `use_figma`, then the rules script for the page written                                               |
+| Check a page  | `check_rules`, `scope: "page"` | `zaku rules script --page <page>` through `use_figma`, its answer read by `zaku check --input <file>` |
+| Render a node | `get_screenshot`               | `get_screenshot`                                                                                      |
+
+Strict mode rolls a finding back; `use_figma` keeps every write, so over Figma's server a finding is
+fixed in the next write.
+
 ## Connections
 
 - `page.flowStartingPoints` is a list of `{ nodeId, name }`; set it with each root's first-state frame

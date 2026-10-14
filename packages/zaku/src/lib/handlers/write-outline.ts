@@ -9,6 +9,7 @@ import { zakuConfigSchema } from '../schema/zaku-config.js';
 import { readDesignFile, readOptionalDesignFile } from '../repositories/design-file.js';
 import { designPaths } from '../repositories/design-paths.js';
 import type { FigmaRest } from '../adapters/figma-rest.js';
+import { COVER, DOCUMENTATION_COMPONENTS_PAGE } from '../domain/documentation-measures.js';
 import { librarySnapshotSchema } from '../domain/library.js';
 import { FigmaFileKeyMissing } from '../domain/errors/index.js';
 import { indexScreens, loadMaps, type LoadedMap, type ScreenRef } from '../repositories/feature-maps.js';
@@ -33,6 +34,9 @@ export interface ListedFrame {
   containers: string[];
   start: boolean;
 }
+
+/** The page choosing-a-visual-direction draws its boards on. */
+const DIRECTIONS_PAGE = 'Visual direction';
 
 /** Depth 4 reaches frames inside a page's screen and state Sections. */
 const INDEX_DEPTH = 4;
@@ -82,6 +86,17 @@ export function looksLikeScreenFrame(name: string): boolean {
   return name.includes('/');
 }
 
+/**
+ * Whether a page can hold screens. A library's pages (its cover, its documentation components, a
+ * component's page opening with U+2756), a product component's `<kind> / <Component>` page, a divider
+ * and the visual directions hold frames named with slashes that are no screen, and a library built into
+ * the product file puts them beside its feature pages.
+ */
+export function holdsScreens(page: string): boolean {
+  if (page === COVER.page || page === DOCUMENTATION_COMPONENTS_PAGE || page === DIRECTIONS_PAGE) return false;
+  return !page.startsWith('\u2756 ') && !page.includes(' / ') && !/^-+$/.test(page);
+}
+
 export async function runOutline(options: {
   root: string;
   rest: FigmaRest;
@@ -101,7 +116,7 @@ export async function runOutline(options: {
   const listed = listFrames(file.document);
   const resolved = new Map<string, { frame: ListedFrame; parsed: ParsedFrameName; ref: ScreenRef }>();
   const unmapped: Unmapped = { fileVersion: file.version, frames: [] };
-  for (const frame of listed) {
+  for (const frame of listed.filter((listed) => holdsScreens(listed.page))) {
     const parsed = parseFrameName(frame.name, config.targets);
     if (!parsed) {
       if (looksLikeScreenFrame(frame.name)) unmapped.frames.push({ nodeId: frame.id, name: frame.name });

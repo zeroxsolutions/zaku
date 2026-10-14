@@ -9784,6 +9784,7 @@ import { readFile as readFile5 } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { homedir as homedir2 } from 'node:os';
 import { dirname as dirname4, join as join7, resolve as resolve2, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // node_modules/.pnpm/commander@15.0.0/node_modules/commander/lib/error.js
 var CommanderError = class extends Error {
@@ -13191,7 +13192,32 @@ async function exportVariables(figma, options) {
       fontStyle: style.fontName.style,
       fontSize: style.fontSize,
     }));
-    return { exportedAt: /* @__PURE__ */ new Date().toISOString(), variables, textStyles, tokens };
+    const components = [];
+    if (options.local) {
+      for (const page of figma.root.children.filter(
+        (candidate) => options.page === void 0 || candidate.name === options.page,
+      )) {
+        await page.loadAsync();
+        for (const node2 of page.findAllWithCriteria({ types: ['COMPONENT_SET', 'COMPONENT'] })) {
+          if (node2.type === 'COMPONENT' && node2.parent?.type === 'COMPONENT_SET') continue;
+          components.push({
+            id: node2.id,
+            key: node2.key,
+            name: node2.name,
+            page: page.name,
+            description: node2.description ?? '',
+            set: node2.type === 'COMPONENT_SET',
+          });
+        }
+      }
+    }
+    return {
+      exportedAt: /* @__PURE__ */ new Date().toISOString(),
+      variables,
+      textStyles,
+      tokens,
+      ...(options.local ? { components } : {}),
+    };
   } finally {
     holder.remove();
   }
@@ -32956,6 +32982,9 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 
+// packages/zaku/dist/lib/domain/copy-defaults.js
+var DEFAULT_COPY = { locales: ['en'], currencies: [] };
+
 // packages/zaku/dist/lib/schema/zaku-config.js
 var PLATFORM_FAMILIES = ['web', 'ios', 'android', 'macos', 'windows', 'gnome', 'kde'];
 var DEFAULT_INTERACTIVE = [
@@ -33091,7 +33120,6 @@ var copySchema = external_exports
       .default([]),
   })
   .strict();
-var DEFAULT_COPY = { locales: ['en'], currencies: [] };
 var zakuConfigSchema = external_exports
   .object({
     product: external_exports.string().min(1),
@@ -33404,19 +33432,25 @@ function currencySymbols(locales, currency) {
     ),
   );
 }
-function copyPolicy(copy2, carried) {
+function resolveCopy(copy2) {
   const scripts = new Set(
     copy2.locales.flatMap((locale) => {
       const script = new Intl.Locale(locale).maximize().script ?? '';
       return WRITTEN_IN[script] ?? [script];
     }),
   );
-  const symbols = copy2.currencies.flatMap((currency) => currencySymbols(copy2.locales, currency));
-  const languages = new Set(copy2.locales.map((locale) => new Intl.Locale(locale).language));
   return {
-    scripts: [...scripts].filter(Boolean).map((script) => new RegExp(`^\\p{Script_Extensions=${script}}$`, 'u')),
-    extra: new Set([...symbols, ...carried].flatMap((text) => [...text.normalize('NFC')])),
-    tells: [...languages].flatMap((language) => COPY_TELLS[language] ?? []),
+    scripts: [...scripts].filter(Boolean),
+    symbols: [...new Set(copy2.currencies.flatMap((currency) => currencySymbols(copy2.locales, currency)))],
+    languages: [...new Set(copy2.locales.map((locale) => new Intl.Locale(locale).language))],
+  };
+}
+function copyPolicy(copy2, carried) {
+  const resolved = 'scripts' in copy2 ? copy2 : resolveCopy(copy2);
+  return {
+    scripts: resolved.scripts.map((script) => new RegExp(`^\\p{Script_Extensions=${script}}$`, 'u')),
+    extra: new Set([...resolved.symbols, ...carried].flatMap((text) => [...text.normalize('NFC')])),
+    tells: resolved.languages.flatMap((language) => COPY_TELLS[language] ?? []),
   };
 }
 function allowed(char, policy) {
@@ -34887,11 +34921,38 @@ var variablePartSchema = external_exports
         })
         .strict(),
     ),
+    /** The components the file itself holds, for a library that lives in the product file and is not published. */
+    components: external_exports
+      .array(
+        external_exports
+          .object({
+            id: external_exports.string(),
+            key: external_exports.string(),
+            name: external_exports.string(),
+            page: external_exports.string(),
+            description: external_exports.string(),
+            set: external_exports.boolean(),
+          })
+          .strict(),
+      )
+      .optional(),
   })
   .strict();
 var librarySnapshotSchema = libraryPartSchema
   .extend({ source: external_exports.string(), version: external_exports.string() })
   .strict();
+
+// packages/zaku/dist/lib/domain/library-parts.js
+function mergeParts(parts) {
+  const [first, ...rest] = parts;
+  if (!first) throw new Error('mergeParts needs at least one export');
+  if (rest.length === 0) return first;
+  const seen = /* @__PURE__ */ new Set();
+  const components = parts
+    .flatMap((part) => part.components ?? [])
+    .filter((component2) => !seen.has(component2.id) && seen.add(component2.id));
+  return { ...first, components };
+}
 
 // packages/zaku/dist/lib/domain/findings.js
 var CHECK_IDS = [
@@ -34931,6 +34992,28 @@ var findingSchema = external_exports
     field: external_exports.string().optional().describe('The property at fault, such as fill or paddingTop'),
   })
   .strict();
+
+// packages/zaku/dist/lib/domain/rules-result.js
+var rulesResultSchema = external_exports
+  .object({
+    checked: external_exports.number().int(),
+    total: external_exports.number().int(),
+    counts: external_exports.record(external_exports.string(), external_exports.number().int()),
+    findings: external_exports.array(findingSchema),
+    cut: external_exports.boolean(),
+  })
+  .strict();
+function leftOut(result) {
+  if (!result.cut) return [];
+  return Object.entries(result.counts).flatMap(([check2, count]) => {
+    const left = count - result.findings.filter((finding) => finding.check === check2).length;
+    return left > 0
+      ? [
+          `${left} more ${check2} finding${left === 1 ? '' : 's'} the reply left out; fix these and run the script again`,
+        ]
+      : [];
+  });
+}
 
 // packages/zaku/dist/lib/domain/run-checks.js
 function runChecks(input2, checks) {
@@ -36475,9 +36558,23 @@ function itemsOf(root, at) {
   visit2(root, '');
   return out;
 }
+function asPublished(component2) {
+  return {
+    node_id: component2.id,
+    key: component2.key,
+    name: component2.name,
+    description: component2.description,
+    containing_frame: { pageName: component2.page },
+  };
+}
 async function readLibrary(options) {
   const { rest, fileKey, part } = options;
-  const listed = await rest.published(fileKey);
+  const listed = part.components
+    ? {
+        sets: part.components.filter((component2) => component2.set).map(asPublished),
+        components: part.components.filter((component2) => !component2.set).map(asPublished),
+      }
+    : await rest.published(fileKey);
   const published = [
     ...listed.sets,
     ...listed.components.filter((component2) => !component2.containing_frame?.containingComponentSet),
@@ -36569,443 +36666,6 @@ var import_tsyringe4 = __toESM(require_cjs(), 1);
 var import_yaml2 = __toESM(require_dist(), 1);
 import { mkdir as mkdir2, rm, writeFile as writeFile4 } from 'node:fs/promises';
 import { dirname as dirname3 } from 'node:path';
-
-// packages/zaku/dist/lib/domain/layer-names.js
-var DEFAULT_NAMES = {
-  FRAME: ['Frame'],
-  GROUP: ['Group'],
-  SECTION: ['Section'],
-  COMPONENT: ['Component'],
-  COMPONENT_SET: ['Component'],
-  RECTANGLE: ['Rectangle'],
-  ELLIPSE: ['Ellipse'],
-  LINE: ['Line'],
-  POLYGON: ['Polygon'],
-  STAR: ['Star'],
-  VECTOR: ['Vector'],
-  SLICE: ['Slice'],
-  BOOLEAN_OPERATION: ['Union', 'Subtract', 'Intersect', 'Exclude'],
-};
-function isDefaultLayerName(type, name) {
-  const match = /^(.+?)(?: \d+)?$/.exec(name);
-  return match !== null && (DEFAULT_NAMES[type] ?? []).includes(match[1] ?? '');
-}
-
-// packages/zaku/dist/lib/adapters/figma-rest-outline.js
-var CONTAINERS = /* @__PURE__ */ new Set(['FRAME', 'GROUP', 'SECTION']);
-var PICTURE_NAME = /\b(photo|image|picture|avatar|cover|thumbnail|hero|banner|illustration)\b/i;
-var visiblePaint = (paints) => (paints ?? []).some((paint) => paint.visible !== false && (paint.opacity ?? 1) > 0);
-var holdsImage = (node2) => (node2.fills ?? []).some((paint) => paint.type === 'IMAGE' && paint.visible !== false);
-var shown = (node2) => (node2.children ?? []).filter((child) => child.visible !== false);
-function signatureOf(node2) {
-  const children = shown(node2);
-  return children.length === 0 ? node2.type : `${node2.type}(${children.map(signatureOf).join(',')})`;
-}
-function linksOf(node2) {
-  const links = [];
-  for (const interaction of node2.interactions ?? []) {
-    for (const action of interaction.actions ?? []) {
-      if (action?.type === 'BACK') links.push({ nodeId: node2.id, to: 'back' });
-      else if (action?.type === 'NODE' && action.destinationId)
-        links.push({ nodeId: node2.id, to: { nodeId: action.destinationId } });
-    }
-  }
-  if (links.length === 0 && node2.transitionNodeID)
-    links.push({ nodeId: node2.id, to: { nodeId: node2.transitionNodeID } });
-  return links;
-}
-function outlineFrame(frame, where, ctx) {
-  const origin = frame.absoluteBoundingBox ?? { x: 0, y: 0, width: 0, height: 0 };
-  const instances = [];
-  const texts = [];
-  const raw = [];
-  const images2 = [];
-  const defaultNames = [];
-  const links = [];
-  const relative = (node2) => {
-    const box = node2.absoluteBoundingBox;
-    return box ? { x: box.x - origin.x, y: box.y - origin.y, width: box.width, height: box.height } : null;
-  };
-  const componentOf = (node2) => {
-    const meta3 = ctx.components[node2.componentId ?? ''];
-    const setName = meta3?.componentSetId ? ctx.componentSets[meta3.componentSetId]?.name : void 0;
-    return setName ?? meta3?.name ?? node2.name;
-  };
-  const picture = (node2) => {
-    if (node2.type === 'INSTANCE' || node2.type === 'TEXT') return;
-    const filled = holdsImage(node2);
-    if (filled || PICTURE_NAME.test(node2.name)) images2.push({ nodeId: node2.id, name: node2.name, filled });
-  };
-  const inside = (node2, path2, instance) => {
-    for (const child of shown(node2)) {
-      const childPath = path2 ? `${path2}/${child.name}` : child.name;
-      picture(child);
-      links.push(...linksOf(child));
-      if (child.type === 'INSTANCE') {
-        const component2 = componentOf(child);
-        instance.nested.push({
-          nodeId: child.id,
-          path: childPath,
-          componentKey: ctx.components[child.componentId ?? '']?.key ?? '',
-          component: component2,
-          interactive: ctx.interactive.has(component2),
-          bounds: relative(child),
-        });
-      } else if (child.type === 'TEXT') {
-        instance.texts.push({
-          nodeId: child.id,
-          path: childPath,
-          characters: child.characters ?? '',
-        });
-      }
-      inside(child, childPath, instance);
-    }
-  };
-  const instanceOf = (node2) => {
-    const meta3 = ctx.components[node2.componentId ?? ''];
-    const component2 = componentOf(node2);
-    const properties = {};
-    const swaps = [];
-    for (const [name, property] of Object.entries(node2.componentProperties ?? {})) {
-      properties[name.replace(/#[^#]*$/, '')] = property.value;
-      if (property.type === 'INSTANCE_SWAP' && typeof property.value === 'string') {
-        const key = ctx.components[property.value]?.key;
-        if (key) swaps.push(key);
-      }
-    }
-    const instance = {
-      nodeId: node2.id,
-      component: component2,
-      componentKey: meta3?.key ?? '',
-      variant: meta3?.name ?? '',
-      properties,
-      swaps,
-      overrides: (node2.overrides ?? []).map((override) => ({
-        nodeId: override.id,
-        fields: override.overriddenFields,
-      })),
-      nested: [],
-      texts: [],
-      interactive: ctx.interactive.has(component2),
-      local: meta3?.remote === false,
-      bounds: relative(node2),
-      sizing: {
-        horizontal: node2.layoutSizingHorizontal ?? 'FIXED',
-        vertical: node2.layoutSizingVertical ?? 'FIXED',
-      },
-    };
-    inside(node2, '', instance);
-    return instance;
-  };
-  const walk = (node2) => {
-    links.push(...linksOf(node2));
-    picture(node2);
-    if (node2.type === 'INSTANCE') {
-      instances.push(instanceOf(node2));
-      return;
-    }
-    if (isDefaultLayerName(node2.type, node2.name)) defaultNames.push({ nodeId: node2.id, name: node2.name });
-    const rawEntry = (reason) => ({
-      nodeId: node2.id,
-      name: node2.name,
-      type: node2.type,
-      reason,
-      signature: signatureOf(node2),
-    });
-    if (node2.type === 'TEXT') {
-      const styleId = node2.styles?.['text'];
-      const styleKey = styleId ? (ctx.styles[styleId]?.key ?? null) : null;
-      texts.push({ nodeId: node2.id, characters: node2.characters ?? '', styleKey });
-      if (styleKey === null) raw.push(rawEntry('a text with no library text style'));
-      return;
-    }
-    if (CONTAINERS.has(node2.type)) {
-      const painted =
-        visiblePaint(node2.fills) ||
-        visiblePaint(node2.strokes) ||
-        (node2.effects ?? []).some((effect) => effect.visible !== false);
-      if (painted) raw.push(rawEntry('a container with its own fill, stroke or effect'));
-      for (const child of shown(node2)) walk(child);
-      return;
-    }
-    raw.push(rawEntry('a shape outside the library'));
-  };
-  links.push(...linksOf(frame));
-  for (const child of shown(frame)) walk(child);
-  return {
-    nodeId: frame.id,
-    name: frame.name,
-    target: where.target,
-    state: where.state,
-    size: { width: origin.width, height: origin.height },
-    containers: where.containers,
-    start: where.start,
-    instances,
-    texts,
-    raw,
-    images: images2,
-    defaultNames,
-    links,
-  };
-}
-
-// packages/zaku/dist/lib/handlers/write-outline.js
-var INDEX_DEPTH = 4;
-function listFrames(document) {
-  const out = [];
-  for (const page of document.children ?? []) {
-    if (page.type !== 'CANVAS') continue;
-    const starts = new Set((page.flowStartingPoints ?? []).map((point) => point.nodeId));
-    const walk = (node2, containers) => {
-      for (const child of node2.children ?? []) {
-        if (child.type === 'FRAME')
-          out.push({
-            id: child.id,
-            name: child.name,
-            page: page.name,
-            containers,
-            start: starts.has(child.id),
-          });
-        else if (child.type === 'SECTION') walk(child, [...containers, child.name]);
-      }
-    };
-    walk(page, []);
-  }
-  return out;
-}
-function resolveFrame(frame, parsed, maps) {
-  const candidates = [...indexScreens(maps).values()].filter((ref) => ref.screen.title === parsed.title);
-  const pageFeature = frame.page.trim().toLowerCase().replace(/\s+/g, '-');
-  if (maps.some((loaded) => loaded.map.feature === pageFeature))
-    return candidates.find((ref) => ref.feature === pageFeature);
-  return candidates.length === 1 ? candidates[0] : void 0;
-}
-function looksLikeScreenFrame(name) {
-  return name.includes('/');
-}
-async function runOutline(options) {
-  const paths = designPaths(options.root);
-  const config2 = await readDesignFile(paths.config, zakuConfigSchema);
-  const fileKey = config2.figma.product;
-  if (fileKey === void 0) throw new FigmaFileKeyMissing('figma.product');
-  const { maps, errors } = await loadMaps(paths.maps);
-  if (errors[0]) throw errors[0];
-  const digests = new Map(maps.map((loaded) => [loaded.map.feature, loaded.digest]));
-  const library = await readOptionalDesignFile(paths.library, librarySnapshotSchema);
-  const existing = await loadOutlines(paths.outline);
-  const file2 = await options.rest.file(fileKey, INDEX_DEPTH);
-  const listed = listFrames(file2.document);
-  const resolved = /* @__PURE__ */ new Map();
-  const unmapped = { fileVersion: file2.version, frames: [] };
-  for (const frame of listed) {
-    const parsed = parseFrameName(frame.name, config2.targets);
-    if (!parsed) {
-      if (looksLikeScreenFrame(frame.name)) unmapped.frames.push({ nodeId: frame.id, name: frame.name });
-      continue;
-    }
-    const ref = resolveFrame(frame, parsed, maps);
-    if (ref) resolved.set(frame.id, { frame, parsed, ref });
-    else unmapped.frames.push({ nodeId: frame.id, name: frame.name });
-  }
-  const outlined = new Set(existing.outlines.flatMap((outline) => outline.frames.map((frame) => frame.nodeId)));
-  const drawnScreens = new Set([...resolved.values()].map(({ ref }) => `${ref.feature}/${ref.id}`));
-  const current =
-    existing.outlines.every(
-      (outline) =>
-        outline.fileVersion === file2.version &&
-        outline.mapDigest === digests.get(outline.feature) &&
-        outline.libraryVersion === (library?.version ?? null),
-    ) &&
-    [...resolved.keys()].every((id2) => outlined.has(id2)) &&
-    existing.outlines.every((outline) => drawnScreens.has(`${outline.feature}/${outline.screen}`));
-  if (options.frames === null && existing.outlines.length > 0 && current) {
-    return { skipped: true, read: 0, written: [], unmapped: unmapped.frames.length };
-  }
-  const ids = options.frames ?? [...resolved.keys()];
-  const response = ids.length > 0 ? await options.rest.nodes(fileKey, ids) : { version: file2.version, nodes: {} };
-  const byScreen = /* @__PURE__ */ new Map();
-  if (options.frames !== null) {
-    for (const outline of existing.outlines) byScreen.set(`${outline.feature}/${outline.screen}`, outline);
-  }
-  const interactive = new Set(config2.interactive);
-  for (const [id2, entry] of Object.entries(response.nodes)) {
-    const found = resolved.get(id2);
-    if (!entry || !found) continue;
-    const { frame: place, parsed, ref } = found;
-    const key = `${ref.feature}/${ref.id}`;
-    const outline = byScreen.get(key) ?? {
-      feature: ref.feature,
-      screen: ref.id,
-      source: fileKey,
-      fileVersion: file2.version,
-      mapDigest: '',
-      libraryVersion: null,
-      frames: [],
-    };
-    const frame = outlineFrame(
-      entry.document,
-      {
-        target: parsed.target.id,
-        state: parsed.state,
-        containers: place.containers,
-        start: place.start,
-      },
-      { ...entry, interactive },
-    );
-    outline.frames = [...outline.frames.filter((kept) => kept.nodeId !== id2), frame].sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-    outline.fileVersion = file2.version;
-    outline.mapDigest = digests.get(ref.feature) ?? '';
-    outline.libraryVersion = library?.version ?? null;
-    byScreen.set(key, outline);
-  }
-  if (options.frames === null) {
-    for (const outline of existing.outlines) {
-      if (!byScreen.has(`${outline.feature}/${outline.screen}`))
-        await rm(outlinePath(paths.outline, outline.feature, outline.screen), { force: true });
-    }
-  }
-  const written = [];
-  for (const outline of byScreen.values()) {
-    const path2 = outlinePath(paths.outline, outline.feature, outline.screen);
-    await mkdir2(dirname3(path2), { recursive: true });
-    await writeFile4(path2, (0, import_yaml2.stringify)(outline));
-    written.push(path2);
-  }
-  await mkdir2(paths.outline, { recursive: true });
-  await writeFile4(paths.unmapped, (0, import_yaml2.stringify)(unmapped));
-  return {
-    skipped: false,
-    read: ids.length,
-    written: written.sort(),
-    unmapped: unmapped.frames.length,
-  };
-}
-var WriteOutlineHandler = class WriteOutlineHandler2 {
-  rest;
-  command = WriteOutline;
-  constructor(rest) {
-    this.rest = rest;
-  }
-  handle(command) {
-    return runOutline({ root: command.root, rest: this.rest, frames: command.frames });
-  }
-};
-WriteOutlineHandler = __decorate2(
-  [
-    (0, import_tsyringe4.injectable)({ token: TOKENS.COMMAND_HANDLER }),
-    __param2(0, (0, import_tsyringe4.inject)(TOKENS.FIGMA_REST)),
-  ],
-  WriteOutlineHandler,
-);
-
-// packages/zaku/dist/lib/handlers/write-schemas.js
-var import_tsyringe5 = __toESM(require_cjs(), 1);
-
-// packages/zaku/dist/lib/schema/json-schemas.js
-function designJsonSchemas() {
-  return {
-    'zaku.schema.json': external_exports.toJSONSchema(zakuConfigSchema, { io: 'input' }),
-    'map.schema.json': external_exports.toJSONSchema(featureMapSchema, { io: 'input' }),
-  };
-}
-
-// packages/zaku/dist/lib/handlers/write-schemas.js
-var WriteSchemasHandler = class WriteSchemasHandler2 {
-  files;
-  command = WriteSchemas;
-  constructor(files2) {
-    this.files = files2;
-  }
-  handle(command) {
-    return this.files.write(command.out, designJsonSchemas());
-  }
-};
-WriteSchemasHandler = __decorate2(
-  [
-    (0, import_tsyringe5.injectable)({ token: TOKENS.COMMAND_HANDLER }),
-    __param2(0, (0, import_tsyringe5.inject)(TOKENS.JSON_SCHEMA_FILES)),
-  ],
-  WriteSchemasHandler,
-);
-
-// packages/zaku/dist/lib/handlers/record-budget-calls.js
-var import_tsyringe6 = __toESM(require_cjs(), 1);
-var RecordBudgetCallsHandler = class RecordBudgetCallsHandler2 {
-  ledger;
-  command = RecordBudgetCalls;
-  constructor(ledger) {
-    this.ledger = ledger;
-  }
-  handle(command) {
-    return this.ledger.record({
-      day: command.day,
-      seat: command.seat,
-      run: command.run,
-      kind: command.kind,
-      count: command.count,
-    });
-  }
-};
-RecordBudgetCallsHandler = __decorate2(
-  [
-    (0, import_tsyringe6.injectable)({ token: TOKENS.COMMAND_HANDLER }),
-    __param2(0, (0, import_tsyringe6.inject)(TOKENS.BUDGET_LEDGER)),
-  ],
-  RecordBudgetCallsHandler,
-);
-
-// packages/zaku/dist/lib/handlers/execute-script.js
-var import_tsyringe7 = __toESM(require_cjs(), 1);
-
-// packages/zaku/dist/lib/domain/reply-cut.js
-var REPLY_LIMIT = 2e4;
-var LISTED = 20;
-var cutIdsSchema = external_exports
-  .object({
-    count: external_exports.number().int(),
-    roots: external_exports.array(external_exports.string()),
-    more: external_exports.number().int(),
-  })
-  .strict()
-  .describe('The ids counted, as the reply was cut: the first roots listed, more of them left out');
-var printed = (value) => JSON.stringify(value, null, 2)?.length ?? 0;
-function cutIds(ids, parents) {
-  const set2 = new Set(ids);
-  const all = ids.filter((id2) => {
-    const parent = parents[id2];
-    return parent === void 0 || parent === null || !set2.has(parent);
-  });
-  return { count: ids.length, roots: all.slice(0, LISTED), more: all.length - Math.min(all.length, LISTED) };
-}
-function countByCheck(findings) {
-  const counts = {};
-  for (const finding of findings) counts[finding.check] = (counts[finding.check] ?? 0) + 1;
-  return counts;
-}
-function cutReply(reply, limit = REPLY_LIMIT) {
-  const { snapshotParents, ...rest } = reply;
-  if (printed(rest) < limit) return snapshotParents === void 0 ? reply : rest;
-  const parents = snapshotParents ?? {};
-  const valueBytes = printed(reply.value ?? null);
-  const cut = {
-    ...rest,
-    created: cutIds(reply.created, parents),
-    mutated: cutIds(reply.mutated, parents),
-    value: valueBytes < limit / 2 ? reply.value : { cut: true, bytes: valueBytes },
-    cut: true,
-  };
-  if (reply.findings !== void 0 && printed(reply.findings) >= limit / 4) {
-    cut.findings = reply.findings.slice(0, LISTED);
-    cut.findingCounts = countByCheck(reply.findings);
-  }
-  if (reply.untouchable !== void 0 && reply.untouchable.length > LISTED) {
-    cut.untouchable = reply.untouchable.slice(0, LISTED);
-    cut.untouchableCount = reply.untouchable.length;
-  }
-  return cut;
-}
 
 // packages/zaku/dist/lib/domain/documentation-measures.js
 var COVER = {
@@ -37383,6 +37043,448 @@ var DOCUMENTATION_PARTS = [
     paint: 'fill color/background, stroke 1 color/border, radius 14; no mode of its own',
   },
 ];
+
+// packages/zaku/dist/lib/domain/layer-names.js
+var DEFAULT_NAMES = {
+  FRAME: ['Frame'],
+  GROUP: ['Group'],
+  SECTION: ['Section'],
+  COMPONENT: ['Component'],
+  COMPONENT_SET: ['Component'],
+  RECTANGLE: ['Rectangle'],
+  ELLIPSE: ['Ellipse'],
+  LINE: ['Line'],
+  POLYGON: ['Polygon'],
+  STAR: ['Star'],
+  VECTOR: ['Vector'],
+  SLICE: ['Slice'],
+  BOOLEAN_OPERATION: ['Union', 'Subtract', 'Intersect', 'Exclude'],
+};
+function isDefaultLayerName(type, name) {
+  const match = /^(.+?)(?: \d+)?$/.exec(name);
+  return match !== null && (DEFAULT_NAMES[type] ?? []).includes(match[1] ?? '');
+}
+
+// packages/zaku/dist/lib/adapters/figma-rest-outline.js
+var CONTAINERS = /* @__PURE__ */ new Set(['FRAME', 'GROUP', 'SECTION']);
+var PICTURE_NAME = /\b(photo|image|picture|avatar|cover|thumbnail|hero|banner|illustration)\b/i;
+var visiblePaint = (paints) => (paints ?? []).some((paint) => paint.visible !== false && (paint.opacity ?? 1) > 0);
+var holdsImage = (node2) => (node2.fills ?? []).some((paint) => paint.type === 'IMAGE' && paint.visible !== false);
+var shown = (node2) => (node2.children ?? []).filter((child) => child.visible !== false);
+function signatureOf(node2) {
+  const children = shown(node2);
+  return children.length === 0 ? node2.type : `${node2.type}(${children.map(signatureOf).join(',')})`;
+}
+function linksOf(node2) {
+  const links = [];
+  for (const interaction of node2.interactions ?? []) {
+    for (const action of interaction.actions ?? []) {
+      if (action?.type === 'BACK') links.push({ nodeId: node2.id, to: 'back' });
+      else if (action?.type === 'NODE' && action.destinationId)
+        links.push({ nodeId: node2.id, to: { nodeId: action.destinationId } });
+    }
+  }
+  if (links.length === 0 && node2.transitionNodeID)
+    links.push({ nodeId: node2.id, to: { nodeId: node2.transitionNodeID } });
+  return links;
+}
+function outlineFrame(frame, where, ctx) {
+  const origin = frame.absoluteBoundingBox ?? { x: 0, y: 0, width: 0, height: 0 };
+  const instances = [];
+  const texts = [];
+  const raw = [];
+  const images2 = [];
+  const defaultNames = [];
+  const links = [];
+  const relative = (node2) => {
+    const box = node2.absoluteBoundingBox;
+    return box ? { x: box.x - origin.x, y: box.y - origin.y, width: box.width, height: box.height } : null;
+  };
+  const componentOf = (node2) => {
+    const meta3 = ctx.components[node2.componentId ?? ''];
+    const setName = meta3?.componentSetId ? ctx.componentSets[meta3.componentSetId]?.name : void 0;
+    return setName ?? meta3?.name ?? node2.name;
+  };
+  const picture = (node2) => {
+    if (node2.type === 'INSTANCE' || node2.type === 'TEXT') return;
+    const filled = holdsImage(node2);
+    if (filled || PICTURE_NAME.test(node2.name)) images2.push({ nodeId: node2.id, name: node2.name, filled });
+  };
+  const inside = (node2, path2, instance) => {
+    for (const child of shown(node2)) {
+      const childPath = path2 ? `${path2}/${child.name}` : child.name;
+      picture(child);
+      links.push(...linksOf(child));
+      if (child.type === 'INSTANCE') {
+        const component2 = componentOf(child);
+        instance.nested.push({
+          nodeId: child.id,
+          path: childPath,
+          componentKey: ctx.components[child.componentId ?? '']?.key ?? '',
+          component: component2,
+          interactive: ctx.interactive.has(component2),
+          bounds: relative(child),
+        });
+      } else if (child.type === 'TEXT') {
+        instance.texts.push({
+          nodeId: child.id,
+          path: childPath,
+          characters: child.characters ?? '',
+        });
+      }
+      inside(child, childPath, instance);
+    }
+  };
+  const instanceOf = (node2) => {
+    const meta3 = ctx.components[node2.componentId ?? ''];
+    const component2 = componentOf(node2);
+    const properties = {};
+    const swaps = [];
+    for (const [name, property] of Object.entries(node2.componentProperties ?? {})) {
+      properties[name.replace(/#[^#]*$/, '')] = property.value;
+      if (property.type === 'INSTANCE_SWAP' && typeof property.value === 'string') {
+        const key = ctx.components[property.value]?.key;
+        if (key) swaps.push(key);
+      }
+    }
+    const instance = {
+      nodeId: node2.id,
+      component: component2,
+      componentKey: meta3?.key ?? '',
+      variant: meta3?.name ?? '',
+      properties,
+      swaps,
+      overrides: (node2.overrides ?? []).map((override) => ({
+        nodeId: override.id,
+        fields: override.overriddenFields,
+      })),
+      nested: [],
+      texts: [],
+      interactive: ctx.interactive.has(component2),
+      local: meta3?.remote === false,
+      bounds: relative(node2),
+      sizing: {
+        horizontal: node2.layoutSizingHorizontal ?? 'FIXED',
+        vertical: node2.layoutSizingVertical ?? 'FIXED',
+      },
+    };
+    inside(node2, '', instance);
+    return instance;
+  };
+  const walk = (node2) => {
+    links.push(...linksOf(node2));
+    picture(node2);
+    if (node2.type === 'INSTANCE') {
+      instances.push(instanceOf(node2));
+      return;
+    }
+    if (isDefaultLayerName(node2.type, node2.name)) defaultNames.push({ nodeId: node2.id, name: node2.name });
+    const rawEntry = (reason) => ({
+      nodeId: node2.id,
+      name: node2.name,
+      type: node2.type,
+      reason,
+      signature: signatureOf(node2),
+    });
+    if (node2.type === 'TEXT') {
+      const styleId = node2.styles?.['text'];
+      const styleKey = styleId ? (ctx.styles[styleId]?.key ?? null) : null;
+      texts.push({ nodeId: node2.id, characters: node2.characters ?? '', styleKey });
+      if (styleKey === null) raw.push(rawEntry('a text with no library text style'));
+      return;
+    }
+    if (CONTAINERS.has(node2.type)) {
+      const painted =
+        visiblePaint(node2.fills) ||
+        visiblePaint(node2.strokes) ||
+        (node2.effects ?? []).some((effect) => effect.visible !== false);
+      if (painted) raw.push(rawEntry('a container with its own fill, stroke or effect'));
+      for (const child of shown(node2)) walk(child);
+      return;
+    }
+    raw.push(rawEntry('a shape outside the library'));
+  };
+  links.push(...linksOf(frame));
+  for (const child of shown(frame)) walk(child);
+  return {
+    nodeId: frame.id,
+    name: frame.name,
+    target: where.target,
+    state: where.state,
+    size: { width: origin.width, height: origin.height },
+    containers: where.containers,
+    start: where.start,
+    instances,
+    texts,
+    raw,
+    images: images2,
+    defaultNames,
+    links,
+  };
+}
+
+// packages/zaku/dist/lib/handlers/write-outline.js
+var DIRECTIONS_PAGE = 'Visual direction';
+var INDEX_DEPTH = 4;
+function listFrames(document) {
+  const out = [];
+  for (const page of document.children ?? []) {
+    if (page.type !== 'CANVAS') continue;
+    const starts = new Set((page.flowStartingPoints ?? []).map((point) => point.nodeId));
+    const walk = (node2, containers) => {
+      for (const child of node2.children ?? []) {
+        if (child.type === 'FRAME')
+          out.push({
+            id: child.id,
+            name: child.name,
+            page: page.name,
+            containers,
+            start: starts.has(child.id),
+          });
+        else if (child.type === 'SECTION') walk(child, [...containers, child.name]);
+      }
+    };
+    walk(page, []);
+  }
+  return out;
+}
+function resolveFrame(frame, parsed, maps) {
+  const candidates = [...indexScreens(maps).values()].filter((ref) => ref.screen.title === parsed.title);
+  const pageFeature = frame.page.trim().toLowerCase().replace(/\s+/g, '-');
+  if (maps.some((loaded) => loaded.map.feature === pageFeature))
+    return candidates.find((ref) => ref.feature === pageFeature);
+  return candidates.length === 1 ? candidates[0] : void 0;
+}
+function looksLikeScreenFrame(name) {
+  return name.includes('/');
+}
+function holdsScreens(page) {
+  if (page === COVER.page || page === DOCUMENTATION_COMPONENTS_PAGE || page === DIRECTIONS_PAGE) return false;
+  return !page.startsWith('\u2756 ') && !page.includes(' / ') && !/^-+$/.test(page);
+}
+async function runOutline(options) {
+  const paths = designPaths(options.root);
+  const config2 = await readDesignFile(paths.config, zakuConfigSchema);
+  const fileKey = config2.figma.product;
+  if (fileKey === void 0) throw new FigmaFileKeyMissing('figma.product');
+  const { maps, errors } = await loadMaps(paths.maps);
+  if (errors[0]) throw errors[0];
+  const digests = new Map(maps.map((loaded) => [loaded.map.feature, loaded.digest]));
+  const library = await readOptionalDesignFile(paths.library, librarySnapshotSchema);
+  const existing = await loadOutlines(paths.outline);
+  const file2 = await options.rest.file(fileKey, INDEX_DEPTH);
+  const listed = listFrames(file2.document);
+  const resolved = /* @__PURE__ */ new Map();
+  const unmapped = { fileVersion: file2.version, frames: [] };
+  for (const frame of listed.filter((listed2) => holdsScreens(listed2.page))) {
+    const parsed = parseFrameName(frame.name, config2.targets);
+    if (!parsed) {
+      if (looksLikeScreenFrame(frame.name)) unmapped.frames.push({ nodeId: frame.id, name: frame.name });
+      continue;
+    }
+    const ref = resolveFrame(frame, parsed, maps);
+    if (ref) resolved.set(frame.id, { frame, parsed, ref });
+    else unmapped.frames.push({ nodeId: frame.id, name: frame.name });
+  }
+  const outlined = new Set(existing.outlines.flatMap((outline) => outline.frames.map((frame) => frame.nodeId)));
+  const drawnScreens = new Set([...resolved.values()].map(({ ref }) => `${ref.feature}/${ref.id}`));
+  const current =
+    existing.outlines.every(
+      (outline) =>
+        outline.fileVersion === file2.version &&
+        outline.mapDigest === digests.get(outline.feature) &&
+        outline.libraryVersion === (library?.version ?? null),
+    ) &&
+    [...resolved.keys()].every((id2) => outlined.has(id2)) &&
+    existing.outlines.every((outline) => drawnScreens.has(`${outline.feature}/${outline.screen}`));
+  if (options.frames === null && existing.outlines.length > 0 && current) {
+    return { skipped: true, read: 0, written: [], unmapped: unmapped.frames.length };
+  }
+  const ids = options.frames ?? [...resolved.keys()];
+  const response = ids.length > 0 ? await options.rest.nodes(fileKey, ids) : { version: file2.version, nodes: {} };
+  const byScreen = /* @__PURE__ */ new Map();
+  if (options.frames !== null) {
+    for (const outline of existing.outlines) byScreen.set(`${outline.feature}/${outline.screen}`, outline);
+  }
+  const interactive = new Set(config2.interactive);
+  for (const [id2, entry] of Object.entries(response.nodes)) {
+    const found = resolved.get(id2);
+    if (!entry || !found) continue;
+    const { frame: place, parsed, ref } = found;
+    const key = `${ref.feature}/${ref.id}`;
+    const outline = byScreen.get(key) ?? {
+      feature: ref.feature,
+      screen: ref.id,
+      source: fileKey,
+      fileVersion: file2.version,
+      mapDigest: '',
+      libraryVersion: null,
+      frames: [],
+    };
+    const frame = outlineFrame(
+      entry.document,
+      {
+        target: parsed.target.id,
+        state: parsed.state,
+        containers: place.containers,
+        start: place.start,
+      },
+      { ...entry, interactive },
+    );
+    outline.frames = [...outline.frames.filter((kept) => kept.nodeId !== id2), frame].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+    outline.fileVersion = file2.version;
+    outline.mapDigest = digests.get(ref.feature) ?? '';
+    outline.libraryVersion = library?.version ?? null;
+    byScreen.set(key, outline);
+  }
+  if (options.frames === null) {
+    for (const outline of existing.outlines) {
+      if (!byScreen.has(`${outline.feature}/${outline.screen}`))
+        await rm(outlinePath(paths.outline, outline.feature, outline.screen), { force: true });
+    }
+  }
+  const written = [];
+  for (const outline of byScreen.values()) {
+    const path2 = outlinePath(paths.outline, outline.feature, outline.screen);
+    await mkdir2(dirname3(path2), { recursive: true });
+    await writeFile4(path2, (0, import_yaml2.stringify)(outline));
+    written.push(path2);
+  }
+  await mkdir2(paths.outline, { recursive: true });
+  await writeFile4(paths.unmapped, (0, import_yaml2.stringify)(unmapped));
+  return {
+    skipped: false,
+    read: ids.length,
+    written: written.sort(),
+    unmapped: unmapped.frames.length,
+  };
+}
+var WriteOutlineHandler = class WriteOutlineHandler2 {
+  rest;
+  command = WriteOutline;
+  constructor(rest) {
+    this.rest = rest;
+  }
+  handle(command) {
+    return runOutline({ root: command.root, rest: this.rest, frames: command.frames });
+  }
+};
+WriteOutlineHandler = __decorate2(
+  [
+    (0, import_tsyringe4.injectable)({ token: TOKENS.COMMAND_HANDLER }),
+    __param2(0, (0, import_tsyringe4.inject)(TOKENS.FIGMA_REST)),
+  ],
+  WriteOutlineHandler,
+);
+
+// packages/zaku/dist/lib/handlers/write-schemas.js
+var import_tsyringe5 = __toESM(require_cjs(), 1);
+
+// packages/zaku/dist/lib/schema/json-schemas.js
+function designJsonSchemas() {
+  return {
+    'zaku.schema.json': external_exports.toJSONSchema(zakuConfigSchema, { io: 'input' }),
+    'map.schema.json': external_exports.toJSONSchema(featureMapSchema, { io: 'input' }),
+  };
+}
+
+// packages/zaku/dist/lib/handlers/write-schemas.js
+var WriteSchemasHandler = class WriteSchemasHandler2 {
+  files;
+  command = WriteSchemas;
+  constructor(files2) {
+    this.files = files2;
+  }
+  handle(command) {
+    return this.files.write(command.out, designJsonSchemas());
+  }
+};
+WriteSchemasHandler = __decorate2(
+  [
+    (0, import_tsyringe5.injectable)({ token: TOKENS.COMMAND_HANDLER }),
+    __param2(0, (0, import_tsyringe5.inject)(TOKENS.JSON_SCHEMA_FILES)),
+  ],
+  WriteSchemasHandler,
+);
+
+// packages/zaku/dist/lib/handlers/record-budget-calls.js
+var import_tsyringe6 = __toESM(require_cjs(), 1);
+var RecordBudgetCallsHandler = class RecordBudgetCallsHandler2 {
+  ledger;
+  command = RecordBudgetCalls;
+  constructor(ledger) {
+    this.ledger = ledger;
+  }
+  handle(command) {
+    return this.ledger.record({
+      day: command.day,
+      seat: command.seat,
+      run: command.run,
+      kind: command.kind,
+      count: command.count,
+    });
+  }
+};
+RecordBudgetCallsHandler = __decorate2(
+  [
+    (0, import_tsyringe6.injectable)({ token: TOKENS.COMMAND_HANDLER }),
+    __param2(0, (0, import_tsyringe6.inject)(TOKENS.BUDGET_LEDGER)),
+  ],
+  RecordBudgetCallsHandler,
+);
+
+// packages/zaku/dist/lib/handlers/execute-script.js
+var import_tsyringe7 = __toESM(require_cjs(), 1);
+
+// packages/zaku/dist/lib/domain/reply-cut.js
+var REPLY_LIMIT = 2e4;
+var LISTED = 20;
+var cutIdsSchema = external_exports
+  .object({
+    count: external_exports.number().int(),
+    roots: external_exports.array(external_exports.string()),
+    more: external_exports.number().int(),
+  })
+  .strict()
+  .describe('The ids counted, as the reply was cut: the first roots listed, more of them left out');
+var printed = (value) => JSON.stringify(value, null, 2)?.length ?? 0;
+function cutIds(ids, parents) {
+  const set2 = new Set(ids);
+  const all = ids.filter((id2) => {
+    const parent = parents[id2];
+    return parent === void 0 || parent === null || !set2.has(parent);
+  });
+  return { count: ids.length, roots: all.slice(0, LISTED), more: all.length - Math.min(all.length, LISTED) };
+}
+function countByCheck(findings) {
+  const counts = {};
+  for (const finding of findings) counts[finding.check] = (counts[finding.check] ?? 0) + 1;
+  return counts;
+}
+function cutReply(reply, limit = REPLY_LIMIT) {
+  const { snapshotParents, ...rest } = reply;
+  if (printed(rest) < limit) return snapshotParents === void 0 ? reply : rest;
+  const parents = snapshotParents ?? {};
+  const valueBytes = printed(reply.value ?? null);
+  const cut = {
+    ...rest,
+    created: cutIds(reply.created, parents),
+    mutated: cutIds(reply.mutated, parents),
+    value: valueBytes < limit / 2 ? reply.value : { cut: true, bytes: valueBytes },
+    cut: true,
+  };
+  if (reply.findings !== void 0 && printed(reply.findings) >= limit / 4) {
+    cut.findings = reply.findings.slice(0, LISTED);
+    cut.findingCounts = countByCheck(reply.findings);
+  }
+  if (reply.untouchable !== void 0 && reply.untouchable.length > LISTED) {
+    cut.untouchable = reply.untouchable.slice(0, LISTED);
+    cut.untouchableCount = reply.untouchable.length;
+  }
+  return cut;
+}
 
 // packages/zaku/dist/lib/domain/documentation-rule.js
 var ENTRY_PAGE_PREFIX = '\u2756 ';
@@ -38022,7 +38124,7 @@ function refusalOf(error62) {
 }
 
 // packages/zaku/dist/entrypoints/cli/main.js
-var USAGE = 'usage: zaku <check|outline|tokens|recipe|library|budget|schema> [--root docs/design]';
+var USAGE = 'usage: zaku <check|outline|tokens|recipe|library|rules|budget|schema> [--root docs/design]';
 async function sendOrRefuse(cli, io, finish, command) {
   try {
     return await cli.bus.send(command);
@@ -38057,12 +38159,18 @@ var checkCommand = (program2, io, finish) => {
     .description('run every check over the committed design files')
     .option('--root <dir>', 'the design directory', 'docs/design')
     .option('--json', 'print the report as JSON')
+    .option('--input <rules.json>', 'what use_figma returned for zaku rules script')
     .action(async (options) => {
       const loaded = await loadDesign(resolve2(io.cwd, options.root));
       const report = loaded.input ? runChecks(loaded.input, ALL_CHECKS) : { findings: [], notRun: [], passed: [] };
       report.findings.unshift(...loaded.findings);
-      if (options.json) io.out(JSON.stringify(report, null, 2));
-      else for (const line of formatReport(report)) io.out(line);
+      const ran = options.input
+        ? parseDesignFile(options.input, await readFile5(resolve2(io.cwd, options.input), 'utf8'), rulesResultSchema)
+        : null;
+      if (ran) report.findings.push(...ran.findings);
+      const left = ran ? leftOut(ran) : [];
+      if (options.json) io.out(JSON.stringify({ ...report, ...(left.length > 0 ? { leftOut: left } : {}) }, null, 2));
+      else for (const line of [...left, ...formatReport(report)]) io.out(line);
       finish(loaded.input ? exitCode(report) : 1);
     });
 };
@@ -38086,6 +38194,7 @@ function fromProductTree(cwd, resolved) {
 var runners = {
   run: execRun,
   loadPlaywright: productPlaywright,
+  rulesLibrary: () => readFile5(fileURLToPath(new URL('./rules.js', import.meta.url)), 'utf8'),
 };
 var tokensCommand = (program2, io, finish, cli) => {
   program2
@@ -38203,19 +38312,31 @@ var libraryCommand = (program2, io, finish, cli) => {
     .command('script')
     .description('print the Plugin API code that exports the library variables, for use_figma')
     .option('--root <dir>', 'the design directory', 'docs/design')
+    .option('--local', "also list the file's own components, for a library in the product file")
+    .option('--page <name>', 'with --local, list only this page; one use_figma call per page')
     .action(async (options) => {
       const config2 = await readDesignFile(designPaths(resolve2(io.cwd, options.root)).config, zakuConfigSchema);
-      io.out(libraryExportScript({ combos: [config2.modes] }));
+      io.out(
+        libraryExportScript({
+          combos: [config2.modes],
+          ...(options.local ? { local: true } : {}),
+          ...(options.local && options.page !== void 0 ? { page: options.page } : {}),
+        }),
+      );
       finish(0);
     });
   library
     .command('save')
     .description('write library.json: the library components read over Figma REST, joined to the variables export')
     .option('--root <dir>', 'the design directory', 'docs/design')
-    .option('--input <variables.json>', 'what use_figma returned for zaku library script')
+    .option(
+      '--input <variables.json>',
+      'what use_figma returned for zaku library script; once per page export for a library in the product file',
+      (value, previous = []) => [...previous, value],
+    )
     .action(async (options) => {
       const root = resolve2(io.cwd, options.root);
-      if (!options.input) {
+      if (!options.input || options.input.length === 0) {
         io.err('zaku library save needs --input, the variables use_figma returned for zaku library script');
         finish(3);
         return;
@@ -38225,13 +38346,22 @@ var libraryCommand = (program2, io, finish, cli) => {
         finish(3);
         return;
       }
-      const part = parseDesignFile(
-        options.input,
-        await readFile5(resolve2(io.cwd, options.input), 'utf8'),
-        variablePartSchema,
+      const part = mergeParts(
+        await Promise.all(
+          options.input.map(async (input2) =>
+            parseDesignFile(input2, await readFile5(resolve2(io.cwd, input2), 'utf8'), variablePartSchema),
+          ),
+        ),
       );
       try {
         const snapshot = await cli.bus.send(new SaveLibrary({ root, part }));
+        if (snapshot.components.length === 0) {
+          io.err(
+            'library.json holds no components: the file publishes none and the export listed none; for a library in the product file, run zaku library script --local',
+          );
+          finish(1);
+          return;
+        }
         io.out(`wrote library.json: ${snapshot.components.length} components at version ${snapshot.version}`);
         finish(0);
       } finally {
@@ -38239,10 +38369,34 @@ var libraryCommand = (program2, io, finish, cli) => {
       }
     });
 };
+var rulesCommand = (program2, io, finish) => {
+  const rules = program2
+    .command('rules')
+    .description("zaku's rule checks, for a run that reaches Figma through use_figma");
+  rules
+    .command('script')
+    .description('print the Plugin API code that runs the rules over a page or a node, for use_figma')
+    .option('--root <dir>', 'the design directory', 'docs/design')
+    .option('--page <page>', 'the page to check, by id or name')
+    .option('--node <id>', 'the node to check, with everything inside it')
+    .action(async (options) => {
+      if ((options.page === void 0) === (options.node === void 0)) {
+        io.err('zaku rules script needs --page or --node, one of them');
+        finish(3);
+        return;
+      }
+      const config2 = await readDesignFile(designPaths(resolve2(io.cwd, options.root)).config, zakuConfigSchema);
+      const scope = options.node !== void 0 ? { nodeId: options.node } : { page: options.page };
+      io.out(`${await runners.rulesLibrary()}
+return await zakuRulesLib.zakuRules(figma, ${JSON.stringify({ scope, copy: resolveCopy(config2.copy) })});`);
+      finish(0);
+    });
+};
 var COMMANDS = [
   checkCommand,
   outlineCommand,
   libraryCommand,
+  rulesCommand,
   tokensCommand,
   recipeCommand,
   budgetCommand,
