@@ -35,13 +35,20 @@ one tool's habit into another's file breaks that tool's grouping.
 
 ## Before the first drawing
 
-The library file is saved in the team, and `zaku.yaml` names it by its key (`figma.library`). `zaku
-library save` reads the published library by that key, and the comparison with the code reads what it
-saves, so a library drawn into a file with no key is one nothing can check against its code. When
-`zaku.yaml` has no library key, or holds anything that is not the file's own key (a placeholder, a
-note to replace it later), draw nothing: the reply says the file has to be saved in the team and asks
-for its address. The tool's reference says where the key is read. Code-side work that needs no
-drawing (exporting the tokens, writing the recipe page) goes on.
+The library lives in a file `zaku.yaml` names by its key (`figma.library`), because `zaku library
+save` reads the library back by that key and the comparison with the code reads what it saves: a
+library drawn into a file with no key is one nothing can check against its code. That file is the
+library's own, saved in the team, when one exists. When the product has no library file, the library
+is built into the product file, on the same pages and with the same documentation, and
+`figma.library` holds the product file's key, so the product gets its screens without waiting on a
+file nobody has made. It moves to a file of its own once a second product file needs it, and the
+reply says so when a second file appears. A library in the product file is not published, so its
+components are exported with its variables; the tool's reference says how.
+
+When `zaku.yaml` names neither file, or holds anything that is not a file's own key (a placeholder, a
+note to replace it later), draw nothing: the reply asks for the address. The tool's reference says
+where the key is read. Code-side work that needs no drawing (exporting the tokens, writing the recipe
+page) goes on.
 
 No Figma file is created to fill a gap, not the library file and not a product file: a file made in
 someone's team is an action nobody asked for, and the person who has to save and publish the library
@@ -77,7 +84,7 @@ hidden from the pickers still ships, and the finding it silenced is still true.
 | "Check misreads the new text styles as unstyled text nodes (a false positive), so I'm creating them in report mode."                 | The misreading was real, and report mode kept the whole batch with it, `DS/` styles the documentation never asks for among them. Name the node and what it is, and let that change wait. |
 | "Check flags raw padding, gaps and unstyled text, so the documentation gets its own hidden spacing variables and `DS/` text styles." | Documentation keeps the measures the reference writes as numbers, and the checks leave its spacing and type alone where the reference places it. A hidden variable is still published.   |
 | "I'll run a probe in report mode to see what the check flags."                                                                       | Strict mode returns the same findings and rolls the probe back.                                                                                                                          |
-| "The library file has no key yet; I'll write a placeholder and replace it once it is saved."                                         | Nothing compares the drawing with the code until the key is there, so every value drawn before it goes unchecked. Ask for the key first.                                                 |
+| "The library file has no key yet; I'll write a placeholder and replace it once it is saved."                                         | Nothing compares the drawing with the code until the key is there, so every value drawn before it goes unchecked. With no library file, the product file's key is the library's.         |
 | "I was told not to ask questions, so I decide."                                                                                      | The file's key is not a decision; it is a fact only the person who saved the file has. Say what is missing.                                                                              |
 | "I'll draw the components now and their views later."                                                                                | A run stops partway, and what it leaves is bare sets nobody can read. Draw each entry whole, in the order below.                                                                         |
 | "The page header needs the Badge, so the views go without headers until the Badge exists."                                           | The header is drawn first with its badge row empty; the Badge goes in once its set exists, and every header already placed shows it.                                                     |
@@ -89,6 +96,7 @@ hidden from the pickers still ships, and the finding it silenced is still true.
 - The words "false positive" with no node id and no statement of what the node is
 - A placeholder, or anything but the file's key, in `zaku.yaml`'s `figma.library`
 - A Figma file created to satisfy a field, a schema or a step
+- A screen drawn while the product's components sit in no library `zaku.yaml` names
 - A component or set created on the page the person happens to have open, or left at a page's top level
 - A second entry started while the last one has no views
 

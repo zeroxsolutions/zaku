@@ -164,3 +164,7 @@ below.
     cannot read now answers the call with why. The run also kept large Buttons' icons at 14 px
     where antd draws 16, because the override check refused a size set on an instance inside a
     component; Nova's Button sets its 16 px icon to 12 at xs and 14 at sm, and the check now allows it.
+14. A library may be built into the product file when no library file exists, its key then the
+    product file's, and `zaku library script --local` exports its unpublished components, after
+    `../drawing-a-screen/test-drawing-a-product-with-no-library.md`'s RED: both runs over zaku's server
+    drew no screens because the skill asked for a library file saved in the team and none existed.
