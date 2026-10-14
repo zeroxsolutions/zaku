@@ -3,6 +3,13 @@
 What has to survive a swap of drawing tool: a frame is reached by its own id, one at a time, and a
 read is counted against the seat.
 
+## Reaching the file
+
+A run reaches the file through zaku's MCP server, which drives the zaku plugin open in the file, or
+through Figma's MCP server. Both render a node with `get_screenshot`; the rules over a page come from
+`check_rules` on zaku's, and from `zaku rules script --page <page>` run through `use_figma` and read by
+`zaku check --input <file>` on Figma's. REST, which the outline reads, is the same either way.
+
 ## A frame's id
 
 A Figma URL carries the file key after `/design/` and the node id in `node-id=`, written with a dash

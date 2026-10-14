@@ -3,6 +3,13 @@
 What has to survive a swap of drawing tool: the review reads committed data and batched images, not the
 live file frame by frame.
 
+## Reaching the file
+
+A run reaches the file through zaku's MCP server, which drives the zaku plugin open in the file, or
+through Figma's MCP server. Both render a node with `get_screenshot`; the rules over a page come from
+`check_rules` on zaku's, and from `zaku rules script --page <page>` run through `use_figma` and read by
+`zaku check --input <file>` on Figma's. REST, which the outline reads, is the same either way.
+
 ## Images in one call
 
 `GET /v1/images/:key?ids=<id>,<id>,...&format=png&scale=1` renders nodes in one REST call, counted apart

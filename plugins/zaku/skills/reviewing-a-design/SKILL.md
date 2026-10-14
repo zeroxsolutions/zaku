@@ -36,8 +36,10 @@ contract, not against what the drawing turned out to be.
 
 ## The criteria
 
-Run `zaku check` first. Every criterion below is one of its checks, and each passes or names the
-nodes that fail it. It exits 0 when every check passed, 1 when one found something, and 2 when a check
+Run `zaku check` first. A change drawn through Figma's server, which runs no rule inside its writes,
+is checked with `zaku check --input` and the rules script's answer for each page it drew, so the rules
+every write is held to are among the checks either way (the reference spells it). Every criterion
+below is one of its checks, and each passes or names the nodes that fail it. It exits 0 when every check passed, 1 when one found something, and 2 when a check
 could not run; a check printed `NOT RUN` is decided by the review from the images, like the list after
 the table.
 
