@@ -38,11 +38,25 @@ design system does not meet is reported to the person, who takes it to the desig
 ## Before the first node
 
 1. The map entry exists and names the states and targets (`mapping-a-feature`).
-2. Every block the screen holds is a component, from the library or the product file's component
-   pages (`writing-a-design-component` places them). A block
-   that is not yet one is made one first (`writing-a-design-component`), because every state and
-   every target repeats it.
-3. `zaku budget status` allows the calls the drawing needs: one write per state, plus one upload per
+2. The design system the screen is drawn from is the first of these that exists, and the reply names
+   which:
+   1. the library `zaku.yaml`'s `figma.library` names;
+   2. the design system the product's code already has, once its token source holds values of the
+      product's own and not only its UI kit's defaults: the library is built from it first
+      (`building-the-library`), into the product file when no library file exists;
+   3. a visual direction chosen for the product (`choosing-a-visual-direction`), which becomes the
+      code's tokens and then the library, as in 2.
+
+   A library the team happens to have enabled is none of these unless `zaku.yaml` names it: a sample
+   kit or another product's library draws a product that does not exist, and engineering builds a
+   screen no token in the code matches. A product whose code is still on its UI kit's defaults has
+   no brand yet, and goes to 3. With no library, the answer is to build one, never wireframes: a
+   wireframe follows no token either, and every screen is drawn again once the library exists.
+
+3. Every block the screen holds is a component of that design system or of the product file's
+   component pages (`writing-a-design-component` places them). A block that is not yet one is made
+   one first, because every state and every target repeats it.
+4. `zaku budget status` allows the calls the drawing needs: one write per state, plus one upload per
    picture. When it refuses partway, the reply names the states left undrawn, and the screen is not
    reported done.
 
@@ -179,22 +193,32 @@ One call builds a whole state, all its targets, and returns the id of every fram
 keeps the reply small enough for the tool to return whole. A script
 is never split only to check between steps; the outline is the check.
 
-## Done means the outline passes
+## Done means the checks pass
+
+The rules every write is held to run after every write, whichever way the run reaches the file: over
+zaku's own server they run inside each write, and over Figma's server they run as a script
+`zaku rules script` prints for each page drawn, whose answer `zaku check --input` reports. The
+reference spells both. An answer that says findings were left out is fixed and checked again, never
+reported as the whole.
 
 After the last write, run `zaku outline --frames <the ids written>` and `zaku check`. The reply lists
-every frame drawn by name, and claims nothing the check contradicts. A check that cannot run is said
-to have not run; it is never reported as passed.
+every frame drawn by name, and claims nothing the checks contradict. A check that cannot run (no
+`FIGMA_TOKEN` for the outline, no library snapshot for the library checks) is named in the reply with
+what it needs; it is never reported as passed, and the screen is not reported done.
 
 ## Common Rationalizations
 
-| Excuse                                            | Reality                                                                                                                   |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| "Apple and Material want 44 pt and 48 dp"         | They want a hit region of that size, which the code gives around the drawn control; the drawn size is the design system's |
-| "The library lacks this size, so I add one"       | A drawing never changes the design system; its owner does                                                                 |
-| "It is only the height"                           | A height set on an instance is an override; the frame no longer matches the code                                          |
-| "My local button looks the same as the library's" | A look-alike follows no token and no code; place the library's                                                            |
-| "The old drawing had it this way"                 | The migration keeps the old drawing's blocks, drawn with the design system, not its pixels                                |
-| "I will clean the overrides up later"             | The check fails the frame now; there is no done with an override in it                                                    |
+| Excuse                                                | Reality                                                                                                                   |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| "Apple and Material want 44 pt and 48 dp"             | They want a hit region of that size, which the code gives around the drawn control; the drawn size is the design system's |
+| "The library lacks this size, so I add one"           | A drawing never changes the design system; its owner does                                                                 |
+| "It is only the height"                               | A height set on an instance is an override; the frame no longer matches the code                                          |
+| "My local button looks the same as the library's"     | A look-alike follows no token and no code; place the library's                                                            |
+| "The old drawing had it this way"                     | The migration keeps the old drawing's blocks, drawn with the design system, not its pixels                                |
+| "I will clean the overrides up later"                 | The check fails the frame now; there is no done with an override in it                                                    |
+| "A library is enabled in the file, so I draw with it" | Only the library `zaku.yaml` names, the code's own tokens or a chosen direction is the product's design system            |
+| "There is no library, so I draw wireframes"           | Build the library from the code into the product file, or choose a direction, then draw the screens                       |
+| "zaku check is not installed here"                    | It ships in the plugin's `bin/`; over Figma's server the rules run as the script `zaku rules script` prints               |
 
 ## Red Flags - STOP
 
@@ -223,12 +247,15 @@ Each means the frame is leaving the design system. Undo it, and name the gap in 
 Walk it before the reply reports a screen done, however long the drawing took; each line is read off
 the file and the check, not recalled.
 
+- [ ] The reply names which design system source the screens were drawn from
 - [ ] Every state the map names has a frame on every target, named `<title> / <state> / <target name>`
 - [ ] Every block is an instance, changed only through what its component offers
 - [ ] Every native frame holds its platform's system bars
 - [ ] Every picture is an image the file holds, never a flat frame
 - [ ] Every copy line was read against the character rule, records' text included
 - [ ] Every drafted copy line is marked proposed in the reply
+- [ ] The rules ran over every page drawn, on the way the run reached the file, and no answer left
+      findings out
 - [ ] `zaku outline --frames <ids>` and `zaku check` ran after the last write, and the copy check names
       no `characters` or `tone` finding
 - [ ] The reply names every frame drawn and every one left, and claims nothing the check contradicts

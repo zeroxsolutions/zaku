@@ -86,6 +86,9 @@ Pending the RED runs.
   run wrote no copy), GREEN three runs (all four pass in all).
 - `../mapping-a-feature/test-mapping-a-feature-for-a-native-mac-app.md`: scores the macOS frame size as
   its criterion 3; RED failed in all six, GREEN drew 1440x900 in all three without naming the source.
+- `test-drawing-a-product-with-no-library.md`: RED four runs (each failed criterion 2; the zaku arms
+  drew no screens, the Figma arms drew from a library nobody named and could not run the rules),
+  GREEN not run.
 
 ## Iterations
 
@@ -109,3 +112,8 @@ Pending the RED runs.
    carries the walk before a screen is reported done.
 8. Frame sizes and system bars for macOS, Windows, GNOME and KDE windows, and the web desktop row kept
    apart from them, after the recorded session failure and the mapping test's RED runs.
+9. The design system a screen is drawn from is chosen in order (the library `zaku.yaml` names, the
+   code's own tokens built into a library, a chosen direction), and the rules run on either way of
+   reaching the file, after `test-drawing-a-product-with-no-library.md`'s RED: two runs drew no
+   screens for want of a library file, and two drew from a library nobody had named and never ran
+   the rules.
