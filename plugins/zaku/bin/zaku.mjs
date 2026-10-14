@@ -13194,7 +13194,9 @@ async function exportVariables(figma, options) {
     }));
     const components = [];
     if (options.local) {
-      for (const page of figma.root.children) {
+      for (const page of figma.root.children.filter(
+        (candidate) => options.page === void 0 || candidate.name === options.page,
+      )) {
         await page.loadAsync();
         for (const node2 of page.findAllWithCriteria({ types: ['COMPONENT_SET', 'COMPONENT'] })) {
           if (node2.type === 'COMPONENT' && node2.parent?.type === 'COMPONENT_SET') continue;
@@ -34940,6 +34942,18 @@ var librarySnapshotSchema = libraryPartSchema
   .extend({ source: external_exports.string(), version: external_exports.string() })
   .strict();
 
+// packages/zaku/dist/lib/domain/library-parts.js
+function mergeParts(parts) {
+  const [first, ...rest] = parts;
+  if (!first) throw new Error('mergeParts needs at least one export');
+  if (rest.length === 0) return first;
+  const seen = /* @__PURE__ */ new Set();
+  const components = parts
+    .flatMap((part) => part.components ?? [])
+    .filter((component2) => !seen.has(component2.id) && seen.add(component2.id));
+  return { ...first, components };
+}
+
 // packages/zaku/dist/lib/domain/findings.js
 var CHECK_IDS = [
   'schema',
@@ -38299,19 +38313,30 @@ var libraryCommand = (program2, io, finish, cli) => {
     .description('print the Plugin API code that exports the library variables, for use_figma')
     .option('--root <dir>', 'the design directory', 'docs/design')
     .option('--local', "also list the file's own components, for a library in the product file")
+    .option('--page <name>', 'with --local, list only this page; one use_figma call per page')
     .action(async (options) => {
       const config2 = await readDesignFile(designPaths(resolve2(io.cwd, options.root)).config, zakuConfigSchema);
-      io.out(libraryExportScript({ combos: [config2.modes], ...(options.local ? { local: true } : {}) }));
+      io.out(
+        libraryExportScript({
+          combos: [config2.modes],
+          ...(options.local ? { local: true } : {}),
+          ...(options.local && options.page !== void 0 ? { page: options.page } : {}),
+        }),
+      );
       finish(0);
     });
   library
     .command('save')
     .description('write library.json: the library components read over Figma REST, joined to the variables export')
     .option('--root <dir>', 'the design directory', 'docs/design')
-    .option('--input <variables.json>', 'what use_figma returned for zaku library script')
+    .option(
+      '--input <variables.json>',
+      'what use_figma returned for zaku library script; once per page export for a library in the product file',
+      (value, previous = []) => [...previous, value],
+    )
     .action(async (options) => {
       const root = resolve2(io.cwd, options.root);
-      if (!options.input) {
+      if (!options.input || options.input.length === 0) {
         io.err('zaku library save needs --input, the variables use_figma returned for zaku library script');
         finish(3);
         return;
@@ -38321,10 +38346,12 @@ var libraryCommand = (program2, io, finish, cli) => {
         finish(3);
         return;
       }
-      const part = parseDesignFile(
-        options.input,
-        await readFile5(resolve2(io.cwd, options.input), 'utf8'),
-        variablePartSchema,
+      const part = mergeParts(
+        await Promise.all(
+          options.input.map(async (input2) =>
+            parseDesignFile(input2, await readFile5(resolve2(io.cwd, input2), 'utf8'), variablePartSchema),
+          ),
+        ),
       );
       try {
         const snapshot = await cli.bus.send(new SaveLibrary({ root, part }));

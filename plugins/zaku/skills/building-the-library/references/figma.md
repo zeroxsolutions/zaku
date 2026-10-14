@@ -351,6 +351,7 @@ the library file and save the reply as a JSON file. `zaku library save --input <
 `FIGMA_TOKEN` set, then reads the published components over REST, which names each paint's bound
 variable, and resolves every item in every mode from the export. REST lists only published
 components, so for a library in the product file, which is not published, run
-`zaku library script --local`: the export then lists the file's own components, page by page, and
-`zaku library save` reads those. A save that reads no component exits 1 and names `--local`. Without
+`zaku library script --local --page <page>` once per page that holds components, each through its own
+`use_figma` call (a call that loads every page in turn runs past its time on a file with screens), and
+pass every answer to `zaku library save`, one `--input` each: the save joins their components. A save that reads no component exits 1 and names `--local`. Without
 `figma.library` in `zaku.yaml` it exits 3, naming the field, and reads nothing.

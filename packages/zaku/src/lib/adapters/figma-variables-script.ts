@@ -5,6 +5,8 @@ export interface ExportOptions {
   combos: Record<string, string>[];
   /** List the file's own components too, for a library in the product file, which nothing publishes. */
   local?: boolean;
+  /** With `local`, list only this page's components, so each page is one call and no call loads them all. */
+  page?: string;
 }
 
 // The Plugin API runs inside Figma and has no typings in this package.
@@ -67,7 +69,9 @@ export async function exportVariables(figma: FigmaPluginApi, options: ExportOpti
     }));
     const components: NonNullable<VariablePart['components']> = [];
     if (options.local) {
-      for (const page of figma.root.children) {
+      for (const page of figma.root.children.filter(
+        (candidate: { name: string }) => options.page === undefined || candidate.name === options.page,
+      )) {
         // use_figma refuses loadAllPagesAsync, so each page loads on its own.
         await page.loadAsync();
         for (const node of page.findAllWithCriteria({ types: ['COMPONENT_SET', 'COMPONENT'] })) {

@@ -19,6 +19,7 @@ import {
 } from '../../lib/commands/index.js';
 import { ALL_CHECKS } from '../../lib/domain/checks/index.js';
 import { variablePartSchema, type LibrarySnapshot } from '../../lib/domain/library.js';
+import { mergeParts } from '../../lib/domain/library-parts.js';
 import { resolveCopy } from '../../lib/domain/copy-rules.js';
 import { leftOut, rulesResultSchema } from '../../lib/domain/rules-result.js';
 import { exitCode, formatReport, runChecks, type CheckReport } from '../../lib/domain/run-checks.js';
@@ -273,19 +274,30 @@ const libraryCommand: CommandSpec = (program, io, finish, cli) => {
     .description('print the Plugin API code that exports the library variables, for use_figma')
     .option('--root <dir>', 'the design directory', 'docs/design')
     .option('--local', "also list the file's own components, for a library in the product file")
-    .action(async (options: { root: string; local?: boolean }) => {
+    .option('--page <name>', 'with --local, list only this page; one use_figma call per page')
+    .action(async (options: { root: string; local?: boolean; page?: string }) => {
       const config = await readDesignFile(designPaths(resolve(io.cwd, options.root)).config, zakuConfigSchema);
-      io.out(libraryExportScript({ combos: [config.modes], ...(options.local ? { local: true } : {}) }));
+      io.out(
+        libraryExportScript({
+          combos: [config.modes],
+          ...(options.local ? { local: true } : {}),
+          ...(options.local && options.page !== undefined ? { page: options.page } : {}),
+        }),
+      );
       finish(0);
     });
   library
     .command('save')
     .description('write library.json: the library components read over Figma REST, joined to the variables export')
     .option('--root <dir>', 'the design directory', 'docs/design')
-    .option('--input <variables.json>', 'what use_figma returned for zaku library script')
-    .action(async (options: { root: string; input?: string }) => {
+    .option(
+      '--input <variables.json>',
+      'what use_figma returned for zaku library script; once per page export for a library in the product file',
+      (value: string, previous: string[] = []) => [...previous, value],
+    )
+    .action(async (options: { root: string; input?: string[] }) => {
       const root = resolve(io.cwd, options.root);
-      if (!options.input) {
+      if (!options.input || options.input.length === 0) {
         io.err('zaku library save needs --input, the variables use_figma returned for zaku library script');
         finish(3);
         return;
@@ -295,10 +307,12 @@ const libraryCommand: CommandSpec = (program, io, finish, cli) => {
         finish(3);
         return;
       }
-      const part = parseDesignFile(
-        options.input,
-        await readFile(resolve(io.cwd, options.input), 'utf8'),
-        variablePartSchema,
+      const part = mergeParts(
+        await Promise.all(
+          options.input.map(async (input) =>
+            parseDesignFile(input, await readFile(resolve(io.cwd, input), 'utf8'), variablePartSchema),
+          ),
+        ),
       );
       try {
         const snapshot = (await cli.bus.send(new SaveLibrary({ root, part }))) as LibrarySnapshot;

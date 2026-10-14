@@ -111,6 +111,28 @@ describe('exportVariables', () => {
     expect(await exportVariables(fakeFigma([page]), options)).not.toHaveProperty('components');
   });
 
+  it('lists only the page it is given, loading no other, so each page is one use_figma call', async () => {
+    const loaded: string[] = [];
+    const pageOf = (name: string, id: string): FigmaPluginApi => ({
+      name,
+      loadAsync: async (): Promise<void> => {
+        loaded.push(name);
+      },
+      findAllWithCriteria: (): unknown[] => [
+        { id, type: 'COMPONENT', key: `k-${id}`, name, description: '', parent: null },
+      ],
+    });
+    const part = variablePartSchema.parse(
+      await exportVariables(fakeFigma([pageOf('Badge', '9:1'), pageOf('Button', '9:2')]), {
+        ...options,
+        local: true,
+        page: 'Button',
+      }),
+    );
+    expect(loaded).toEqual(['Button']);
+    expect(part.components?.map((component) => component.id)).toEqual(['9:2']);
+  });
+
   it('refuses a mode the library does not have', async () => {
     await expect(exportVariables(fakeFigma(), { combos: [{ theme: 'indigo' }] })).rejects.toThrow(
       'no mode indigo in theme',
