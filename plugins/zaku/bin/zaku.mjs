@@ -9784,6 +9784,7 @@ import { readFile as readFile5 } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { homedir as homedir2 } from 'node:os';
 import { dirname as dirname4, join as join7, resolve as resolve2, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 // node_modules/.pnpm/commander@15.0.0/node_modules/commander/lib/error.js
 var CommanderError = class extends Error {
@@ -32956,6 +32957,9 @@ function date4(params) {
   return _coercedDate(ZodDate, params);
 }
 
+// packages/zaku/dist/lib/domain/copy-defaults.js
+var DEFAULT_COPY = { locales: ['en'], currencies: [] };
+
 // packages/zaku/dist/lib/schema/zaku-config.js
 var PLATFORM_FAMILIES = ['web', 'ios', 'android', 'macos', 'windows', 'gnome', 'kde'];
 var DEFAULT_INTERACTIVE = [
@@ -33091,7 +33095,6 @@ var copySchema = external_exports
       .default([]),
   })
   .strict();
-var DEFAULT_COPY = { locales: ['en'], currencies: [] };
 var zakuConfigSchema = external_exports
   .object({
     product: external_exports.string().min(1),
@@ -34931,6 +34934,28 @@ var findingSchema = external_exports
     field: external_exports.string().optional().describe('The property at fault, such as fill or paddingTop'),
   })
   .strict();
+
+// packages/zaku/dist/lib/domain/rules-result.js
+var rulesResultSchema = external_exports
+  .object({
+    checked: external_exports.number().int(),
+    total: external_exports.number().int(),
+    counts: external_exports.record(external_exports.string(), external_exports.number().int()),
+    findings: external_exports.array(findingSchema),
+    cut: external_exports.boolean(),
+  })
+  .strict();
+function leftOut(result) {
+  if (!result.cut) return [];
+  return Object.entries(result.counts).flatMap(([check2, count]) => {
+    const left = count - result.findings.filter((finding) => finding.check === check2).length;
+    return left > 0
+      ? [
+          `${left} more ${check2} finding${left === 1 ? '' : 's'} the reply left out; fix these and run the script again`,
+        ]
+      : [];
+  });
+}
 
 // packages/zaku/dist/lib/domain/run-checks.js
 function runChecks(input2, checks) {
@@ -38022,7 +38047,7 @@ function refusalOf(error62) {
 }
 
 // packages/zaku/dist/entrypoints/cli/main.js
-var USAGE = 'usage: zaku <check|outline|tokens|recipe|library|budget|schema> [--root docs/design]';
+var USAGE = 'usage: zaku <check|outline|tokens|recipe|library|rules|budget|schema> [--root docs/design]';
 async function sendOrRefuse(cli, io, finish, command) {
   try {
     return await cli.bus.send(command);
@@ -38057,12 +38082,18 @@ var checkCommand = (program2, io, finish) => {
     .description('run every check over the committed design files')
     .option('--root <dir>', 'the design directory', 'docs/design')
     .option('--json', 'print the report as JSON')
+    .option('--input <rules.json>', 'what use_figma returned for zaku rules script')
     .action(async (options) => {
       const loaded = await loadDesign(resolve2(io.cwd, options.root));
       const report = loaded.input ? runChecks(loaded.input, ALL_CHECKS) : { findings: [], notRun: [], passed: [] };
       report.findings.unshift(...loaded.findings);
-      if (options.json) io.out(JSON.stringify(report, null, 2));
-      else for (const line of formatReport(report)) io.out(line);
+      const ran = options.input
+        ? parseDesignFile(options.input, await readFile5(resolve2(io.cwd, options.input), 'utf8'), rulesResultSchema)
+        : null;
+      if (ran) report.findings.push(...ran.findings);
+      const left = ran ? leftOut(ran) : [];
+      if (options.json) io.out(JSON.stringify({ ...report, ...(left.length > 0 ? { leftOut: left } : {}) }, null, 2));
+      else for (const line of [...left, ...formatReport(report)]) io.out(line);
       finish(loaded.input ? exitCode(report) : 1);
     });
 };
@@ -38086,6 +38117,7 @@ function fromProductTree(cwd, resolved) {
 var runners = {
   run: execRun,
   loadPlaywright: productPlaywright,
+  rulesLibrary: () => readFile5(fileURLToPath(new URL('./rules.js', import.meta.url)), 'utf8'),
 };
 var tokensCommand = (program2, io, finish, cli) => {
   program2
@@ -38239,10 +38271,34 @@ var libraryCommand = (program2, io, finish, cli) => {
       }
     });
 };
+var rulesCommand = (program2, io, finish) => {
+  const rules = program2
+    .command('rules')
+    .description("zaku's rule checks, for a run that reaches Figma through use_figma");
+  rules
+    .command('script')
+    .description('print the Plugin API code that runs the rules over a page or a node, for use_figma')
+    .option('--root <dir>', 'the design directory', 'docs/design')
+    .option('--page <page>', 'the page to check, by id or name')
+    .option('--node <id>', 'the node to check, with everything inside it')
+    .action(async (options) => {
+      if ((options.page === void 0) === (options.node === void 0)) {
+        io.err('zaku rules script needs --page or --node, one of them');
+        finish(3);
+        return;
+      }
+      const config2 = await readDesignFile(designPaths(resolve2(io.cwd, options.root)).config, zakuConfigSchema);
+      const scope = options.node !== void 0 ? { nodeId: options.node } : { page: options.page };
+      io.out(`${await runners.rulesLibrary()}
+return await zakuRulesLib.zakuRules(figma, ${JSON.stringify({ scope, copy: config2.copy })});`);
+      finish(0);
+    });
+};
 var COMMANDS = [
   checkCommand,
   outlineCommand,
   libraryCommand,
+  rulesCommand,
   tokensCommand,
   recipeCommand,
   budgetCommand,

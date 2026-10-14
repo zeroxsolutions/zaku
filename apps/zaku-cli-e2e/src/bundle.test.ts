@@ -63,3 +63,11 @@ test('the bundle records budget calls in the ledger and reads them back', () => 
   assert.equal(status.status, 0, status.stderr);
   assert.match(status.stdout, /^mcp 2 today, 2 this run/);
 });
+
+test('the bundle prints a rules script use_figma takes whole', () => {
+  const root = product();
+  const run = zaku(root, 'rules', 'script', '--page', 'Screens');
+  assert.equal(run.status, 0, run.stderr);
+  assert.ok(run.stdout.length < 50_000, `the script is ${run.stdout.length} characters`);
+  assert.match(run.stdout, /return await zakuRulesLib\.zakuRules\(figma, \{"scope":\{"page":"Screens"\}/);
+});

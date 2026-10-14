@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { dirname, join, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Command, CommanderError, InvalidArgumentError, Option } from 'commander';
 import { createFigmaRest } from '../../lib/adapters/figma-rest.js';
 import { libraryExportScript } from '../../lib/adapters/figma-variables-script.js';
@@ -18,6 +19,7 @@ import {
 } from '../../lib/commands/index.js';
 import { ALL_CHECKS } from '../../lib/domain/checks/index.js';
 import { variablePartSchema, type LibrarySnapshot } from '../../lib/domain/library.js';
+import { leftOut, rulesResultSchema } from '../../lib/domain/rules-result.js';
 import { exitCode, formatReport, runChecks, type CheckReport } from '../../lib/domain/run-checks.js';
 import type { RecipeWritten, TokensWritten } from '../../lib/handlers/index.js';
 import type { OutlineSummary } from '../../lib/handlers/write-outline.js';
@@ -44,7 +46,7 @@ export interface CliIo {
   fetch?: typeof fetch;
 }
 
-export const USAGE = 'usage: zaku <check|outline|tokens|recipe|library|budget|schema> [--root docs/design]';
+export const USAGE = 'usage: zaku <check|outline|tokens|recipe|library|rules|budget|schema> [--root docs/design]';
 
 /** The bus one invocation sends its writes on, and how many REST calls it has made so far. */
 export interface CliBus {
@@ -99,14 +101,20 @@ const checkCommand: CommandSpec = (program, io, finish) => {
     .description('run every check over the committed design files')
     .option('--root <dir>', 'the design directory', 'docs/design')
     .option('--json', 'print the report as JSON')
-    .action(async (options: { root: string; json?: boolean }) => {
+    .option('--input <rules.json>', 'what use_figma returned for zaku rules script')
+    .action(async (options: { root: string; json?: boolean; input?: string }) => {
       const loaded = await loadDesign(resolve(io.cwd, options.root));
       const report: CheckReport = loaded.input
         ? runChecks(loaded.input, ALL_CHECKS)
         : { findings: [], notRun: [], passed: [] };
       report.findings.unshift(...loaded.findings);
-      if (options.json) io.out(JSON.stringify(report, null, 2));
-      else for (const line of formatReport(report)) io.out(line);
+      const ran = options.input
+        ? parseDesignFile(options.input, await readFile(resolve(io.cwd, options.input), 'utf8'), rulesResultSchema)
+        : null;
+      if (ran) report.findings.push(...ran.findings);
+      const left = ran ? leftOut(ran) : [];
+      if (options.json) io.out(JSON.stringify({ ...report, ...(left.length > 0 ? { leftOut: left } : {}) }, null, 2));
+      else for (const line of [...left, ...formatReport(report)]) io.out(line);
       finish(loaded.input ? exitCode(report) : 1);
     });
 };
@@ -140,9 +148,12 @@ function fromProductTree(cwd: string, resolved: string): boolean {
 export const runners: {
   run: RunCommand;
   loadPlaywright: (cwd: string) => Promise<PlaywrightModule | null>;
+  /** The bundled rules script, which ships beside the CLI as rules.js. */
+  rulesLibrary: () => Promise<string>;
 } = {
   run: execRun,
   loadPlaywright: productPlaywright,
+  rulesLibrary: () => readFile(fileURLToPath(new URL('./rules.js', import.meta.url)), 'utf8'),
 };
 
 const tokensCommand: CommandSpec = (program, io, finish, cli) => {
@@ -297,10 +308,36 @@ const libraryCommand: CommandSpec = (program, io, finish, cli) => {
     });
 };
 
+const rulesCommand: CommandSpec = (program, io, finish) => {
+  const rules = program
+    .command('rules')
+    .description("zaku's rule checks, for a run that reaches Figma through use_figma");
+  rules
+    .command('script')
+    .description('print the Plugin API code that runs the rules over a page or a node, for use_figma')
+    .option('--root <dir>', 'the design directory', 'docs/design')
+    .option('--page <page>', 'the page to check, by id or name')
+    .option('--node <id>', 'the node to check, with everything inside it')
+    .action(async (options: { root: string; page?: string; node?: string }) => {
+      if ((options.page === undefined) === (options.node === undefined)) {
+        io.err('zaku rules script needs --page or --node, one of them');
+        finish(3);
+        return;
+      }
+      const config = await readDesignFile(designPaths(resolve(io.cwd, options.root)).config, zakuConfigSchema);
+      const scope = options.node !== undefined ? { nodeId: options.node } : { page: options.page };
+      io.out(
+        `${await runners.rulesLibrary()}\nreturn await zakuRulesLib.zakuRules(figma, ${JSON.stringify({ scope, copy: config.copy })});`,
+      );
+      finish(0);
+    });
+};
+
 export const COMMANDS: CommandSpec[] = [
   checkCommand,
   outlineCommand,
   libraryCommand,
+  rulesCommand,
   tokensCommand,
   recipeCommand,
   budgetCommand,
