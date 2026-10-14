@@ -26,9 +26,13 @@ first changes a token, with no record of why.
 The skill runs when both hold:
 
 - `zaku.yaml` names no library (`figma.library`), or names none whose tokens are the product's own;
-- the code's token source holds only its UI kit's defaults, or there is no code yet. A shadcn app
-  whose theme variables are the preset's own values, as `references/directions.md`'s scales table
-  lists them for shadcn, is on defaults.
+- the code's token source holds only its UI kit's defaults, or there is no code yet. A shadcn app is
+  on defaults when its primary is its base colour's own grey (neutral, stone, zinc, gray or slate, a
+  colour with almost no chroma) and its other colour variables are the ones its preset writes:
+  nothing in it was chosen for this product. `building-the-library`'s shadcn
+  reference says how the preset is decoded and the stylesheet read. A preset with a theme colour, or a
+  stylesheet whose values differ from its preset's, is a choice someone made, and the product has a
+  brand.
 
 A product whose code already sets its own tokens has a brand: `building-the-library` builds the
 library from them, and this skill does not run.
