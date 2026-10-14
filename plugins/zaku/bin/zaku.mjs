@@ -13192,7 +13192,30 @@ async function exportVariables(figma, options) {
       fontStyle: style.fontName.style,
       fontSize: style.fontSize,
     }));
-    return { exportedAt: /* @__PURE__ */ new Date().toISOString(), variables, textStyles, tokens };
+    const components = [];
+    if (options.local) {
+      for (const page of figma.root.children) {
+        await page.loadAsync();
+        for (const node2 of page.findAllWithCriteria({ types: ['COMPONENT_SET', 'COMPONENT'] })) {
+          if (node2.type === 'COMPONENT' && node2.parent?.type === 'COMPONENT_SET') continue;
+          components.push({
+            id: node2.id,
+            key: node2.key,
+            name: node2.name,
+            page: page.name,
+            description: node2.description ?? '',
+            set: node2.type === 'COMPONENT_SET',
+          });
+        }
+      }
+    }
+    return {
+      exportedAt: /* @__PURE__ */ new Date().toISOString(),
+      variables,
+      textStyles,
+      tokens,
+      ...(options.local ? { components } : {}),
+    };
   } finally {
     holder.remove();
   }
@@ -34890,6 +34913,21 @@ var variablePartSchema = external_exports
         })
         .strict(),
     ),
+    /** The components the file itself holds, for a library that lives in the product file and is not published. */
+    components: external_exports
+      .array(
+        external_exports
+          .object({
+            id: external_exports.string(),
+            key: external_exports.string(),
+            name: external_exports.string(),
+            page: external_exports.string(),
+            description: external_exports.string(),
+            set: external_exports.boolean(),
+          })
+          .strict(),
+      )
+      .optional(),
   })
   .strict();
 var librarySnapshotSchema = libraryPartSchema
@@ -36500,9 +36538,23 @@ function itemsOf(root, at) {
   visit2(root, '');
   return out;
 }
+function asPublished(component2) {
+  return {
+    node_id: component2.id,
+    key: component2.key,
+    name: component2.name,
+    description: component2.description,
+    containing_frame: { pageName: component2.page },
+  };
+}
 async function readLibrary(options) {
   const { rest, fileKey, part } = options;
-  const listed = await rest.published(fileKey);
+  const listed = part.components
+    ? {
+        sets: part.components.filter((component2) => component2.set).map(asPublished),
+        components: part.components.filter((component2) => !component2.set).map(asPublished),
+      }
+    : await rest.published(fileKey);
   const published = [
     ...listed.sets,
     ...listed.components.filter((component2) => !component2.containing_frame?.containingComponentSet),
@@ -38235,9 +38287,10 @@ var libraryCommand = (program2, io, finish, cli) => {
     .command('script')
     .description('print the Plugin API code that exports the library variables, for use_figma')
     .option('--root <dir>', 'the design directory', 'docs/design')
+    .option('--local', "also list the file's own components, for a library in the product file")
     .action(async (options) => {
       const config2 = await readDesignFile(designPaths(resolve2(io.cwd, options.root)).config, zakuConfigSchema);
-      io.out(libraryExportScript({ combos: [config2.modes] }));
+      io.out(libraryExportScript({ combos: [config2.modes], ...(options.local ? { local: true } : {}) }));
       finish(0);
     });
   library
@@ -38264,6 +38317,13 @@ var libraryCommand = (program2, io, finish, cli) => {
       );
       try {
         const snapshot = await cli.bus.send(new SaveLibrary({ root, part }));
+        if (snapshot.components.length === 0) {
+          io.err(
+            'library.json holds no components: the file publishes none and the export listed none; for a library in the product file, run zaku library script --local',
+          );
+          finish(1);
+          return;
+        }
         io.out(`wrote library.json: ${snapshot.components.length} components at version ${snapshot.version}`);
         finish(0);
       } finally {

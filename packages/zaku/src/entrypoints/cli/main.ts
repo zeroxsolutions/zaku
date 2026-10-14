@@ -271,9 +271,10 @@ const libraryCommand: CommandSpec = (program, io, finish, cli) => {
     .command('script')
     .description('print the Plugin API code that exports the library variables, for use_figma')
     .option('--root <dir>', 'the design directory', 'docs/design')
-    .action(async (options: { root: string }) => {
+    .option('--local', "also list the file's own components, for a library in the product file")
+    .action(async (options: { root: string; local?: boolean }) => {
       const config = await readDesignFile(designPaths(resolve(io.cwd, options.root)).config, zakuConfigSchema);
-      io.out(libraryExportScript({ combos: [config.modes] }));
+      io.out(libraryExportScript({ combos: [config.modes], ...(options.local ? { local: true } : {}) }));
       finish(0);
     });
   library
@@ -300,6 +301,13 @@ const libraryCommand: CommandSpec = (program, io, finish, cli) => {
       );
       try {
         const snapshot = (await cli.bus.send(new SaveLibrary({ root, part }))) as LibrarySnapshot;
+        if (snapshot.components.length === 0) {
+          io.err(
+            'library.json holds no components: the file publishes none and the export listed none; for a library in the product file, run zaku library script --local',
+          );
+          finish(1);
+          return;
+        }
         io.out(`wrote library.json: ${snapshot.components.length} components at version ${snapshot.version}`);
         finish(0);
       } finally {

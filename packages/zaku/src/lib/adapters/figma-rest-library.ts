@@ -1,5 +1,5 @@
 import type { FigmaRest } from './figma-rest.js';
-import type { RestAlias, RestNode, RestNodeEntry, RestPaint } from './figma-rest-types.js';
+import type { RestAlias, RestNode, RestNodeEntry, RestPaint, RestPublished } from './figma-rest-types.js';
 import type { LibraryComponent, LibraryItem, LibrarySnapshot, Rgba, VariablePart } from '../domain/library.js';
 
 /** Component names starting with one of these are documentation, not library. */
@@ -175,8 +175,19 @@ function itemsOf(root: RestNode, at: Resolve): LibraryItem[] {
   return out;
 }
 
+/** A component the variables export listed, in the shape the published lists answer it in. */
+function asPublished(component: NonNullable<VariablePart['components']>[number]): RestPublished {
+  return {
+    node_id: component.id,
+    key: component.key,
+    name: component.name,
+    description: component.description,
+    containing_frame: { pageName: component.page },
+  };
+}
+
 /**
- * Reads every published component over REST and resolves each item in each mode combination from the
+ * Reads every published component over REST, or the ones the variables export listed for an unpublished file, and resolves each item in each mode combination from the
  * variables the Plugin API exported, so the MCP is spent on variables alone.
  */
 export async function readLibrary(options: {
@@ -185,7 +196,12 @@ export async function readLibrary(options: {
   part: VariablePart;
 }): Promise<LibrarySnapshot> {
   const { rest, fileKey, part } = options;
-  const listed = await rest.published(fileKey);
+  const listed = part.components
+    ? {
+        sets: part.components.filter((component) => component.set).map(asPublished),
+        components: part.components.filter((component) => !component.set).map(asPublished),
+      }
+    : await rest.published(fileKey);
   const published = [
     ...listed.sets,
     ...listed.components.filter((component) => !component.containing_frame?.containingComponentSet),
