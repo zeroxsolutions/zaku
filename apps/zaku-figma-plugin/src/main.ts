@@ -3,6 +3,7 @@ import { findByPath } from './sandbox/find.js';
 import { outlineNode } from './sandbox/outline.js';
 import { createRunner } from './sandbox/runner.js';
 import { renderScreenshot, type ScreenshotHost } from './sandbox/screenshot.js';
+import { scopeNodes } from './rules-script.js';
 import { fileIdOf } from './sandbox/file-id.js';
 import { snapshotNode, type AncestryCache } from './sandbox/snapshot.js';
 
@@ -59,18 +60,13 @@ const runner = createRunner(
   post,
 );
 
-async function scopeNodes(scope: { page: true } | { nodeId: string } | { all: true }): Promise<SceneNode[]> {
-  if ('nodeId' in scope) {
-    const node = await figma.getNodeByIdAsync(scope.nodeId);
-    if (!node || node.type === 'PAGE' || node.type === 'DOCUMENT') return [];
-    const scene = node as SceneNode;
-    return 'findAll' in scene ? [scene, ...(scene as FrameNode).findAll()] : [scene];
-  }
+/** The panel may load every page, which use_figma refuses, so `all` is read here and the rest by the rules' own scope. */
+async function panelScopeNodes(scope: { page: true } | { nodeId: string } | { all: true }): Promise<SceneNode[]> {
   if ('all' in scope) {
     await figma.loadAllPagesAsync();
     return figma.root.children.flatMap((page) => page.findAll());
   }
-  return figma.currentPage.findAll();
+  return scopeNodes(figma, scope);
 }
 
 /** The panel's own commands; one that threw goes back with the error, so the panel can send it again. */
@@ -145,7 +141,7 @@ async function receive(raw: unknown): Promise<void> {
             : [];
         post({ type: 'read-result', requestId: message.requestId, nodes });
       } else {
-        const nodes = await scopeNodes(message.scope);
+        const nodes = await panelScopeNodes(message.scope);
         const cache: AncestryCache = new Map();
         const snapshot = await Promise.all(nodes.map((node) => snapshotNode(node, false, figma.mixed, cache)));
         post({ type: 'read-result', requestId: message.requestId, snapshot });

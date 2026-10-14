@@ -1,7 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "paths": { "@/*": ["./src/*"] },
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "outDir": "out-tsc/app",
     "tsBuildInfoFile": "out-tsc/app/tsconfig.app.tsbuildinfo",
     "jsx": "react-jsx",
@@ -30,7 +32,8 @@
     "eslint.config.cjs",
     "eslint.config.mjs",
     "src/main.ts",
-    "src/sandbox/**/*.ts"
+    "src/sandbox/**/*.ts",
+    "src/rules-script.ts"
   ],
   "include": ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"],
   "references": [
