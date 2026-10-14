@@ -320,11 +320,12 @@ export function registerTools(server: McpServer, seams: ToolSeams): void {
       outputSchema: OUTPUTS.check_rules,
     },
     ({ file: name, scope, nodeId }) =>
-      answer(() =>
+      answer(async () =>
         runCheck(
           seams.bridge,
           seams.bridge.session(name),
           scope === 'node' ? { nodeId: nodeId ?? '' } : scope === 'all' ? { all: true } : { page: true },
+          (await seams.config.readOptional(seams.designRoot))?.copy,
         ),
       ),
   );

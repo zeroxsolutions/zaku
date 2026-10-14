@@ -33387,6 +33387,13 @@ var INSTEAD = /* @__PURE__ */ new Map([
   ['\u200D', { name: 'zero width joiner', instead: 'write nothing' }],
   ['\uFEFF', { name: 'zero width no-break space', instead: 'write nothing' }],
 ]);
+var WRITTEN_IN = {
+  Jpan: ['Han', 'Hiragana', 'Katakana'],
+  Kore: ['Hangul', 'Han'],
+  Hans: ['Han'],
+  Hant: ['Han'],
+  Hanb: ['Han', 'Bopomofo'],
+};
 function currencySymbols(locales, currency) {
   return locales.flatMap((locale) =>
     ['symbol', 'narrowSymbol'].flatMap((currencyDisplay) =>
@@ -33398,7 +33405,12 @@ function currencySymbols(locales, currency) {
   );
 }
 function copyPolicy(copy2, carried) {
-  const scripts = new Set(copy2.locales.map((locale) => new Intl.Locale(locale).maximize().script ?? ''));
+  const scripts = new Set(
+    copy2.locales.flatMap((locale) => {
+      const script = new Intl.Locale(locale).maximize().script ?? '';
+      return WRITTEN_IN[script] ?? [script];
+    }),
+  );
   const symbols = copy2.currencies.flatMap((currency) => currencySymbols(copy2.locales, currency));
   const languages = new Set(copy2.locales.map((locale) => new Intl.Locale(locale).language));
   return {

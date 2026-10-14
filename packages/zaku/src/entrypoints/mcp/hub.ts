@@ -4,6 +4,7 @@ import {
   FigmaBridge,
   type BridgeConnection,
   type BridgeTimings,
+  type Session,
 } from '../../lib/adapters/figma-bridge.js';
 import { FileLeases } from '../../lib/domain/file-leases.js';
 import { PairingCodes } from '../../lib/domain/pairing-codes.js';
@@ -11,6 +12,7 @@ import { DesignConfigRepository } from '../../lib/repositories/design-config-rep
 import { GuideRepository } from '../../lib/repositories/guide-repository.js';
 import { FilePairingStore } from '../../lib/repositories/pairing-store.js';
 import { PLUGIN_VERSION } from '../../lib/schema/bridge.js';
+import type { CopyConfig } from '../../lib/schema/zaku-config.js';
 import { runCheck } from './check.js';
 import { compose } from './dependencies.js';
 import { Pairings } from './pairings.js';
@@ -60,7 +62,19 @@ export async function startHubCore(seams: HubSeams): Promise<HubCore> {
   const guides = new GuideRepository(seams.skillsDir);
   const bus = compose(bridge, guides);
   const leases = new FileLeases<BridgeConnection>(now);
-  bridge.onCheck((session, scope) => void runCheck(bridge, session, scope).catch(() => undefined));
+  const config = new DesignConfigRepository();
+  /** Each connected client's design directory, so a panel's own check reads the copy of the session holding it. */
+  const designRoots = new Map<string, string>();
+  const holderCopy = async (session: Session): Promise<CopyConfig | undefined> => {
+    const root = designRoots.get(leases.holder(session.connection)?.client.id ?? '');
+    return root === undefined ? undefined : (await config.readOptional(root))?.copy;
+  };
+  bridge.onCheck(
+    (session, scope) =>
+      void holderCopy(session)
+        .then((copy) => runCheck(bridge, session, scope, copy))
+        .catch(() => undefined),
+  );
   bridge.onDetach((connection) => leases.drop(connection));
   /** Clients with an open server; a code's issuer that left is given no file. */
   const connected = new Set<string>();
@@ -93,7 +107,6 @@ export async function startHubCore(seams: HubSeams): Promise<HubCore> {
   const port = (): number | null => ('port' in listening ? listening.port : null);
   const portError = (): string | null => ('error' in listening ? listening.error : null);
   const servers = new Set<McpServer>();
-  const config = new DesignConfigRepository();
   return {
     bridge,
     pairings,
@@ -126,9 +139,11 @@ export async function startHubCore(seams: HubSeams): Promise<HubCore> {
       });
       servers.add(server);
       connected.add(client.id);
+      designRoots.set(client.id, client.designRoot);
       server.server.onclose = (): void => {
         servers.delete(server);
         connected.delete(client.id);
+        designRoots.delete(client.id);
         leases.release(client.id);
       };
       return server;

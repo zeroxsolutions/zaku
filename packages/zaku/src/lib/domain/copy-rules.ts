@@ -46,6 +46,18 @@ const INSTEAD = new Map<string, { name: string; instead: string }>([
   ['\ufeff', { name: 'zero width no-break space', instead: 'write nothing' }],
 ]);
 
+/**
+ * The Unicode scripts an ISO 15924 code that names several is written in: Japanese mixes kanji and both
+ * kana, Korean hangul and hanja, and Chinese is Han in either form. Unicode has no script by these codes.
+ */
+const WRITTEN_IN: Partial<Record<string, readonly string[]>> = {
+  Jpan: ['Han', 'Hiragana', 'Katakana'],
+  Kore: ['Hangul', 'Han'],
+  Hans: ['Han'],
+  Hant: ['Han'],
+  Hanb: ['Han', 'Bopomofo'],
+};
+
 /** A currency's symbols as each locale displays them, wide and narrow, so `US$` and `$` both count. */
 function currencySymbols(locales: readonly string[], currency: string): string[] {
   return locales.flatMap((locale) =>
@@ -64,7 +76,12 @@ function currencySymbols(locales: readonly string[], currency: string): string[]
  */
 export function copyPolicy(copy: CopyConfig, carried: readonly string[]): CopyPolicy {
   // maximize() fills in the likely script from CLDR's likely subtags: vi becomes vi-Latn-VN.
-  const scripts = new Set(copy.locales.map((locale) => new Intl.Locale(locale).maximize().script ?? ''));
+  const scripts = new Set(
+    copy.locales.flatMap((locale) => {
+      const script = new Intl.Locale(locale).maximize().script ?? '';
+      return WRITTEN_IN[script] ?? [script];
+    }),
+  );
   const symbols = copy.currencies.flatMap((currency) => currencySymbols(copy.locales, currency));
   const languages = new Set(copy.locales.map((locale) => new Intl.Locale(locale).language));
   return {

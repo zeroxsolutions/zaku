@@ -56,6 +56,16 @@ describe('copyIssues, characters', () => {
     const carried = copyPolicy({ locales: ['en'], currencies: [] }, ['Next \u2192']);
     expect(copyIssues('Open the map \u2192', carried)).toEqual([]);
   });
+
+  it('builds a policy for Japanese, Korean and Chinese, and passes the scripts they are written in', () => {
+    const cjk = copyPolicy({ locales: ['ja', 'ko', 'zh', 'zh-Hant'], currencies: [] }, []);
+    expect(
+      copyIssues(
+        '\u65e5\u672c\u8a9e \u3072\u3089\u304c\u306a \u30ab\u30bf\u30ab\u30ca \ud55c\uad6d\uc5b4 \u4e2d\u6587',
+        cjk,
+      ),
+    ).toEqual([]);
+  });
 });
 
 describe('copyIssues, tone', () => {
