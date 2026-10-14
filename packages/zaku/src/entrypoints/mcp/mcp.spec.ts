@@ -1,6 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { mkdtemp } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { createServer, type AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,11 +8,27 @@ import WebSocket from 'ws';
 import type { CallToolResult, ClientCapabilities } from '@modelcontextprotocol/sdk/types.js';
 import { AjvJsonSchemaValidator } from '@modelcontextprotocol/sdk/validation/ajv';
 import { ElicitRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import { SCREENSHOT_LIMITS, type OutlineNode, type ServerMessage } from '../../lib/schema/bridge.js';
+import { SCREENSHOT_LIMITS, type NodeSnapshot, type OutlineNode, type ServerMessage } from '../../lib/schema/bridge.js';
 import { fakePlugin, obedient, unboundCard, type Behaviour } from './fake-plugin.testing.js';
 import { startMcp, type McpRuntime } from './main.js';
 
 const open: { runtime: McpRuntime; sockets: WebSocket[] }[] = [];
+
+/** A styled price in dong, which only a copy section naming VND allows. */
+const priceText: NodeSnapshot = {
+  id: '1:2',
+  name: 'Price',
+  type: 'TEXT',
+  parentId: '0:1',
+  frame: null,
+  created: true,
+  fills: [],
+  strokes: [],
+  textStyleId: 's',
+  characters: 'V\u00e9 120.000 \u20ab',
+  instance: null,
+  spacing: [],
+};
 
 /** A pushed message is sent without a reply, so the tool can answer before the plugin has it. */
 async function until(condition: () => boolean | Promise<boolean>, ms = 2000): Promise<void> {
@@ -67,6 +83,7 @@ async function setup(
   newCode: () => Promise<string>;
   dial: (first: unknown, waitMs?: number) => Promise<Heard>;
   pairingsFile: string;
+  cwd: string;
 }> {
   const cwd = await mkdtemp(join(tmpdir(), 'zaku-mcp-'));
   const pairingsFile = options.pairingsFile ?? join(cwd, 'config', 'zaku', 'pairings.json');
@@ -121,7 +138,7 @@ async function setup(
     await Promise.race([settled, new Promise((resolve) => setTimeout(resolve, waitMs))]);
     return heard;
   };
-  return { runtime, client, call, plugin, newCode, dial, pairingsFile };
+  return { runtime, client, call, plugin, newCode, dial, pairingsFile, cwd };
 }
 
 const hello = (credential: unknown): Record<string, unknown> => ({
@@ -355,6 +372,21 @@ describe('zaku-mcp over a real socket', () => {
     expect((await call('check_rules', { scope: 'page' })).body).toMatchObject({ findings: [{ check: 'binding' }] });
     await until(() => log.length === 2);
     expect(log.map((m) => m.type)).toEqual(['snapshot', 'findings']);
+  });
+
+  it('holds a text to the copy locales and currencies zaku.yaml names, from the tool and from the panel', async () => {
+    const { call, plugin, cwd } = await setup();
+    await mkdir(join(cwd, 'docs', 'design'), { recursive: true });
+    await writeFile(
+      join(cwd, 'docs', 'design', 'zaku.yaml'),
+      'product: acme\ndesignSystem: { shadcn: { preset: x } }\nfigma: { library: LIB, product: PROD }\ntargets:\n  - { id: web-desktop, family: web, name: Desktop }\ncopy: { locales: [en, vi], currencies: [VND] }\n',
+    );
+    const log: ServerMessage[] = [];
+    const socket = await plugin('A', obedient([priceText], log));
+    expect((await call('check_rules', { scope: 'page' })).body).toMatchObject({ findings: [] });
+    socket.send(JSON.stringify({ type: 'check', scope: { page: true } }));
+    await until(() => log.filter((m) => m.type === 'findings').length === 2);
+    expect(log.filter((m) => m.type === 'findings')).toMatchObject([{ findings: [] }, { findings: [] }]);
   });
 
   it('checks the page when the plugin asks, and pushes the findings', async () => {
