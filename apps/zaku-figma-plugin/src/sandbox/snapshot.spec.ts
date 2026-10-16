@@ -83,6 +83,24 @@ describe('snapshotNode', () => {
     });
   });
 
+  it("reads its component's size only where Figma lists the instance's own size as overridden", async () => {
+    const instance = (fields: string[]): object => ({
+      id: '1:3',
+      name: 'Button',
+      type: 'INSTANCE',
+      parent: null,
+      fills: [],
+      strokes: [],
+      overrides: [{ id: '1:3', overriddenFields: fields }],
+      getMainComponentAsync: async (): Promise<object> => ({ name: 'Button', width: 80, height: 32, parent: null }),
+    });
+    expect((await snapshotNode(instance(['height']) as never, false)).instance?.main).toEqual({
+      width: 80,
+      height: 32,
+    });
+    expect((await snapshotNode(instance(['fills']) as never, false)).instance).not.toHaveProperty('main');
+  });
+
   it('marks a fills override on a layer that holds a picture', async () => {
     const photo = { id: '1:3;9:1', fills: [{ type: 'IMAGE', visible: true }] };
     const instance = {

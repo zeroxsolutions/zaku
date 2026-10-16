@@ -14,6 +14,8 @@ export interface OutlineContext {
   componentSets: RestNodeEntry['componentSets'];
   styles: RestNodeEntry['styles'];
   interactive: ReadonlySet<string>;
+  /** The size of each component, by its node id, where the caller read it. */
+  sizes?: ReadonlyMap<string, { width: number; height: number }>;
 }
 
 /** Where a frame sits, read from the page around it rather than from the frame. */
@@ -52,6 +54,21 @@ function linksOf(node: RestNode): LinkOutline[] {
   if (links.length === 0 && node.transitionNodeID)
     links.push({ nodeId: node.id, to: { nodeId: node.transitionNodeID } });
   return links;
+}
+
+/** The file's own components whose instances in the frame Figma lists as resized, whose size the rules compare. */
+export function resizedLocalComponents(frame: RestNode, components: Record<string, RestComponentMeta>): string[] {
+  const ids = new Set<string>();
+  const walk = (node: RestNode): void => {
+    const id = node.componentId;
+    if (node.type === 'INSTANCE' && id && components[id]?.remote === false) {
+      const own = (node.overrides ?? []).find((override) => override.id === node.id);
+      if (own?.overriddenFields.some((field) => field === 'width' || field === 'height')) ids.add(id);
+    }
+    for (const child of node.children ?? []) walk(child);
+  };
+  walk(frame);
+  return [...ids];
 }
 
 export function outlineFrame(frame: RestNode, where: FramePlace, ctx: OutlineContext): FrameOutline {
@@ -140,6 +157,8 @@ export function outlineFrame(frame: RestNode, where: FramePlace, ctx: OutlineCon
         vertical: node.layoutSizingVertical ?? 'FIXED',
       },
     };
+    const main = ctx.sizes?.get(node.componentId ?? '');
+    if (main) instance.main = main;
     inside(node, '', instance);
     return instance;
   };

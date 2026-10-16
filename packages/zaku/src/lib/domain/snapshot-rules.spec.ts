@@ -199,6 +199,37 @@ describe('snapshotFindings', () => {
     expect(findings.map((f) => f.field)).toEqual(['height']);
   });
 
+  it("passes a fixed size Figma lists as overridden when it is its component's size, and finds one changed", () => {
+    const of = (main: { width: number; height: number }): (string | undefined)[] =>
+      snapshotFindings([
+        node({
+          id: '1:1',
+          type: 'INSTANCE',
+          name: 'Button',
+          box: {
+            x: 0,
+            y: 0,
+            width: 80,
+            height: 32,
+            sizing: { horizontal: 'FIXED', vertical: 'FIXED' },
+            layout: 'HORIZONTAL',
+            wrap: false,
+            padding: [0, 0, 0, 0],
+            gap: 8,
+            crossGap: 0,
+            align: ['MIN', 'MIN'],
+          },
+          instance: {
+            overrides: [{ nodeId: '1:1', fields: ['width', 'height'] }],
+            sizing: { horizontal: 'FIXED', vertical: 'FIXED' },
+            main,
+          },
+        }),
+      ]).map((f) => f.field);
+    expect(of({ width: 80, height: 32 })).toEqual([]);
+    expect(of({ width: 80, height: 36 })).toEqual(['height']);
+  });
+
   it('lets a stretched instance carry the sizing mode Figma records when it fills, and finds it on a fixed one', () => {
     const fields = ['primaryAxisSizingMode', 'counterAxisSizingMode'];
     const of = (horizontal: string): (string | undefined)[] =>

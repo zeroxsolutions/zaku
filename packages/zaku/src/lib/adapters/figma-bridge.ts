@@ -48,9 +48,19 @@ export interface BridgeTimings {
   timeoutMs: number;
   holdMs: number;
   readMs: number;
+  /**
+   * How long a check waits for the plugin to snapshot its scope; the run budget when absent. A page of thirty
+   * screens holds thousands of nodes, which the plugin reads one by one, past a run's budget.
+   */
+  snapshotMs?: number;
 }
 
-export const DEFAULT_TIMINGS: BridgeTimings = { timeoutMs: 30_000, holdMs: 60_000, readMs: 10_000 };
+export const DEFAULT_TIMINGS: BridgeTimings = {
+  timeoutMs: 30_000,
+  holdMs: 60_000,
+  readMs: 10_000,
+  snapshotMs: 120_000,
+};
 
 /** A reply this build could not read carries why in place of the message. */
 type Reply = PluginMessage | { unreadable: string } | null | 'timeout';
@@ -229,7 +239,7 @@ export class FigmaBridge {
     const message = await this.request(
       session,
       (requestId) => ({ type: 'snapshot', requestId, scope }),
-      this.timings.timeoutMs,
+      this.timings.snapshotMs ?? this.timings.timeoutMs,
     );
     return message.snapshot ?? [];
   }

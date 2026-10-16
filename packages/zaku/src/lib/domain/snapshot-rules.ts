@@ -1,7 +1,7 @@
 import type { NodeSnapshot } from '../schema/bridge.js';
 import type { CopyConfig } from '../schema/zaku-config.js';
 import { DEFAULT_COPY } from './copy-defaults.js';
-import { ALLOWED_OVERRIDES, SIZING_MODES, stretches } from './checks/overrides.js';
+import { ALLOWED_OVERRIDES, SIZING_MODES, componentSized, stretches } from './checks/overrides.js';
 import { copyIssues, copyPolicy, type ResolvedCopy } from './copy-rules.js';
 import { COVER } from './documentation-measures.js';
 import { DOCUMENTATION_COMPONENT_NAMES, documentationFindings, holdsReferenceText } from './documentation-rule.js';
@@ -170,6 +170,7 @@ export function snapshotFindings(
           if (self && field === 'width' && node.instance.sizing.horizontal !== 'FIXED') continue;
           if (self && field === 'height' && node.instance.sizing.vertical !== 'FIXED') continue;
           if (self && SIZING_MODES.has(field) && stretches(node.instance.sizing)) continue;
+          if (self && componentSized(field, node.box, node.instance.main)) continue;
           finding('overrides', field, `${field} overridden inside an instance of ${node.name}`, override.nodeId);
         }
       }

@@ -38,6 +38,44 @@ describe('overrides', () => {
     expect(of('FIXED')).toMatchObject({ findings: fields.map((field) => ({ nodeId: '10:1', field })) });
   });
 
+  it("passes a fixed size Figma lists as overridden when it is its component's size, and reports one changed", () => {
+    const of = (main: { width: number; height: number }): ReturnType<typeof overrides> =>
+      run(
+        testInstance({
+          overrides: [{ nodeId: '10:1', fields: ['width', 'height'] }],
+          sizing: { horizontal: 'FIXED', vertical: 'FIXED' },
+          bounds: { x: 0, y: 0, width: 80, height: 32 },
+          main,
+        }),
+      );
+    expect(of({ width: 80, height: 32 })).toEqual({ findings: [] });
+    expect(of({ width: 80, height: 36 })).toMatchObject({ findings: [{ nodeId: '10:1', field: 'height' }] });
+  });
+
+  it('passes a paint set on a glyph inside an icon a swap property chose, as the rules in Figma do', () => {
+    const swapped = (swaps: string[]): ReturnType<typeof overrides> =>
+      run(
+        testInstance({
+          swaps,
+          nested: [
+            {
+              nodeId: 'I10:1;5:1',
+              path: 'Icon',
+              componentKey: 'icon-clock',
+              component: 'clock',
+              interactive: false,
+              bounds: null,
+            },
+          ],
+          overrides: [{ nodeId: 'I10:1;5:1;7:1', fields: ['strokes'] }],
+        }),
+      );
+    expect(swapped(['icon-clock'])).toEqual({ findings: [] });
+    expect(swapped([])).toMatchObject({
+      findings: expect.arrayContaining([expect.objectContaining({ nodeId: 'I10:1;5:1;7:1', field: 'strokes' })]),
+    });
+  });
+
   it('reports a nested icon fill and a fixed height, each by node id and field', () => {
     const outcome = run(
       testInstance({

@@ -173,15 +173,39 @@ function propertiesOf(
   }));
 }
 
+type MainComponent = {
+  name: string;
+  width?: unknown;
+  height?: unknown;
+  parent?: { type: string; name: string } | null;
+};
+
+/** An instance's component, read once for the name and the size the snapshot takes from it. */
+async function mainComponentOf(node: Record<string, unknown>): Promise<MainComponent | null> {
+  const get = node['getMainComponentAsync'] as (() => Promise<MainComponent | null>) | undefined;
+  return get ? await get.call(node) : null;
+}
+
 /** The name of an instance's component: the set's, for a variant; null when it has none. */
-async function mainOf(node: Record<string, unknown>): Promise<string | null> {
-  const get = node['getMainComponentAsync'] as
-    | (() => Promise<{ name: string; parent?: { type: string; name: string } | null } | null>)
-    | undefined;
-  if (!get) return null;
-  const main = await get.call(node);
+function mainName(main: MainComponent | null): string | null {
   if (!main) return null;
   return main.parent?.type === 'COMPONENT_SET' ? main.parent.name : main.name;
+}
+
+/**
+ * The size of an instance's component, kept only where Figma lists the instance's own width or height as
+ * overridden, which it does after any resize, even one back to the component's size.
+ */
+function mainSize(
+  id: string,
+  main: MainComponent | null,
+  overrides: readonly { id: string; overriddenFields: string[] }[],
+): { width: number; height: number } | null {
+  const own = overrides.find((o) => o.id === id);
+  if (!own?.overriddenFields.some((field) => field === 'width' || field === 'height')) return null;
+  return typeof main?.width === 'number' && typeof main.height === 'number'
+    ? { width: main.width, height: main.height }
+    : null;
 }
 
 /**
@@ -208,6 +232,8 @@ export async function snapshotNode(
   const sourceId =
     GLYPH_TYPES.has(node.type) && ancestry.insideInstance && !ancestry.componentSource ? sourceLayerId(node.id) : null;
   const source = sourceId ? ((await find(sourceId)) as Record<string, unknown> | null) : null;
+  const component = node.type === 'INSTANCE' ? await mainComponentOf(any) : null;
+  const main = node.type === 'INSTANCE' ? mainSize(node.id, component, overrides) : null;
   const properties = propertiesOf(any as Record<string, unknown> & { type: string; parent?: Ancestor | null });
   return {
     id: node.id,
@@ -237,6 +263,7 @@ export async function snapshotNode(
               horizontal: String(any['layoutSizingHorizontal'] ?? 'FIXED'),
               vertical: String(any['layoutSizingVertical'] ?? 'FIXED'),
             },
+            ...(main ? { main } : {}),
           }
         : null,
     spacing: auto
@@ -248,7 +275,7 @@ export async function snapshotNode(
     ...(BOXED.has(node.type) ? { box: boxOf(any) } : {}),
     ...(node.type === 'TEXT' ? { font: fontOf(any, mixed) } : {}),
     ...(properties ? { properties } : {}),
-    ...(node.type === 'INSTANCE' ? { main: await mainOf(any) } : {}),
+    ...(node.type === 'INSTANCE' ? { main: mainName(component) } : {}),
     ...(node.type === 'COMPONENT_SET' ? { set: setLayout(any) } : {}),
   };
 }

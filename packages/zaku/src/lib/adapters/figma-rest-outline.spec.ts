@@ -133,6 +133,16 @@ describe('outlineFrame', () => {
     ]);
   });
 
+  it("keeps the size of an instance's component when the context knows it", () => {
+    const sized = outlineFrame(
+      frame,
+      { target: 'web-desktop', state: 'Default', containers: [], start: false },
+      { ...ctx, sizes: new Map([['C:btn', { width: 80, height: 32 }]]) },
+    );
+    expect(sized.instances[0]).toMatchObject({ nodeId: '3:1', main: { width: 80, height: 32 } });
+    expect(outline.instances[0]).not.toHaveProperty('main');
+  });
+
   it('keeps text outside instances with its style key, and skips hidden layers', () => {
     expect(outline.texts).toEqual([
       { nodeId: '2:2', characters: 'Your trips', styleKey: 'k-style' },

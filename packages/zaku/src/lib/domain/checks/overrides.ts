@@ -15,9 +15,29 @@ export const ALLOWED_OVERRIDES = new Set([
  */
 export const SIZING_MODES = new Set(['primaryAxisSizingMode', 'counterAxisSizingMode']);
 
+/** Whether an instance is its component's size on the axis a `width` or `height` override names. */
+export function componentSized(
+  field: string,
+  size: { width: number; height: number } | null | undefined,
+  main: { width: number; height: number } | undefined,
+): boolean {
+  if (!size || !main || (field !== 'width' && field !== 'height')) return false;
+  return Math.abs(size[field] - main[field]) < 0.5;
+}
+
 /** Whether an instance sizes itself on either axis by filling or hugging, rather than at a fixed size. */
 export function stretches(sizing: { horizontal: string; vertical: string }): boolean {
   return sizing.horizontal !== 'FIXED' || sizing.vertical !== 'FIXED';
+}
+
+/** Whether a layer sits inside a nested instance that one of the instance's swap properties chose. */
+function insideSwap(
+  instance: { swaps: readonly string[]; nested: readonly { nodeId: string; componentKey: string }[] },
+  nodeId: string,
+): boolean {
+  return instance.nested.some(
+    (nested) => nodeId.startsWith(`${nested.nodeId};`) && instance.swaps.includes(nested.componentKey),
+  );
 }
 
 export const overrides: Check = ({ outlines, library }) => {
@@ -46,6 +66,10 @@ export const overrides: Check = ({ outlines, library }) => {
             if (self && field === 'width' && instance.sizing.horizontal !== 'FIXED') continue;
             if (self && field === 'height' && instance.sizing.vertical !== 'FIXED') continue;
             if (self && SIZING_MODES.has(field) && stretches(instance.sizing)) continue;
+            if (self && componentSized(field, instance.bounds, instance.main)) continue;
+            // An icon swap drops the colour the component gives its glyph, and REST cannot read that colour to
+            // compare, so a paint on a glyph inside an icon a swap property chose is taken as painting it back.
+            if (!self && (field === 'fills' || field === 'strokes') && insideSwap(instance, override.nodeId)) continue;
             findings.push({
               check: 'overrides',
               ...where,
