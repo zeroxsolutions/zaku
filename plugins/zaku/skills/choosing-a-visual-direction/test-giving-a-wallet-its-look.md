@@ -30,8 +30,8 @@ Material 3 kit enabled.
    text and 3:1 for UI parts.
 3. Every claim about the audience's colour meanings and the market's conventions cites a primary
    source.
-4. The chosen direction is in the code's token source (the web app's stylesheet), and `zaku tokens`
-   and `zaku check` ran on it.
+4. The chosen direction is in the code's token source (the web app's stylesheet, or DTCG files
+   `zaku.yaml` names where the app has none), and `zaku tokens` and `zaku check` ran on it.
 5. The product file has a board per direction, and the screens use the chosen direction's variables,
    not the kit's defaults.
 6. The reply says the direction was proposed, because nobody could be asked.
@@ -47,4 +47,18 @@ Two runs on the plugin before this skill existed.
 
 ## GREEN
 
-Not run.
+Two runs on the skill as written, each into its own empty file, the criteria out of reach. The
+skeleton's `apps/web` holds no stylesheet, so criterion 4 is met by DTCG files `zaku.yaml` names, the
+skill's own branch for that case.
+
+- Figma's server: three directions (Lotus leaf, Lotus flower, Jade blue), each with its primary in
+  light and dark, its family, its radius steps and its voice, and the data set rows it took; nine
+  pairs of the proposed one with their ratios; Minina 2021, MoMo's branding guideline and ZaloPay's
+  press release cited; DTCG files named by `zaku.yaml`, `zaku tokens` and `zaku check` run; a board
+  per direction on `Visual direction`; the reply and record say proposed. Passes 1 to 6.
+- zaku's server: three directions in the record, but Ledger blue and Lucky red carry one primary
+  colour each, no tokens beyond it, no voice and no data set row; twelve pairs of the proposed one
+  with their ratios; the same sources with a DOI; DTCG files, `zaku tokens` twice and `zaku check`;
+  no board for any direction ("The direction boards for B and C were not drawn"). Fails 1 and 5.
+
+After the Iron Law, its rationalization rows and the red flags: Not run.

@@ -88,7 +88,8 @@ Pending the RED runs.
   its criterion 3; RED failed in all six, GREEN drew 1440x900 in all three without naming the source.
 - `test-drawing-a-product-with-no-library.md`: RED four runs (each failed criterion 2; the zaku arms
   drew no screens, the Figma arms drew from a library nobody named and could not run the rules),
-  GREEN not run.
+  GREEN four runs (three pass 1 to 5; the wallet over Figma's server fails 4, its library pages
+  unchecked).
 
 ## Iterations
 
@@ -117,3 +118,7 @@ Pending the RED runs.
    reaching the file, after `test-drawing-a-product-with-no-library.md`'s RED: two runs drew no
    screens for want of a library file, and two drew from a library nobody had named and never ran
    the rules.
+10. `references/figma.md` names `getMainComponentAsync`, and says `check_rules` answers within a reply
+    with every finding counted, after the GREEN runs over zaku's server: both sent a script reading
+    `mainComponent`, which the plugin's page-by-page access refuses, and one got a 133,386-character
+    `check_rules` answer its client would not take.
