@@ -21,6 +21,15 @@ it: the colour a wallet's pay button wears, the type a tourist reads a place nam
 desk user scans a list at. Engineering then ships the defaults, and the brand is decided by whoever
 first changes a token, with no record of why.
 
+## The Iron Law
+
+```
+EVERY DIRECTION SHOWN HAS ITS TOKENS, ITS VOICE, ITS CONTRAST TABLE AND ITS BOARD BEFORE ONE IS PICKED
+```
+
+A direction that lost without being drawn was never in the running: the person reopening a proposed
+pick has nothing to compare it with, and the pick is one default under a new name.
+
 ## When to Use
 
 The skill runs when both hold:
@@ -117,6 +126,14 @@ person reopens it.
 | "I was told not to ask, so I skip the direction"    | Take the one you recommend and mark it proposed                                        |
 | "The contrast looks fine"                           | The ratio is computed for every pair and listed; a look is not a ratio                 |
 | "One direction is enough, the person can change it" | Two or three let the person see what the choice is; one is a default with a new name   |
+| "Only the proposed direction needs its board"       | The others are what the person picks against; each is drawn before the pick            |
+| "The others lost, a primary hex says enough"        | A lost direction keeps its tokens, voice and contrast, so the record shows why it lost |
+
+## Red Flags - STOP
+
+- The record lists a direction with only its primary colour
+- The product file has fewer boards than the record has directions
+- The library is being built before every direction has its board
 
 ## Verification Checklist
 

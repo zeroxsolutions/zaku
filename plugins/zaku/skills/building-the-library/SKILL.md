@@ -96,6 +96,7 @@ hidden from the pickers still ships, and the finding it silenced is still true.
 ## Red Flags - STOP
 
 - `mode: "report"` in a script that draws the library
+- A library page written over Figma's server whose rules script has not run since the write
 - A variable, text style or component whose reason is a finding, or that the code does not have
 - The words "false positive" with no node id and no statement of what the node is
 - A placeholder, or anything but the file's key, in `zaku.yaml`'s `figma.library`
