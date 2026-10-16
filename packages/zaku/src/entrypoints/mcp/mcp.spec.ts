@@ -630,6 +630,22 @@ describe('every tool declares what it takes and answers', () => {
     });
   });
 
+  it('check_rules counts every finding and answers only those that fit a reply, saying it cut the rest', async () => {
+    const { client, plugin } = await setup();
+    const cards = Array.from({ length: 2000 }, (_, i) => ({ ...unboundCard, id: `1:${i}` }));
+    await plugin('A', obedient(cards));
+    const answer = (await declaredAnswer(client, 'check_rules', { scope: 'page' })) as {
+      total: number;
+      counts: Record<string, number>;
+      findings: unknown[];
+      cut: boolean;
+    };
+    expect(answer).toMatchObject({ checked: 2000, total: 2000, counts: { binding: 2000 }, cut: true });
+    expect(answer.findings.length).toBeGreaterThan(0);
+    expect(answer.findings.length).toBeLessThan(2000);
+    expect(Buffer.byteLength(JSON.stringify(answer))).toBeLessThanOrEqual(18_000);
+  });
+
   it('issue_pairing_code answers the code, when it expires and where to type it', async () => {
     const { client } = await setup();
     expect(await declaredAnswer(client, 'issue_pairing_code')).toMatchObject({

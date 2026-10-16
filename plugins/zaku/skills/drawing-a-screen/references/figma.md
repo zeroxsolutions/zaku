@@ -21,7 +21,8 @@ server the run fixes each finding in a further write. The rules script switches 
 given with `setCurrentPageAsync`; `use_figma` starts every call on the first page and refuses
 `loadAllPagesAsync`, so a run checks one page per call. Its answer gives the total and the count per
 check, and as many findings as fit the reply; `zaku check --input` names each check whose findings it
-left out.
+left out. `check_rules` answers the same way: `total` and `counts` cover every finding, and `cut` says
+the list stops short, so the run fixes what it lists and checks again until `total` is 0.
 
 ## Sections
 
