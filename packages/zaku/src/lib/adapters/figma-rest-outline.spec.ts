@@ -41,6 +41,8 @@ const frame: RestNode = {
       componentProperties: {
         Variant: { type: 'VARIANT', value: 'default' },
         'Icon#12:0': { type: 'INSTANCE_SWAP', value: 'C:heart' },
+        // A slot's value is the layer it holds, not a value a designer sets.
+        'Actions#13:0': { type: 'SLOT', value: { guid: { sessionID: 8, localID: 1628 } } },
       },
       overrides: [{ id: 'I3:1;5:1', overriddenFields: ['fills'] }],
       interactions: [
@@ -129,6 +131,16 @@ describe('outlineFrame', () => {
         sizing: { horizontal: 'HUG', vertical: 'FIXED' },
       },
     ]);
+  });
+
+  it("keeps the size of an instance's component when the context knows it", () => {
+    const sized = outlineFrame(
+      frame,
+      { target: 'web-desktop', state: 'Default', containers: [], start: false },
+      { ...ctx, sizes: new Map([['C:btn', { width: 80, height: 32 }]]) },
+    );
+    expect(sized.instances[0]).toMatchObject({ nodeId: '3:1', main: { width: 80, height: 32 } });
+    expect(outline.instances[0]).not.toHaveProperty('main');
   });
 
   it('keeps text outside instances with its style key, and skips hidden layers', () => {

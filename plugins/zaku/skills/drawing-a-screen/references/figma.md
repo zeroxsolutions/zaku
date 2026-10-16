@@ -21,7 +21,8 @@ server the run fixes each finding in a further write. The rules script switches 
 given with `setCurrentPageAsync`; `use_figma` starts every call on the first page and refuses
 `loadAllPagesAsync`, so a run checks one page per call. Its answer gives the total and the count per
 check, and as many findings as fit the reply; `zaku check --input` names each check whose findings it
-left out.
+left out. `check_rules` answers the same way: `total` and `counts` cover every finding, and `cut` says
+the list stops short, so the run fixes what it lists and checks again until `total` is 0.
 
 ## Sections
 
@@ -43,6 +44,9 @@ frames left to right 160 apart, state Sections top to bottom 240 apart, screen S
   variant uses, and binding the glyph's paint to it is an override the rules allow.
 - A slot is a `SlotNode` inside the instance; content is appended to it, not to the instance.
 - Fonts used by an instance's text are loaded with `figma.loadFontAsync` before any text change.
+- The plugin reads the file page by page, and Figma's API then refuses `instance.mainComponent` ("Cannot
+  call with documentAccess: dynamic-page"): a script reads an instance's component with
+  `await instance.getMainComponentAsync()`, and a search over instances awaits it for each one.
 
 ## Sizing
 

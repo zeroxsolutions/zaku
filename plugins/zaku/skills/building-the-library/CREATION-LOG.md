@@ -168,3 +168,8 @@ below.
     product file's, and `zaku library script --local` exports its unpublished components, after
     `../drawing-a-screen/test-drawing-a-product-with-no-library.md`'s RED: both runs over zaku's server
     drew no screens because the skill asked for a library file saved in the team and none existed.
+15. A library page written over Figma's server with no rules script run since is a red flag, after the
+    GREEN wallet run over Figma's server ran the rules on its screens page only, never on the 17
+    library pages it wrote; the rationalization row on checking once at the end was already there.
+    `references/figma.md` names `getMainComponentAsync` after the GREEN runs over zaku's server read
+    `mainComponent` and the plugin refused it.

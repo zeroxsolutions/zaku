@@ -50,6 +50,11 @@ export const nodeSnapshotSchema = z
         /** What the component's text layers left as they are show: the library's own copy. */
         carried: z.array(z.string()).optional(),
         sizing: z.object({ horizontal: z.string(), vertical: z.string() }).strict(),
+        /**
+         * The size of the instance's component, where zaku read it. Figma lists an instance's width and height as
+         * overridden whenever it was resized, even back to its component's size, so the rules compare the two.
+         */
+        main: z.object({ width: z.number(), height: z.number() }).strict().optional(),
       })
       .strict()
       .nullable(),

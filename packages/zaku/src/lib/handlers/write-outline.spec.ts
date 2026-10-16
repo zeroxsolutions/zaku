@@ -131,6 +131,56 @@ describe('runOutline', () => {
     ]);
   });
 
+  it("reads the size of a file's own component whose instance Figma lists as resized", async () => {
+    const root = await design();
+    const instance = {
+      id: '3:1',
+      name: 'Button',
+      type: 'INSTANCE',
+      componentId: 'C:btn',
+      absoluteBoundingBox: { x: 10, y: 10, width: 80, height: 32 },
+      overrides: [{ id: '3:1', overriddenFields: ['width', 'height'] }],
+      children: [],
+    };
+    const framed = {
+      version: '42',
+      nodes: {
+        '1:1': {
+          ...nodes.nodes['1:1'],
+          document: { ...nodes.nodes['1:1'].document, children: [instance] },
+          components: { 'C:btn': { key: 'k-btn', name: 'Button', remote: false } },
+        },
+      },
+    };
+    const component = {
+      version: '42',
+      nodes: {
+        'C:btn': {
+          document: {
+            id: 'C:btn',
+            name: 'Button',
+            type: 'COMPONENT',
+            absoluteBoundingBox: { x: 0, y: 0, width: 80, height: 32 },
+          },
+          components: {},
+          componentSets: {},
+          styles: {},
+        },
+      },
+    };
+    const log: string[] = [];
+    const fetcher: typeof fetch = async (url) => {
+      const href = String(url);
+      log.push(href);
+      const body = href.includes('C%3Abtn') ? component : href.includes('/nodes?') ? framed : top;
+      return new Response(JSON.stringify(body), { status: 200 });
+    };
+    await runOutline({ root, rest: createFigmaRest({ token: 't', fetch: fetcher }), frames: null });
+    const outline = parse(await readFile(join(root, 'outline', 'trips', 'trips.yaml'), 'utf8'));
+    expect(outline.frames[0].instances[0].main).toEqual({ width: 80, height: 32 });
+    expect(log).toContain(`https://api.figma.com/v1/files/PROD/nodes?ids=${encodeURIComponent('C:btn')}`);
+  });
+
   it('skips the node read when the file version and every map are unchanged, and rereads after a map edit', async () => {
     const root = await design();
     await runOutline({

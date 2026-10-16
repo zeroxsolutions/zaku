@@ -54,4 +54,27 @@ Four runs on the skill as it stood before this change.
 
 ## GREEN
 
-Not run.
+Four runs on the skill after this change, each into its own empty file, the criteria out of reach.
+A run that met a usage limit was resumed in its own session; its numbers add up every session.
+
+- travel, zaku's server: 30 frames, 15 states on 2 targets, the library rebuilt from `global.css` and
+  the app's components into the product file, `library.json` saved. Passes 1 to 5. `check_rules` ran
+  16 times, 6 of them timing out on the screens page; the reply names the findings left and says
+  `zaku check` counted all 30 frames missing, which was zaku's outline rejecting slot values. 169
+  `run_script` calls, 27 failed (18 rolled back for a script error, 6 checks timed out, 1 read
+  `mainComponent`); about 52.80 USD over three sessions, one of them lost to a background agent the
+  resume could not reach.
+- wallet, zaku's server: 45 frames, 5 screens and every state on 3 targets, drawn from the direction
+  the run proposed. Passes 1 to 5. Strict mode checked every write and `check_rules` ran 3 times; the
+  reply reports 186 findings left, which were the sizing modes Figma records on a filling instance.
+  33 `run_script` calls, 1 failed; 11.46 USD.
+- travel, Figma's server: 34 frames, 17 states on 2 targets, from the app's `global.css`. Passes 1 to 5. The rules script ran 13 times; the reply reports 12 findings left, the same sizing modes. 22
+  `use_figma` calls, 5 failed; 33.11 USD over two sessions.
+- wallet, Figma's server: 51 frames, 17 states on 3 targets, from the direction the run proposed.
+  Fails 4: the rules script ran three times, each on the screens page, and never on the 17 library
+  pages the run wrote. 20 `use_figma` calls, 3 failed; 11.90 USD.
+
+Every run drew its screens; none drew with a kit's or another library's components outside the system
+bars `zaku.yaml` lists, and none created a file. The sizing-mode findings, the slot values and the
+check that timed out were zaku's, and are fixed beside this record; the wallet run over Figma's server
+is run again after `building-the-library`'s red flag for an unchecked library page: Not run.

@@ -14,7 +14,7 @@ import { librarySnapshotSchema } from '../domain/library.js';
 import { FigmaFileKeyMissing } from '../domain/errors/index.js';
 import { indexScreens, loadMaps, type LoadedMap, type ScreenRef } from '../repositories/feature-maps.js';
 import { parseFrameName, type ParsedFrameName } from '../domain/feature-map.js';
-import { outlineFrame } from '../adapters/figma-rest-outline.js';
+import { outlineFrame, resizedLocalComponents } from '../adapters/figma-rest-outline.js';
 import { loadOutlines, outlinePath } from '../repositories/outlines.js';
 import type { ScreenOutline, Unmapped } from '../domain/outline.js';
 import type { RestNode } from '../adapters/figma-rest-types.js';
@@ -149,6 +149,19 @@ export async function runOutline(options: {
     for (const outline of existing.outlines) byScreen.set(`${outline.feature}/${outline.screen}`, outline);
   }
   const interactive = new Set(config.interactive);
+  const resized = new Set(
+    Object.values(response.nodes).flatMap((entry) =>
+      entry ? resizedLocalComponents(entry.document, entry.components) : [],
+    ),
+  );
+  const sizes = new Map<string, { width: number; height: number }>();
+  if (resized.size > 0) {
+    const read = await options.rest.nodes(fileKey, [...resized]);
+    for (const [id, entry] of Object.entries(read.nodes)) {
+      const box = entry?.document.absoluteBoundingBox;
+      if (box) sizes.set(id, { width: box.width, height: box.height });
+    }
+  }
   for (const [id, entry] of Object.entries(response.nodes)) {
     const found = resolved.get(id);
     if (!entry || !found) continue;
@@ -171,7 +184,7 @@ export async function runOutline(options: {
         containers: place.containers,
         start: place.start,
       },
-      { ...entry, interactive },
+      { ...entry, interactive, sizes },
     );
     outline.frames = [...outline.frames.filter((kept) => kept.nodeId !== id), frame].sort((a, b) =>
       a.name.localeCompare(b.name),

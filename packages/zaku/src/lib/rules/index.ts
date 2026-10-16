@@ -2,3 +2,4 @@
 export { snapshotFindings } from '../domain/snapshot-rules.js';
 export type { Finding } from '../domain/findings.js';
 export type { ResolvedCopy } from '../domain/copy-rules.js';
+export { cutFindings, REPLY_BYTES, type CutFindings } from '../domain/cut-findings.js';

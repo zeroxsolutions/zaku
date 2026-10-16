@@ -136,7 +136,13 @@ const OUTPUTS = {
         'committed keeps the change; rolled-back undid it; partly-rolled-back left nodes; unknown: call read_nodes before running it again',
       ),
   }).shape,
-  check_rules: { checked: z.number().int().describe('How many nodes the rules read'), findings },
+  check_rules: {
+    checked: z.number().int().describe('How many nodes the rules read'),
+    total: z.number().int().describe('How many findings the rules made, every one counted'),
+    counts: z.record(z.string(), z.number().int()).describe('Findings per check, every one counted'),
+    findings: findings.describe('The first findings, as many as fit the reply; the plugin shows them all'),
+    cut: z.boolean().describe('True when findings lists fewer than total: fix these and check again'),
+  },
   issue_pairing_code: {
     code: z
       .string()

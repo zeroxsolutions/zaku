@@ -33961,6 +33961,19 @@ var ALLOWED_OVERRIDES = /* @__PURE__ */ new Set([
   'componentPropertyReferences',
   'exposedInstances',
 ]);
+var SIZING_MODES = /* @__PURE__ */ new Set(['primaryAxisSizingMode', 'counterAxisSizingMode']);
+function componentSized(field, size2, main2) {
+  if (!size2 || !main2 || (field !== 'width' && field !== 'height')) return false;
+  return Math.abs(size2[field] - main2[field]) < 0.5;
+}
+function stretches(sizing) {
+  return sizing.horizontal !== 'FIXED' || sizing.vertical !== 'FIXED';
+}
+function insideSwap(instance, nodeId) {
+  return instance.nested.some(
+    (nested) => nodeId.startsWith(`${nested.nodeId};`) && instance.swaps.includes(nested.componentKey),
+  );
+}
 var overrides = ({ outlines, library }) => {
   if (!library) return { notRun: 'library.json is missing' };
   const nestedOf = /* @__PURE__ */ new Map();
@@ -33984,6 +33997,9 @@ var overrides = ({ outlines, library }) => {
             const self2 = override.nodeId === instance.nodeId;
             if (self2 && field === 'width' && instance.sizing.horizontal !== 'FIXED') continue;
             if (self2 && field === 'height' && instance.sizing.vertical !== 'FIXED') continue;
+            if (self2 && SIZING_MODES.has(field) && stretches(instance.sizing)) continue;
+            if (self2 && componentSized(field, instance.bounds, instance.main)) continue;
+            if (!self2 && (field === 'fills' || field === 'strokes') && insideSwap(instance, override.nodeId)) continue;
             findings.push({
               check: 'overrides',
               ...where,
@@ -35197,6 +35213,14 @@ var instanceOutlineSchema = external_exports
     sizing: external_exports
       .object({ horizontal: external_exports.string(), vertical: external_exports.string() })
       .strict(),
+    /**
+     * The size of the instance's component, where zaku read it. Figma lists an instance's width and height as
+     * overridden whenever it was resized, even back to its component's size, so the rules compare the two.
+     */
+    main: external_exports
+      .object({ width: external_exports.number(), height: external_exports.number() })
+      .strict()
+      .optional(),
   })
   .strict();
 var textOutlineSchema = external_exports
@@ -35654,6 +35678,14 @@ var nodeSnapshotSchema = external_exports
         sizing: external_exports
           .object({ horizontal: external_exports.string(), vertical: external_exports.string() })
           .strict(),
+        /**
+         * The size of the instance's component, where zaku read it. Figma lists an instance's width and height as
+         * overridden whenever it was resized, even back to its component's size, so the rules compare the two.
+         */
+        main: external_exports
+          .object({ width: external_exports.number(), height: external_exports.number() })
+          .strict()
+          .optional(),
       })
       .strict()
       .nullable(),
@@ -37088,6 +37120,19 @@ function linksOf(node2) {
     links.push({ nodeId: node2.id, to: { nodeId: node2.transitionNodeID } });
   return links;
 }
+function resizedLocalComponents(frame, components) {
+  const ids = /* @__PURE__ */ new Set();
+  const walk = (node2) => {
+    const id2 = node2.componentId;
+    if (node2.type === 'INSTANCE' && id2 && components[id2]?.remote === false) {
+      const own2 = (node2.overrides ?? []).find((override) => override.id === node2.id);
+      if (own2?.overriddenFields.some((field) => field === 'width' || field === 'height')) ids.add(id2);
+    }
+    for (const child of node2.children ?? []) walk(child);
+  };
+  walk(frame);
+  return [...ids];
+}
 function outlineFrame(frame, where, ctx) {
   const origin = frame.absoluteBoundingBox ?? { x: 0, y: 0, width: 0, height: 0 };
   const instances = [];
@@ -37141,7 +37186,8 @@ function outlineFrame(frame, where, ctx) {
     const properties = {};
     const swaps = [];
     for (const [name, property] of Object.entries(node2.componentProperties ?? {})) {
-      properties[name.replace(/#[^#]*$/, '')] = property.value;
+      if (typeof property.value === 'string' || typeof property.value === 'boolean')
+        properties[name.replace(/#[^#]*$/, '')] = property.value;
       if (property.type === 'INSTANCE_SWAP' && typeof property.value === 'string') {
         const key = ctx.components[property.value]?.key;
         if (key) swaps.push(key);
@@ -37168,6 +37214,8 @@ function outlineFrame(frame, where, ctx) {
         vertical: node2.layoutSizingVertical ?? 'FIXED',
       },
     };
+    const main2 = ctx.sizes?.get(node2.componentId ?? '');
+    if (main2) instance.main = main2;
     inside(node2, '', instance);
     return instance;
   };
@@ -37307,6 +37355,19 @@ async function runOutline(options) {
     for (const outline of existing.outlines) byScreen.set(`${outline.feature}/${outline.screen}`, outline);
   }
   const interactive = new Set(config2.interactive);
+  const resized = new Set(
+    Object.values(response.nodes).flatMap((entry) =>
+      entry ? resizedLocalComponents(entry.document, entry.components) : [],
+    ),
+  );
+  const sizes = /* @__PURE__ */ new Map();
+  if (resized.size > 0) {
+    const read = await options.rest.nodes(fileKey, [...resized]);
+    for (const [id2, entry] of Object.entries(read.nodes)) {
+      const box = entry?.document.absoluteBoundingBox;
+      if (box) sizes.set(id2, { width: box.width, height: box.height });
+    }
+  }
   for (const [id2, entry] of Object.entries(response.nodes)) {
     const found = resolved.get(id2);
     if (!entry || !found) continue;
@@ -37329,7 +37390,7 @@ async function runOutline(options) {
         containers: place.containers,
         start: place.start,
       },
-      { ...entry, interactive },
+      { ...entry, interactive, sizes },
     );
     outline.frames = [...outline.frames.filter((kept) => kept.nodeId !== id2), frame].sort((a, b) =>
       a.name.localeCompare(b.name),
@@ -37856,6 +37917,8 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
           if (self2 && (field === 'width' || field === 'height') && node2.componentSource === true) continue;
           if (self2 && field === 'width' && node2.instance.sizing.horizontal !== 'FIXED') continue;
           if (self2 && field === 'height' && node2.instance.sizing.vertical !== 'FIXED') continue;
+          if (self2 && SIZING_MODES.has(field) && stretches(node2.instance.sizing)) continue;
+          if (self2 && componentSized(field, node2.box, node2.instance.main)) continue;
           finding('overrides', field, `${field} overridden inside an instance of ${node2.name}`, override.nodeId);
         }
       }
