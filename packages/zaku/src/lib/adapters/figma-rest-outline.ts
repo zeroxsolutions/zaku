@@ -112,7 +112,8 @@ export function outlineFrame(frame: RestNode, where: FramePlace, ctx: OutlineCon
     const properties: Record<string, string | boolean> = {};
     const swaps: string[] = [];
     for (const [name, property] of Object.entries(node.componentProperties ?? {})) {
-      properties[name.replace(/#[^#]*$/, '')] = property.value;
+      if (typeof property.value === 'string' || typeof property.value === 'boolean')
+        properties[name.replace(/#[^#]*$/, '')] = property.value;
       if (property.type === 'INSTANCE_SWAP' && typeof property.value === 'string') {
         const key = ctx.components[property.value]?.key;
         if (key) swaps.push(key);

@@ -9,6 +9,17 @@ export const ALLOWED_OVERRIDES = new Set([
   'exposedInstances',
 ]);
 
+/**
+ * What Figma records on an instance itself when it is set to fill or hug: the auto layout sizing mode that follows.
+ * The instance's own width and height rule decides whether that stretch is allowed.
+ */
+export const SIZING_MODES = new Set(['primaryAxisSizingMode', 'counterAxisSizingMode']);
+
+/** Whether an instance sizes itself on either axis by filling or hugging, rather than at a fixed size. */
+export function stretches(sizing: { horizontal: string; vertical: string }): boolean {
+  return sizing.horizontal !== 'FIXED' || sizing.vertical !== 'FIXED';
+}
+
 export const overrides: Check = ({ outlines, library }) => {
   if (!library) return { notRun: 'library.json is missing' };
   const nestedOf = new Map<string, Map<string, string | null>>();
@@ -34,6 +45,7 @@ export const overrides: Check = ({ outlines, library }) => {
             const self = override.nodeId === instance.nodeId;
             if (self && field === 'width' && instance.sizing.horizontal !== 'FIXED') continue;
             if (self && field === 'height' && instance.sizing.vertical !== 'FIXED') continue;
+            if (self && SIZING_MODES.has(field) && stretches(instance.sizing)) continue;
             findings.push({
               check: 'overrides',
               ...where,

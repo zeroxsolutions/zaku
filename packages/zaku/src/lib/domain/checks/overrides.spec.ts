@@ -25,6 +25,19 @@ describe('overrides', () => {
     expect(outcome).toEqual({ findings: [] });
   });
 
+  it('passes the sizing mode Figma records on an instance set to fill, and reports it on a fixed one', () => {
+    const fields = ['primaryAxisSizingMode', 'counterAxisSizingMode'];
+    const of = (horizontal: string): ReturnType<typeof overrides> =>
+      run(
+        testInstance({
+          overrides: [{ nodeId: '10:1', fields }],
+          sizing: { horizontal, vertical: 'FIXED' },
+        }),
+      );
+    expect(of('FILL')).toEqual({ findings: [] });
+    expect(of('FIXED')).toMatchObject({ findings: fields.map((field) => ({ nodeId: '10:1', field })) });
+  });
+
   it('reports a nested icon fill and a fixed height, each by node id and field', () => {
     const outcome = run(
       testInstance({

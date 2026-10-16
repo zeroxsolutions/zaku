@@ -199,6 +199,21 @@ describe('snapshotFindings', () => {
     expect(findings.map((f) => f.field)).toEqual(['height']);
   });
 
+  it('lets a stretched instance carry the sizing mode Figma records when it fills, and finds it on a fixed one', () => {
+    const fields = ['primaryAxisSizingMode', 'counterAxisSizingMode'];
+    const of = (horizontal: string): (string | undefined)[] =>
+      snapshotFindings([
+        node({
+          id: '1:1',
+          type: 'INSTANCE',
+          name: 'Button',
+          instance: { overrides: [{ nodeId: '1:1', fields }], sizing: { horizontal, vertical: 'FIXED' } },
+        }),
+      ]).map((f) => f.field);
+    expect(of('FILL')).toEqual([]);
+    expect(of('FIXED')).toEqual(fields);
+  });
+
   it('finds a default layer name, but not on a text, which is named for its copy', () => {
     expect(snapshotFindings([node({ name: 'Frame 12' })])[0]).toMatchObject({ check: 'naming' });
     expect(snapshotFindings([node({ type: 'TEXT', name: 'Rectangle', textStyleId: 's' })])).toEqual([]);

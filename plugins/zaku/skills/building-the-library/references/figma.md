@@ -39,7 +39,9 @@ rules script answers is fixed in the next write before the entry goes on.
   evaluated is refused.
 - The plugin reads the file page by page, and Figma's API makes a style id read-only then: a text
   takes its style with `await text.setTextStyleIdAsync(style.id)`, a fill with
-  `setFillStyleIdAsync`; `run_script` refuses the assignment.
+  `setFillStyleIdAsync`; `run_script` refuses the assignment. For the same reason `instance.mainComponent`
+  throws ("Cannot call with documentAccess: dynamic-page"); a script reads it with
+  `await instance.getMainComponentAsync()`.
 - Every `figma.create*()` call puts its node on `figma.currentPage`, and the current page follows the
   page the person opens while a script runs. A script that draws an entry looks the entry's page up by
   name and appends each node it makes to its parent there, before it returns.

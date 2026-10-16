@@ -41,6 +41,8 @@ const frame: RestNode = {
       componentProperties: {
         Variant: { type: 'VARIANT', value: 'default' },
         'Icon#12:0': { type: 'INSTANCE_SWAP', value: 'C:heart' },
+        // A slot's value is the layer it holds, not a value a designer sets.
+        'Actions#13:0': { type: 'SLOT', value: { guid: { sessionID: 8, localID: 1628 } } },
       },
       overrides: [{ id: 'I3:1;5:1', overriddenFields: ['fills'] }],
       interactions: [

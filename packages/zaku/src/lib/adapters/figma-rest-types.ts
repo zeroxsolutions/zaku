@@ -24,7 +24,8 @@ export interface RestNode {
   visible?: boolean;
   children?: RestNode[];
   componentId?: string;
-  componentProperties?: Record<string, { type: string; value: string | boolean }>;
+  /** A SLOT's value is an object naming the layer it holds. */
+  componentProperties?: Record<string, { type: string; value: unknown }>;
   overrides?: { id: string; overriddenFields: string[] }[];
   absoluteBoundingBox?: { x: number; y: number; width: number; height: number } | null;
   layoutSizingHorizontal?: 'FIXED' | 'HUG' | 'FILL';

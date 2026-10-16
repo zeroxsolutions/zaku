@@ -33961,6 +33961,10 @@ var ALLOWED_OVERRIDES = /* @__PURE__ */ new Set([
   'componentPropertyReferences',
   'exposedInstances',
 ]);
+var SIZING_MODES = /* @__PURE__ */ new Set(['primaryAxisSizingMode', 'counterAxisSizingMode']);
+function stretches(sizing) {
+  return sizing.horizontal !== 'FIXED' || sizing.vertical !== 'FIXED';
+}
 var overrides = ({ outlines, library }) => {
   if (!library) return { notRun: 'library.json is missing' };
   const nestedOf = /* @__PURE__ */ new Map();
@@ -33984,6 +33988,7 @@ var overrides = ({ outlines, library }) => {
             const self2 = override.nodeId === instance.nodeId;
             if (self2 && field === 'width' && instance.sizing.horizontal !== 'FIXED') continue;
             if (self2 && field === 'height' && instance.sizing.vertical !== 'FIXED') continue;
+            if (self2 && SIZING_MODES.has(field) && stretches(instance.sizing)) continue;
             findings.push({
               check: 'overrides',
               ...where,
@@ -37141,7 +37146,8 @@ function outlineFrame(frame, where, ctx) {
     const properties = {};
     const swaps = [];
     for (const [name, property] of Object.entries(node2.componentProperties ?? {})) {
-      properties[name.replace(/#[^#]*$/, '')] = property.value;
+      if (typeof property.value === 'string' || typeof property.value === 'boolean')
+        properties[name.replace(/#[^#]*$/, '')] = property.value;
       if (property.type === 'INSTANCE_SWAP' && typeof property.value === 'string') {
         const key = ctx.components[property.value]?.key;
         if (key) swaps.push(key);
@@ -37856,6 +37862,7 @@ function snapshotFindings(nodes, copy2 = DEFAULT_COPY) {
           if (self2 && (field === 'width' || field === 'height') && node2.componentSource === true) continue;
           if (self2 && field === 'width' && node2.instance.sizing.horizontal !== 'FIXED') continue;
           if (self2 && field === 'height' && node2.instance.sizing.vertical !== 'FIXED') continue;
+          if (self2 && SIZING_MODES.has(field) && stretches(node2.instance.sizing)) continue;
           finding('overrides', field, `${field} overridden inside an instance of ${node2.name}`, override.nodeId);
         }
       }
