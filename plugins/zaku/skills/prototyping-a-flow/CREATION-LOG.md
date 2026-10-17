@@ -23,6 +23,8 @@ Pending the RED runs.
 
 - `test-wiring-a-feature-flow.md`: a start point, an exit connection and a Back action per target,
   each transition named with its tokens: RED not run, GREEN not run.
+- `test-asking-for-transitions.md`: transitions asked for as motion; RED is the recorded session
+  (Motion keyframes, no connections), GREEN not run.
 
 ## Iterations
 
@@ -33,3 +35,8 @@ Pending the RED runs.
 3. `references/sketch.md` removed with the Sketch reader in the checker: a skill-arm run on Sketch
    2026.3.1 built a library the user judged far below the Figma one, and the team will not maintain or
    check a second tool. The body stays tool-neutral; Figma is its only reference.
+4. A transition rides its connection, and a timeline animation is kept to a state that moves by
+   itself, after a user found an agent asked for transitions drawing them with Figma's Motion
+   keyframes instead of prototype connections. The same keyframes were found earlier playing a
+   component's hover animation on every page load of a site, in every instance, which the Plugin API
+   could not remove per instance.

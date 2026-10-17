@@ -36,6 +36,18 @@ fixed in the next write.
 - What Figma cannot draw is written in a Section named `Motion`, 400 to the right of the screen's
   Section, holding one text layer per transition in the skill's line format.
 
+## Figma's Motion is not a transition
+
+Figma's Motion (in beta in the Plugin API: `figma.motion`, `node.applyAnimationStyle`, manual keyframe
+tracks, `node.timelines`) keyframes a node on the timeline of the top-level frame that holds it. It
+plays when that frame shows, whichever connection led there, and keyframes on a component play in every
+instance, which the API cannot remove one by one ("Cannot write animations to instance sublayers"). So a
+screen change, an overlay and a component's state change are reactions with a `transition`, below, and
+never keyframes. Keyframes go only on a variant whose state moves by itself (a Spinner turning, a
+Skeleton's shimmer). A motion that answers the pointer, such as an icon's hover, goes on its own
+`State=Hover` variant, which an `ON_HOVER` `CHANGE_TO` with no transition reaches, so the `Default`
+variant every page places stands still.
+
 ## Transitions
 
 A transition is `{ type, easing: { type }, duration }` with `duration` in seconds. `DISSOLVE`,
