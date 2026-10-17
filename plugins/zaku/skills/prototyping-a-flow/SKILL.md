@@ -45,6 +45,18 @@ variants is an animated interaction on the component where the tool has one: hov
 entering, pressed while pressed, each back on release, with the `standard` easing at `short4`. A
 screen never fakes a component state with a second frame.
 
+## A transition rides its connection
+
+A transition is drawn on the connection or the state change that makes it, so it plays when the person
+takes that step and only then. A request for motion, animation or transitions between screens is a
+request for these connections, each with its transition.
+
+A tool's timeline animation, which plays whenever its frame is shown, is not a transition: on a screen
+it plays on every visit whatever the person did, and on a component it plays in every instance, so a
+prototype reviewer sees motion the shipped app never makes. A timeline animation is drawn only for a
+motion that runs by itself within one state, such as a spinner turning or a skeleton's shimmer, and
+only on that state's variant, which a connection or a state change reaches.
+
 ## A transition names its pattern and its tokens
 
 | Moving between                                                                                            | Pattern                                                                                                               |
@@ -120,3 +132,4 @@ can be paused (WCAG 2.2 SC 2.2.2).
 | "Dissolve, 300 ms, ease out" picked by eye           | A named pattern, a duration token, an easing token |
 | A loading screen drawn as its own frame for a button | The button's loading variant                       |
 | A slide-in with no reduced-motion version            | A fade or instant change beside it                 |
+| A screen change drawn as a timeline animation        | A connection with its transition                   |
