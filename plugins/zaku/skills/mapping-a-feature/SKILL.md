@@ -70,6 +70,28 @@ follows it; it never leads it.
    Nielsen's heuristics ("10 Usability Heuristics for User Interface Design", NN/g) ask for this: #9,
    error messages "constructively suggest a solution", and #3, "a clearly marked 'emergency exit'" so
    people "avoid getting stuck".
+6. **An action the actor cannot take back in one step is guarded in the map.** The predicate is what
+   getting back costs the actor `docs/design/profile.md` describes, in the environment it describes:
+   data or work that is gone, other people the action reaches, or a way back that needs something the
+   actor may not have there (a sign-in code sent by SMS to a traveller abroad, a link in a mailbox on
+   another device). Signing out is such an action when it removes what the device keeps for the actor
+   (copies saved for offline use), or when signing back in needs a code the actor may not receive
+   where the profile places them; the confirmation then names what goes. Where the product
+   can reverse the action for a few seconds and nothing stays exposed meanwhile, the screen gets a
+   state named for what happened (`Removed`) showing the undo control, and an `exits` row from that
+   control to Default. Otherwise the screen gets a
+   `Confirm <action>` state (`Confirm sign out`, `Confirm leave trip`) whose way out is the cancel
+   control and whose primary control is labelled with the action, never "OK" or "Yes". Nielsen
+   ("Confirmation Dialogs Can Prevent User Errors - If Not Overused", NN/g): "Use a confirmation dialog
+   before committing to actions with serious consequences", and "Do not use confirmation dialogs for
+   routine actions", so an action the actor reverses in one step gets neither.
+7. **A control that sends a code or a link holds itself after each send.** The screen that offers it
+   lists two states after Error: `Resend cooldown`, where the control is disabled and shows the time
+   left, and `Rate limited`, where the service refused the send and the state says when to try again
+   and shows a way that needs no new send (change the address, use another sign-in method). A control
+   with no hold sends a message on every press: a person who presses twice gets two codes and types
+   the first, which no longer works, and a script that presses it costs one SMS per press and a spam
+   report against the sending domain per mailbox.
 
 ## A way back, per platform
 
@@ -110,5 +132,7 @@ kept apart from the drawing's commits, before a frame changes.
 | A state per target ("share sheet", "share dialog")   | One state; the drawing chooses its form per target       |
 | `back.web` only, on a screen that targets all        | A `back` for every family it targets                     |
 | An Error state named, and nothing it shows to act on | A control in `exits` or `back`, the state in its comment |
+| Sign out wired straight to Sign in                   | `Confirm sign out` where signing back in needs a code    |
+| "Resend" with only Sending and Sent                  | `Resend cooldown` and `Rate limited` after Error         |
 | A native frame with a breadcrumb                     | The platform's own way back                              |
 | The web desktop target standing for a desktop app    | A target with the desktop platform's family              |

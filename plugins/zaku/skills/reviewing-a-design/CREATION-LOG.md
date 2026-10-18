@@ -29,6 +29,10 @@ Pending the RED runs.
 
 - The system bars row's desktop clause: no run; it follows the checker's desktop defaults.
 - The Windows, GNOME and KDE target sizes: no run; only macOS was scored.
+- The guards row: no review run. It holds the drawing to `mapping-a-feature`'s guard and resend
+  rules, which a recorded session licensed: a drawn product shipped Cancel trip, Leave trip, Remove,
+  Stop inviting, Block and Sign out acting from the control alone, and its sign-in link and verify
+  email screens offered Resend with no hold, and the owner caught both.
 - The way out row: no review run. It holds the drawing to `mapping-a-feature`'s way out rule, which a
   recorded session licensed: a plugin panel shipped with a "Not connected" state that offered no
   action, and nothing in the review asked what a person does in each state.

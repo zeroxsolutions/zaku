@@ -67,6 +67,10 @@ What the checker cannot decide, the review decides from images and says what it 
 - The way out, a row of its own in the report: every state's frame shows a control the map names
   for that state in `exits` or `back`, as `mapping-a-feature` writes it. A frame that shows none
   fails, named, because a person who meets that state can only close the product.
+- The guards, a row of their own: every action the map guards has its `Confirm <action>` or `Undone`
+  frame, every control that sends a code or a link has its `Resend cooldown` and `Rate limited`
+  frames, and each shows what `mapping-a-feature` gives it. An action that drawing shows taking
+  effect from the control alone, with no guard frame, fails, named.
 
 The images are evidence for the reviewer and for a person, never the gate: an agent's count of its own
 screenshots says nothing about whether the drawing is right.

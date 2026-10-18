@@ -27,6 +27,21 @@ runs, every rule whose criterion the control arm already passed is cut and liste
   Diagnose, and Recover from Errors", error messages "constructively suggest a solution"; #3, users
   "need a clearly marked 'emergency exit'", and exits let them "avoid getting stuck". No platform
   guideline was read for this rule.
+- Jakob Nielsen, "Confirmation Dialogs Can Prevent User Errors - If Not Overused", Nielsen Norman
+  Group (published February 18, 2018; last reviewed August 7, 2026; read 2026-10-19): "Use a
+  confirmation dialog before committing to actions with serious consequences", "Do not use confirmation
+  dialogs for routine actions", "conduct a task analysis to determine the severity of different
+  outcomes", and "go to great lengths to provide undo".
+- Apple Human Interface Guidelines, "Alerts" (last change February 2, 2024; read 2026-10-19): "Avoid
+  displaying alerts for common, undoable actions, even when they're destructive", and display one when
+  people "take an uncommon destructive action that they can't undo". Microsoft Learn, "Dialogs and
+  flyouts" (2026-10-13): for a frequent action, "consider providing a way for the user to undo the
+  action ... rather than forcing users to confirm the action every time".
+- The sign-out clause follows a decision record written with `choosing-an-interaction-pattern` for a
+  trip planner (2026-10-19): asking only when signing out removes the offline copies the device keeps
+  scored above always asking and above asking never; an undo failed its gate, because the session would
+  stay usable on a shared device for the undo's window. The rule keeps that gate in "nothing stays
+  exposed meanwhile".
 
 ## What was refused
 
@@ -49,6 +64,14 @@ Pending the RED runs.
 
 Pending the RED runs.
 
+- The guard rule's predicate for actions that reach other people or lose work (criterion 1 of
+  `test-guarding-actions-and-resends.md`): the control arm already confirmed Cancel trip, Remove and
+  Leave trip in 6/6 runs. It ships because a recorded session drew a product's screens with no
+  confirmation on Cancel trip, Leave trip, Remove, Stop inviting or Block, and its owner reported it;
+  that drawing came from an agent that was handed screens, not asked to map them, which the scenario
+  does not reproduce.
+- The undo branch of the guard rule: no run met an action the product can reverse.
+
 - "A width is not a platform": a real session repeated "large and extra-large are desktop classes the
   web covers" as settled, treating a width class as a platform; the user corrected that a native
   desktop app and a web page in a desktop browser differ in menus, windows, shortcuts, back, settings
@@ -70,6 +93,8 @@ Pending the RED runs.
   size being the table's with no source repeated).
 - `test-mapping-the-ways-out-of-a-pairing-feature.md`: RED three runs per arm (criterion 1 failed in all
   six, criterion 3 in five), GREEN three runs (all four criteria pass in all three).
+- `test-guarding-actions-and-resends.md`: RED three runs per arm (criterion 1 passed in all six,
+  criteria 2 and 3 failed in all six), GREEN three runs (all three criteria pass in all three).
 
 ## Iterations
 
@@ -80,3 +105,7 @@ Pending the RED runs.
 3. Every state names its way out, an `exits` row to the screen itself for one that keeps the person
    there, with the states in a comment; a failure caused by a chosen value shows it editable. After the
    recorded session failure and the RED runs of `test-mapping-the-ways-out-of-a-pairing-feature.md`.
+4. An action the actor cannot take back in one step gets a `Confirm <action>` state or an undo, judged
+   against the profile; a control that sends a code or a link gets `Resend cooldown` and `Rate limited`.
+   After the owner reported missing confirmations and resend holds across a drawn product, and the RED
+   runs of `test-guarding-actions-and-resends.md`.
