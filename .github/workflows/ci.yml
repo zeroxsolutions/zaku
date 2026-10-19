@@ -1,10 +1,10 @@
 # The pull-request gate. Four jobs:
 #
-#   gate - the `nx-gate` workflow beside this one, same targets as the pre-push hook
-#          but scoped by `affected` (the hook sweeps; the gate re-verifies what
-#          the change reaches - keep the asymmetry).
+#   gate - the `nx-gate` workflow beside this one: the pre-push hook's targets plus `test`,
+#          over the projects the change reaches, on a clean checkout.
 #   e2e  - gate-only. The hook's set stays inside the gate's and never the
-#          reverse, so a target that starts a runtime lands here instead.
+#          reverse, so a target that starts a runtime, or runs every spec, lands
+#          here instead.
 #   format - the whole tree through the formatter, which no nx target runs.
 #   bin    - every committed bundle rebuilt from source, failing on any change to the tree.
 #
