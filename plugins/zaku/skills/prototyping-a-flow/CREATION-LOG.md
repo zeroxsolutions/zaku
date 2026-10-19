@@ -21,6 +21,7 @@ Pending the RED runs.
 
 ## Tests
 
+- `test-wiring-across-features.md`: a journey across three feature pages, built on one prototype page per target: RED 0/3 on criteria 2 and 3, GREEN 3/3.
 - `test-wiring-a-feature-flow.md`: a start point, an exit connection and a Back action per target,
   each transition named with its tokens: RED not run, GREEN not run.
 - `test-asking-for-transitions.md`: transitions asked for as motion; RED is the recorded session
@@ -40,3 +41,11 @@ Pending the RED runs.
    keyframes instead of prototype connections. The same keyframes were found earlier playing a
    component's hover animation on every page load of a site, in every instance, which the Plugin API
    could not remove per instance.
+5. The prototype moved onto one `<target name> prototype` page per target, built from copies of the
+   feature pages and rebuilt, never edited, after a user asked why Account's Sign out could not
+   reach Sign in. Figma limits a prototype to one page ("5 ways to level up your prototyping
+   workflow"), its page skeleton keeps a Prototype page of duplicated screens apart from the flow
+   ("Team, folder, and file organization"), and Open link opens a new tab ("Prototype actions"). A
+   page per target follows Figma's "5 ways to structure your workflow with Pages in Figma" (2018):
+   "Each Page holds its own prototype, which makes it easy to run user tests for different platforms
+   or screen sizes."
