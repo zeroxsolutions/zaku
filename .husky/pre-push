@@ -2,4 +2,8 @@
 # A run-many over every project here re-ran the whole workspace on each push after a merge from
 # origin. `affected` diffs from the merge-base with `defaultBase` in nx.json, and adds the
 # uncommitted and untracked files.
-pnpm nx affected -t lint typecheck build test
+#
+# `test` is left to the pull-request gate, which runs it over the same projects on a clean checkout
+# and holds the merge. Here it ran on every push, on a machine the other worktrees were pushing from
+# too.
+pnpm nx affected -t lint typecheck build
