@@ -39,6 +39,11 @@ criterion the control arm already passed is cut and listed below.
   abbreviations, and `/` for hierarchy. The `<title> / <state> / <target name>` shape follows those
   three. RED s1 runs 1 and 2 drew under the earlier `<prefix> - <title> (<state>)` names, whose
   prefixes (`And E`, `iPad L`) the user could not read.
+- Arrangement of a screen: shadcn's blocks read from the registry
+  (`https://ui.shadcn.com/r/styles/new-york-v4/<block>.json`, `login-01` to `login-05` and
+  `signup-01` to `signup-05`) on 2026-10-20; Apple Human Interface Guidelines, "Layout" (updated
+  September 9, 2026: "place the most important items near the top and leading side", "keep layout
+  changes recognizable and familiar to the platform").
 
 ## What was refused
 
@@ -49,6 +54,11 @@ Pending the RED runs.
   checker's `tone` field.
 - A rule on what a line says (the real noun, the number, the action): the control arm already wrote
   the record's numbers, a verb on every button and an error that names its failure.
+- A rule on arranging a new screen across targets: `test-arranging-a-new-screen.md`'s skill arm
+  already centred the heading block and the closing lines and kept every block's alignment on the
+  three targets, in all three runs.
+- An alignment criterion in `reviewing-a-design`'s checker table: that table lists `zaku check`'s
+  checks, and no check reads alignment; the review decides it from the comparison image instead.
 
 ## What shipped on weak evidence
 
@@ -90,6 +100,11 @@ Pending the RED runs.
   drew no screens, the Figma arms drew from a library nobody named and could not run the rules),
   GREEN four runs (three pass 1 to 5; the wallet over Figma's server fails 4, its library pages
   unchecked).
+- `test-arranging-a-new-screen.md`: RED three runs per arm (skill arm passed all four in all three;
+  control run 1 failed 1 and 2), GREEN not run.
+- `test-migrating-a-screens-arrangement.md`: the skill reached through its description, no memory, no
+  skill named: RED three runs per arm (every skill run invoked it; criteria 1 and 2 failed in all six),
+  GREEN three runs (every run invoked it and read `references/shadcn.md`; all four pass in all).
 
 ## Iterations
 
@@ -122,3 +137,9 @@ Pending the RED runs.
     with every finding counted, after the GREEN runs over zaku's server: both sent a script reading
     `mainComponent`, which the plugin's page-by-page access refuses, and one got a 133,386-character
     `check_rules` answer its client would not take.
+11. A web frame takes the arrangement of the design system's own example of that screen, a native
+    frame its platform's, and a block keeps one alignment on every target of a state; with
+    `references/shadcn.md` listing the blocks. After a recorded session in which a migrated sign-in
+    kept the old drawing's left-aligned heading and closing lines inside a centred column, which the
+    user flagged, and `test-migrating-a-screens-arrangement.md`'s RED, where all six runs copied the
+    old drawing's alignment.

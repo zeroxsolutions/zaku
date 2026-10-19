@@ -33,6 +33,10 @@ Pending the RED runs.
   recorded session licensed: a plugin panel shipped with a "Not connected" state that offered no
   action, and nothing in the review asked what a person does in each state.
 
+- The alignment item, decided from the comparison image and graded Medium: no review run read it. It
+  mirrors `drawing-a-screen`'s arrangement rule, licensed by that skill's recorded session and
+  `test-migrating-a-screens-arrangement.md`'s RED, so a drawing that breaks the rule is caught in review.
+
 ## Tests
 
 - `test-reviewing-a-screen.md`: RED three runs (criterion 2 failed in all), GREEN not run.
@@ -54,3 +58,5 @@ Pending the RED runs.
    desktop window's bar, after `test-reviewing-target-size-on-a-mac-frame.md` RED.
 5. A way out row, decided from the images and graded High beside way back, after `mapping-a-feature`
    gained its way out rule.
+6. An alignment item, decided from the comparison image and graded Medium, after `drawing-a-screen`
+   gained its rule on the arrangement of the design system's example of a screen.
