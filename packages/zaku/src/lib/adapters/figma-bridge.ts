@@ -82,7 +82,7 @@ export class FigmaBridge {
 
   constructor(
     private readonly timings: BridgeTimings,
-    private readonly nextId: () => string = () => crypto.randomUUID(),
+    private readonly nextId: () => string = (): string => crypto.randomUUID(),
   ) {}
 
   attach(connection: BridgeConnection): void {

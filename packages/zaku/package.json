@@ -60,6 +60,7 @@
   },
   "nx": {
     "targets": {
+      "lint-deps": {},
       "test": {
         "inputs": [
           "...",
