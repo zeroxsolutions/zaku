@@ -1,0 +1,3 @@
+# Checks the message against commitlint.config.mjs before the commit is written. It reads only the
+# message file, so it costs nothing beside the pre-commit formatter.
+pnpm exec commitlint --edit "$1"
