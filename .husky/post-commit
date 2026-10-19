@@ -1,0 +1,9 @@
+# A commit that names its paths runs pre-commit on a temporary index, so oxfmt's rewrite reaches the
+# commit but the real index keeps each path as it was before the rewrite, and a later commit naming no
+# paths would put that copy back. Where a committed path's worktree already matches HEAD, its index
+# entry is set back to HEAD. `core.quotePath=false` keeps a non-ASCII path unquoted for `read`.
+git -c core.quotePath=false diff-tree --root --no-commit-id --name-only -r HEAD | while IFS= read -r path; do
+  if git diff --quiet HEAD -- "$path" && ! git diff --cached --quiet HEAD -- "$path"; then
+    git reset -q -- "$path"
+  fi
+done
