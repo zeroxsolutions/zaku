@@ -5,10 +5,11 @@ description: Use when drawing or changing a frame in a product's design, before 
 
 # Drawing a Screen
 
-> **Stack assumptions: Figma.** The decisions here hold on any stack; the spellings do not, so this file
-> names no layer's package, import or call. Before writing code, config or a command against one of
-> these layers, read its references/figma.md, which spells each decision for that layer and names what
-> has to survive its replacement.
+> **Stack assumptions: Figma, and shadcn.** The decisions here hold on any stack; the spellings do not,
+> so this file names no layer's package, import or call. Before writing code, config or a command
+> against one of these layers, read the reference for it (`references/figma.md` or
+> `references/shadcn.md`), which spells each decision for that layer and names what has to survive its
+> replacement.
 
 ## Overview
 
@@ -135,6 +136,17 @@ every frame of one screen together. A target name is written out, because an abb
   `Gesture Handle`, `Window Controls` (macOS), `Title Bar` (Windows, KDE) and `Header Bar` (GNOME).
 - **On a migration, every block of the old drawing**: the logo, the copy, the controls, the photos.
   A block left out is a decision the map records with its reason, never a silent loss.
+- **The arrangement of the design system's own example of that screen.** Where the design system
+  publishes a composed example of the kind of screen being drawn (a sign-in, a sign-up, a settings
+  form), a web frame takes the alignment and the widths of the example whose layout matches it: a
+  form in a card, or a bare column beside a cover. The design system's reference names the examples.
+  A native frame takes its platform's arrangement instead, and Apple's Human Interface Guidelines put
+  it as "place the most important items near the top and leading side". The old drawing gives the
+  blocks and their copy, never their alignment: an old drawing is what the migration replaces, and
+  copying its alignment carries the old look into the new design system. A block keeps one alignment
+  on every target of a state, except where the example itself changes it at a breakpoint. Any other
+  alignment that differs between them, without a reason in the map, is a defect, as copy that differs
+  is.
 
 ## Writing the copy
 
@@ -215,6 +227,7 @@ what it needs; it is never reported as passed, and the screen is not reported do
 | "It is only the height"                               | A height set on an instance is an override; the frame no longer matches the code                                          |
 | "My local button looks the same as the library's"     | A look-alike follows no token and no code; place the library's                                                            |
 | "The old drawing had it this way"                     | The migration keeps the old drawing's blocks, drawn with the design system, not its pixels                                |
+| "The old drawing left-aligns this heading"            | The design system's example of the screen sets the alignment; the old drawing sets only the blocks and the copy           |
 | "I will clean the overrides up later"                 | The check fails the frame now; there is no done with an override in it                                                    |
 | "A library is enabled in the file, so I draw with it" | Only the library `zaku.yaml` names, the code's own tokens or a chosen direction is the product's design system            |
 | "There is no library, so I draw wireframes"           | Build the library from the code into the product file, or choose a direction, then draw the screens                       |
@@ -250,6 +263,7 @@ the file and the check, not recalled.
 - [ ] The reply names which design system source the screens were drawn from
 - [ ] Every state the map names has a frame on every target, named `<title> / <state> / <target name>`
 - [ ] Every block is an instance, changed only through what its component offers
+- [ ] Every block keeps one alignment on every target of a state (the design system's example's on web, the platform's on native), changing only where the example changes it
 - [ ] Every native frame holds its platform's system bars
 - [ ] Every picture is an image the file holds, never a flat frame
 - [ ] Every copy line was read against the character rule, records' text included

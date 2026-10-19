@@ -67,6 +67,10 @@ What the checker cannot decide, the review decides from images and says what it 
 - The way out, a row of its own in the report: every state's frame shows a control the map names
   for that state in `exits` or `back`, as `mapping-a-feature` writes it. A frame that shows none
   fails, named, because a person who meets that state can only close the product.
+- Alignment, from the same comparison image: a block whose alignment differs between the targets of
+  one state, where the design system's example of the screen keeps it and the map gives no reason, or
+  a web frame whose heading block or closing lines depart from that example. `drawing-a-screen` and
+  its design system reference name the example.
 
 The images are evidence for the reviewer and for a person, never the gate: an agent's count of its own
 screenshots says nothing about whether the drawing is right.
@@ -90,7 +94,7 @@ Every finding is graded by its criterion, never by how small it looks:
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Blocker | overrides; library (a raw node, or a local component that copies one the library publishes); a change to the library made by the drawing (the library file's version has moved past the snapshot's while the change made no library edit); coverage |
 | High    | component; images; system bars; way back; way out; target size; prototype                                                                                                                                                                           |
-| Medium  | copy; naming and placement                                                                                                                                                                                                                          |
+| Medium  | copy; alignment; naming and placement                                                                                                                                                                                                               |
 | Nit     | what a person could reasonably choose otherwise, with the reason                                                                                                                                                                                    |
 
 A Blocker or a High sends the work back, and the drawing is not reported done until a new review
