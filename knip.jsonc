@@ -1,0 +1,20 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  // Only the buildable package is checked: a deployable bundles, so what it never declared still
+  // ships, and its manifest is not what a consumer installs from.
+  "ignoreWorkspaces": ["apps/**"],
+  "workspaces": {
+    "packages/*": {
+      "project": ["src/**/*.ts!"],
+      "ignoreDependencies": [
+        // tsc's `importHelpers` writes `import { __decorate } from "tslib"` into the emitted
+        // JavaScript of every decorated class, so the built package needs it while no source file
+        // names it.
+        "tslib",
+        // The CLI requires the product's own copy, and runs without one, so the package declares it
+        // as an optional peer. `--strict` counts only required peers as declared.
+        "playwright",
+      ],
+    },
+  },
+}

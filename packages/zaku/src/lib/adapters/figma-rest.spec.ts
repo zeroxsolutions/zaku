@@ -13,7 +13,7 @@ describe('createFigmaRest', () => {
       onCall: () => (calls += 1),
       fetch: async (url, init) => {
         urls.push(String(url));
-        expect((init?.headers as Record<string, string>)['X-Figma-Token']).toBe('t');
+        expect((init?.headers as Record<string, string> | undefined)?.['X-Figma-Token']).toBe('t');
         return response(200, { version: '9', nodes: {} });
       },
     });

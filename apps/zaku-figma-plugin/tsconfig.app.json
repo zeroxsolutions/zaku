@@ -28,9 +28,6 @@
     "vite.config.mts",
     "vitest.config.ts",
     "vitest.config.mts",
-    "eslint.config.js",
-    "eslint.config.cjs",
-    "eslint.config.mjs",
     "src/main.ts",
     "src/sandbox/**/*.ts",
     "src/rules-script.ts"

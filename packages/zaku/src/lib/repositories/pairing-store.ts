@@ -48,7 +48,7 @@ export interface IPairingStore {
 export class FilePairingStore implements IPairingStore {
   constructor(
     private readonly path: string,
-    private readonly now: () => Date = () => new Date(),
+    private readonly now: () => Date = (): Date => new Date(),
     private readonly nextId: () => string = randomUUID,
   ) {}
 
