@@ -24,6 +24,24 @@ no engineer can find in the design system.
 - Adding a transition between screens, or an animation inside a component
 - Sharing a prototype for review or testing
 
+## Where the prototype is built
+
+The prototype is built on one page per target, named `<target name> prototype`, holding a copy of
+every frame of that target from every feature page, with the screens in the maps' order. Every
+connection, flow and Motion note below is drawn there. The feature pages `drawing-a-screen` lays out
+stay the drawing that review and engineering read, and carry no connection.
+
+A feature's exits reach other features (an `exits.to` of `<feature>/<screen>`), and the tool connects
+frames only inside one page, so a prototype drawn on the feature pages cuts every journey at the first
+feature it leaves. One page per target holds every journey a tester on that device can take.
+
+The copies are rebuilt from the feature pages after every change to a drawing, and never edited: a
+copy changed by hand is a second drawing no review reads. Rebuilding drops the connections with the old
+copies, and they are wired again from the maps, which is where they come from.
+
+A link that opens another page or another prototype in a new view is never a connection. It drops the
+transition and the way back, and the tester reads the reload as the product's.
+
 ## Connections follow the map
 
 1. **Every root screen starts a flow on every target it is drawn for**, on its first state's frame,
@@ -129,6 +147,9 @@ can be paused (WCAG 2.2 SC 2.2.2).
 | Mistake                                              | Instead                                            |
 | ---------------------------------------------------- | -------------------------------------------------- |
 | Wiring a tab bar in every frame                      | Its interactions on its component                  |
+| Connections on the feature pages, cut at each page   | One `<target name> prototype` page of copies       |
+| A link to another page standing for an exit          | The exit's screen copied onto the prototype page   |
+| A prototype copy edited by hand                      | The feature page edited, the copies rebuilt        |
 | "Dissolve, 300 ms, ease out" picked by eye           | A named pattern, a duration token, an easing token |
 | A loading screen drawn as its own frame for a button | The button's loading variant                       |
 | A slide-in with no reduced-motion version            | A fade or instant change beside it                 |

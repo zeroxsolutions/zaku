@@ -17,6 +17,27 @@ through Figma's MCP server:
 Strict mode rolls a finding back; `use_figma` keeps every write, so over Figma's server a finding is
 fixed in the next write.
 
+## The prototype page
+
+Figma connects frames only inside one page: "Prototypes in Figma are currently limited to single
+pages" (Figma, "5 ways to level up your prototyping workflow"), and a page lists only its own flows
+(Help Center, "Create and manage prototype flows"). Figma's own page skeleton keeps a Prototype page
+apart from the flow, because "Prototypes need duplicated screens for animation, which confuses
+stakeholders if it's mixed into the flow page" (Figma, "Team, folder, and file organization").
+The Open link action is no way between pages: "When you click on an Open link hotspot, the link opens
+in a new tab" (Help Center, "Prototype actions").
+
+- The page is `<target name> prototype` (`iOS phone prototype`), after the last feature page, behind a
+  divider page named `---`.
+- Rebuild: remove every frame on it, then for each feature page in the maps' order `frame.clone()`
+  every top-level frame whose name ends ` / <target name>`, append the clone to the prototype page,
+  and lay the screens top to bottom with their states left to right. A clone keeps its name and its
+  instances stay linked to their components.
+- A clone keeps the reactions of its source. Clear them with `setReactionsAsync([])` on every node
+  that has any, then wire from the maps, so no connection points back at a feature page.
+- `findOne` and `findAll` on a fresh clone can miss what a slot holds; walk `children` of every node,
+  SLOT nodes included, to find a control.
+
 ## Connections
 
 - `page.flowStartingPoints` is a list of `{ nodeId, name }`; set it with each root's first-state frame
