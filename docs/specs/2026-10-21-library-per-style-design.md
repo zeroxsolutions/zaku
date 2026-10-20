@@ -43,19 +43,30 @@ screenshots. zaku runs neither of those checks.
 1. **A product names each library, and each target names the one it draws from.**
    - `figma.libraries` maps a name to a file key, for example `{ nova: <key>, vega: <key> }`. A
      target takes `library: <name>`.
+   - A library built on another one (ZUI on Shadcn UI) is listed as `{ key: <key>, extends: <name> }`.
+     A target names the outermost one and draws from it and from every library it extends: travel's
+     touch targets name `zui-vega`, which extends `vega`.
+   - The schema also refuses a library that extends one not listed, and a chain that comes back to
+     itself.
    - `figma.library` stays and means a single library named `default` that every target draws from.
    - The schema refuses three things: both fields at once; a target that names no library while two
      exist; and a target naming a library that is not listed.
    - A product with one library writes nothing new.
-2. **Each library has its own snapshot.** `zaku library save` writes `design/library/<name>.json`
-   for each library, or for the one `--library <name>` names. A product on `figma.library` keeps
-   `design/library.json`.
+2. **Each library has its own snapshot.** `zaku library save --library <name>` writes
+   `design/library/<name>.json` from that library's export. Each export comes from its own file, so a
+   save reads one library, and `--library` is required when zaku.yaml names more than one. A product
+   on `figma.library` keeps `design/library.json`.
+   - The export of a library that extends another has no `semantic` collection of its own. It resolves
+     the tokens through the one enabled library that holds one, and it stops, naming them, when none
+     or several do.
 3. **The checks read the library of the frame's target.** An outline frame already carries its
    target.
    - The `library` check holds each frame's instances to that target's snapshot. A component from
      another library zaku.yaml names is reported as from the wrong library, naming both. A component
      from a library zaku.yaml does not name is reported as it is today.
-   - The binding and style checks do the same for variables and text and effect styles.
+   - The `font` check holds each frame's text styles to that target's libraries the same way.
+   - Variable bindings on a product frame stay unchecked: `zaku outline` does not read them today,
+     and reading them is a change of its own.
    - A map's `components` list passes when every target the screen is drawn for has the name.
 4. **`building-the-library` decides the libraries.**
    - A design system whose style rewrites component classes (shadcn's `style`) gets one library per
@@ -89,10 +100,15 @@ screenshots. zaku runs neither of those checks.
       including the cover's badge.
    6. Then run the rules, the leftover check (decision 7), screenshots of each entry, and the overlap
       scan.
-7. **No reference to a library outside zaku.yaml.** On a library file and on a product file, the
-   `library` check reports every instance, variable binding (range bindings included) and text or
-   effect style whose source is not a library zaku.yaml names, or the file's own. After a move, the
+7. **No reference to a library outside zaku.yaml.** On a library file, the `library` check reports
+   every instance, variable binding (range bindings included) and text or effect style that is
+   neither the file's own nor published by a library it extends. On a product file, it reports every
+   instance and text style that is not from a library zaku.yaml names (decision 3). After a move, the
    old kit then shows up as findings, not as a scan someone has to remember.
+   - It works by key. The export records every variable's key, and whether the variable is the file's
+     own. The snapshot records the keys each item references: its outermost instance, its bound
+     variables, its text style and its effect style. The check holds those keys to what the file and
+     the libraries it extends publish.
 
 ## Out of scope
 
@@ -130,9 +146,11 @@ Code, written first and seen failing:
     with a target that names none.
   - `figma.library` alone still loads.
 - `zaku library save`:
-  - Writes one snapshot per library.
-  - `--library` writes one.
+  - `--library <name>` writes `design/library/<name>.json`.
+  - Without `--library`, two libraries are refused, naming the flag.
   - `figma.library` still writes `design/library.json`.
+- The export, on a file with no `semantic` collection, resolves the tokens through the one enabled
+  library that has one, and fails naming them when there are two.
 - `library` check:
   - A frame is held to its target's snapshot, and an instance from the other named library is
     reported naming both.
