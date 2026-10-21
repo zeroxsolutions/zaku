@@ -1,7 +1,7 @@
 <!--
-Lint, build, secret-scanning and project scaffolding are already hard-gated by the
-pre-push hook and the PreToolUse hooks - a branch that failed them could not be
-pushed - and test by the CI gate, which holds the merge. This template therefore
+Lint, typecheck, secret-scanning and project scaffolding are already hard-gated by
+the pre-push hook and the PreToolUse hooks - a branch that failed them could not be
+pushed - and build and test by the CI gate, which holds the merge. This template therefore
 asks only for what no gate can check.
 -->
 

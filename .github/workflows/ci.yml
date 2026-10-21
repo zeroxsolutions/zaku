@@ -1,7 +1,7 @@
 # The pull-request gate. Four jobs:
 #
-#   gate - the `nx-gate` workflow beside this one: the pre-push hook's targets plus `test`,
-#          over the projects the change reaches, on a clean checkout.
+#   gate - the `nx-gate` workflow beside this one: the pre-push hook's targets plus `build` and
+#          `test`, over the projects the change reaches, on a clean checkout.
 #   e2e  - gate-only. The hook's set stays inside the gate's and never the
 #          reverse, so a target that starts a runtime, or runs every spec, lands
 #          here instead.
