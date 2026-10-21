@@ -3,7 +3,7 @@
 # origin. `affected` diffs from the merge-base with `defaultBase` in nx.json, and adds the
 # uncommitted and untracked files.
 #
-# `test` is left to the pull-request gate, which runs it over the same projects on a clean checkout
-# and holds the merge. Here it ran on every push, on a machine the other worktrees were pushing from
-# too.
-pnpm nx affected -t lint typecheck build
+# `build` and `test` are left to the pull-request gate, which runs them over the same projects on a
+# clean checkout and holds the merge. Here they ran on every push, on a machine the other worktrees
+# were pushing from too.
+pnpm nx affected -t lint typecheck
