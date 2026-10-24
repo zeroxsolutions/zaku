@@ -1,5 +1,10 @@
 # zaku
 
+> **Moved.** zaku now lives in [zeroxsolutions/agent-plugins](https://github.com/zeroxsolutions/agent-plugins/tree/master/plugins/zaku),
+> with its CLI in `apps/zaku-cli`. It ships no MCP server or Figma plugin any more: the rules run inside
+> each write through Figma's own MCP server. Install with `/plugin marketplace add zeroxsolutions/agent-plugins`
+> and `/plugin install zaku@zeroxsolutions`. This repository is archived.
+
 ![zaku](docs/brand/export/zaku-banner.png)
 
 Design rules your agent can't skip. zaku is a plugin for Claude Code and Codex: its skills carry a
